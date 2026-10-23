@@ -1,10 +1,14 @@
 <!DOCTYPE html>
-<html lang="vi" data-theme="dark">
+<html lang="vi" data-theme="sepia">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VN PDF Reader — Đọc PDF Tiếng Việt Tự Nhiên</title>
+  <title>VN PDF Reader — Đọc Sách & PDF Tiếng Việt Phong Cách E-Reader</title>
   <link rel="stylesheet" href="/styles.css" />
+  <!-- Google Fonts chuẩn Typography cho Máy đọc sách (Merriweather, Literata, Inter) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;1,7..72,400&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&display=swap" rel="stylesheet" />
   <!-- Tesseract.js v5 hỗ trợ OCR Tiếng Việt trực tiếp trên trình duyệt không cần cài đặt -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
@@ -62,19 +66,86 @@
       </select>
     </div>
 
-    <!-- Tùy chọn nâng cao & Giao diện -->
+    <!-- Tùy chọn máy đọc sách & Giao diện -->
     <div class="toolbar-group">
       <button class="btn btn-secondary" id="downloadMp3Btn" title="Tải file âm thanh MP3 của toàn bộ trang này" disabled>
         ⬇️ Tải MP3
       </button>
-      <button class="btn btn-icon" id="settingsBtn" title="Cài đặt API Key FPT.AI">
-        ⚙️
+      <button class="btn btn-icon btn-aa" id="readingSettingsBtn" title="Tùy chỉnh phong cách đọc sách: Phông, Cỡ chữ, Lề (Aa)">
+        Aa
       </button>
-      <button class="btn btn-icon" id="themeToggleBtn" title="Đổi giao diện Sáng / Tối / Sepia">
-        🌙
+      <button class="btn btn-icon" id="zenModeBtn" title="Chế độ đọc tập trung (Toàn màn hình sách - Phím F)">
+        📖
+      </button>
+      <button class="btn btn-icon" id="themeToggleBtn" title="Đổi chủ đề: Giấy ngà / Đêm / E-Ink / Sáng">
+        📜
+      </button>
+      <button class="btn btn-icon" id="settingsBtn" title="Cài đặt API Key FPT.AI & Proxy">
+        ⚙️
       </button>
     </div>
   </header>
+
+  <!-- BẢNG TÙY CHỈNH PHONG CÁCH ĐỌC SÁCH (KINDLE / KOBO AA POPOVER) -->
+  <div class="reading-popover" id="readingSettingsPopover" hidden>
+    <div class="popover-arrow"></div>
+    <div class="popover-section">
+      <div class="popover-title">Phông chữ sách</div>
+      <div class="chip-grid" id="fontFamilyChips">
+        <button class="chip active" data-font="merriweather">📖 Sách (Merriweather)</button>
+        <button class="chip" data-font="literata">📱 E-Reader (Literata)</button>
+        <button class="chip" data-font="inter">🔤 Không chân (Inter)</button>
+        <button class="chip" data-font="georgia">✒️ Cổ điển (Georgia)</button>
+      </div>
+    </div>
+
+    <div class="popover-section">
+      <div class="popover-row">
+        <span class="popover-title">Cỡ chữ</span>
+        <div class="font-size-stepper">
+          <button class="btn btn-xs" id="fontDecPopoverBtn">A-</button>
+          <strong id="fontSizePopoverLabel">18px</strong>
+          <button class="btn btn-xs" id="fontIncPopoverBtn">A+</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="popover-section">
+      <div class="popover-title">Khoảng cách dòng</div>
+      <div class="chip-grid" id="lineHeightChips">
+        <button class="chip" data-lh="1.5">Gọn (1.5)</button>
+        <button class="chip active" data-lh="1.8">Chuẩn (1.8)</button>
+        <button class="chip" data-lh="2.1">Thoáng (2.1)</button>
+      </div>
+    </div>
+
+    <div class="popover-section">
+      <div class="popover-title">Độ rộng trang sách</div>
+      <div class="chip-grid" id="pageWidthChips">
+        <button class="chip active" data-width="720px">Sách (720px)</button>
+        <button class="chip" data-width="880px">Vừa (880px)</button>
+        <button class="chip" data-width="100%">Tràn lề (100%)</button>
+      </div>
+    </div>
+
+    <div class="popover-section">
+      <div class="popover-title">Định dạng đoạn văn</div>
+      <div class="toggle-row">
+        <label class="toggle-item">
+          <input type="checkbox" id="justifyToggle" checked />
+          <span>Căn đều 2 lề (Justified)</span>
+        </label>
+        <label class="toggle-item">
+          <input type="checkbox" id="indentToggle" checked />
+          <span>Thụt đầu dòng đoạn văn</span>
+        </label>
+        <label class="toggle-item">
+          <input type="checkbox" id="bookFlowToggle" checked />
+          <span>Chế độ đoạn văn sách</span>
+        </label>
+      </div>
+    </div>
+  </div>
 
   <!-- THANH CÔNG CỤ XỬ LÝ FONT & OCR -->
   <section class="subbar">
@@ -159,17 +230,15 @@
         </div>
       </section>
 
-      <!-- CỘT PHẢI: VĂN BẢN ĐÃ LÀM SẠCH & TÔ SÁNG TỪNG CÂU -->
-      <section class="pane reader-pane">
-        <div class="pane-header">
-          <div>
-            <span>🎧 Văn bản đã làm sạch cho giọng đọc</span>
-            <small class="hint-text">(Click vào bất kỳ câu nào để đọc từ câu đó)</small>
+      <!-- CỘT PHẢI: KHÔNG GIAN ĐỌC SÁCH (E-READER CANVAS) -->
+      <section class="pane reader-pane" id="readerPane">
+        <div class="pane-header" id="readerPaneHeader">
+          <div class="reader-header-left">
+            <span class="reading-badge">📖 Sách Điện Tử</span>
+            <small class="hint-text">(Click vào câu bất kỳ để bắt đầu đọc)</small>
           </div>
           <div class="reader-header-actions">
             <button class="btn btn-xs" id="showPdfPaneBtn" hidden>Hiện trang PDF gốc</button>
-            <button class="btn btn-xs" id="fontDecBtn" title="Giảm cỡ chữ">A-</button>
-            <button class="btn btn-xs" id="fontIncBtn" title="Tăng cỡ chữ">A+</button>
             <button class="btn btn-xs" id="copyCleanTextBtn" title="Copy toàn bộ văn bản sạch của trang này">📋 Copy</button>
           </div>
         </div>
@@ -194,8 +263,40 @@
           </div>
         </div>
 
-        <!-- Danh sách các câu để đọc và highlight -->
-        <div class="sentences-container" id="sentencesContainer"></div>
+        <!-- KHUNG GIẤY SÁCH & NÚT LẬT TRANG (E-READER VIEWPORT) -->
+        <div class="book-viewport" id="bookViewport">
+          <!-- Nút lật trang mỏng 2 bên mép -->
+          <button class="book-nav-arrow prev" id="bookPrevPageBtn" title="Trang trước (Phím mũi tên trái)">‹</button>
+          <button class="book-nav-arrow next" id="bookNextPageBtn" title="Trang sau (Phím mũi tên phải)">›</button>
+
+          <!-- Trang giấy sách trung tâm có giới hạn độ rộng đọc tối ưu -->
+          <div class="book-page-canvas" id="bookPageCanvas">
+            <div class="sentences-container book-flow" id="sentencesContainer"></div>
+          </div>
+        </div>
+
+        <!-- CHÂN TRANG MÁY ĐỌC SÁCH (E-READER FOOTER PROGRESS) -->
+        <footer class="book-footer-bar" id="bookFooterBar">
+          <div class="book-footer-left">
+            <span class="book-footer-doc" id="bookFooterTitle">Chưa mở sách</span>
+            <span class="book-footer-dot">•</span>
+            <span class="book-est-time" id="bookEstTime">~0 phút đọc</span>
+          </div>
+          <div class="book-progress-wrapper">
+            <div class="book-progress-track">
+              <div class="book-progress-fill" id="bookProgressFill" style="width: 0%;"></div>
+            </div>
+          </div>
+          <div class="book-footer-right">
+            <span id="bookPageIndicator">Trang 0 / 0</span>
+            <span class="book-percent-badge" id="bookPercentBadge">0%</span>
+          </div>
+        </footer>
+
+        <!-- Nút thoát chế độ tập trung Zen Mode -->
+        <button class="exit-zen-btn" id="exitZenBtn" hidden title="Thoát chế độ đọc tập trung (Phím Esc hoặc F)">
+          ✕ Thoát chế độ Sách
+        </button>
       </section>
     </div>
   </main>

@@ -1,5 +1,6 @@
 // ============================================================================
-// VN PDF Reader — Frontend Application Logic
+// VN PDF Reader — E-Reader Experience (Kindle / Kobo / Boox Style)
+// Frontend Application Logic
 // ============================================================================
 
 const state = {
@@ -14,9 +15,16 @@ const state = {
   isPaused: false,
   zoomPercent: 100,
   fontSizePx: 18,
-  themeIndex: 0, // 0: dark, 1: sepia, 2: light
-  themes: ["dark", "sepia", "light"],
-  audioBlobCache: new Map(), // key: `${voice}|${speed}|${text}` -> blobUrl
+  readingFont: "merriweather", // merriweather | literata | inter | georgia
+  lineHeight: "1.8",          // 1.5 | 1.8 | 2.1
+  pageWidth: "720px",         // 720px | 880px | 100%
+  isJustified: true,
+  hasIndent: true,
+  isBookFlow: true,           // true: book paragraphs, false: list mode
+  isZenMode: false,
+  themeIndex: 0,              // 0: sepia, 1: dark, 2: eink, 3: light
+  themes: ["sepia", "dark", "eink", "light"],
+  audioBlobCache: new Map(),  // key: `${voice}|${speed}|${text}` -> blobUrl
   ocrWorker: null,
   isOcrRunning: false,
   playSessionId: 0,
@@ -36,7 +44,12 @@ const els = {
   voiceSelect: document.getElementById("voiceSelect"),
   speedSelect: document.getElementById("speedSelect"),
   downloadMp3Btn: document.getElementById("downloadMp3Btn"),
+  readingSettingsBtn: document.getElementById("readingSettingsBtn"),
+  readingSettingsPopover: document.getElementById("readingSettingsPopover"),
+  zenModeBtn: document.getElementById("zenModeBtn"),
+  exitZenBtn: document.getElementById("exitZenBtn"),
   themeToggleBtn: document.getElementById("themeToggleBtn"),
+  settingsBtn: document.getElementById("settingsBtn"),
   docTitleLabel: document.getElementById("docTitleLabel"),
   statusBadge: document.getElementById("statusBadge"),
   statusReasonLabel: document.getElementById("statusReasonLabel"),
@@ -55,8 +68,6 @@ const els = {
   zoomLabel: document.getElementById("zoomLabel"),
   togglePdfPaneBtn: document.getElementById("togglePdfPaneBtn"),
   showPdfPaneBtn: document.getElementById("showPdfPaneBtn"),
-  fontDecBtn: document.getElementById("fontDecBtn"),
-  fontIncBtn: document.getElementById("fontIncBtn"),
   copyCleanTextBtn: document.getElementById("copyCleanTextBtn"),
   ocrProgressBox: document.getElementById("ocrProgressBox"),
   ocrProgressText: document.getElementById("ocrProgressText"),
@@ -67,23 +78,43 @@ const els = {
   applyManualTextBtn: document.getElementById("applyManualTextBtn"),
   cancelManualTextBtn: document.getElementById("cancelManualTextBtn"),
   sentencesContainer: document.getElementById("sentencesContainer"),
+  bookPageCanvas: document.getElementById("bookPageCanvas"),
+  bookPrevPageBtn: document.getElementById("bookPrevPageBtn"),
+  bookNextPageBtn: document.getElementById("bookNextPageBtn"),
+  bookFooterBar: document.getElementById("bookFooterBar"),
+  bookFooterTitle: document.getElementById("bookFooterTitle"),
+  bookEstTime: document.getElementById("bookEstTime"),
+  bookProgressFill: document.getElementById("bookProgressFill"),
+  bookPageIndicator: document.getElementById("bookPageIndicator"),
+  bookPercentBadge: document.getElementById("bookPercentBadge"),
   pasteTextDemoBtn: document.getElementById("pasteTextDemoBtn"),
   ttsAudio: document.getElementById("ttsAudio"),
-  settingsBtn: document.getElementById("settingsBtn"),
   settingsModal: document.getElementById("settingsModal"),
   closeSettingsBtn: document.getElementById("closeSettingsBtn"),
   cancelSettingsBtn: document.getElementById("cancelSettingsBtn"),
   saveSettingsBtn: document.getElementById("saveSettingsBtn"),
   fptApiKeyInput: document.getElementById("fptApiKeyInput"),
   proxyInput: document.getElementById("proxyInput"),
+  fontFamilyChips: document.getElementById("fontFamilyChips"),
+  lineHeightChips: document.getElementById("lineHeightChips"),
+  pageWidthChips: document.getElementById("pageWidthChips"),
+  justifyToggle: document.getElementById("justifyToggle"),
+  indentToggle: document.getElementById("indentToggle"),
+  bookFlowToggle: document.getElementById("bookFlowToggle"),
+  fontDecPopoverBtn: document.getElementById("fontDecPopoverBtn"),
+  fontIncPopoverBtn: document.getElementById("fontIncPopoverBtn"),
+  fontSizePopoverLabel: document.getElementById("fontSizePopoverLabel"),
 };
 
 // ============================================================================
-// 1. KHỞI TẠO & SỰ KIỆN GIAO DIỆN
+// 1. KHỞI TẠO & SỰ KIỆN GIAO DIỆN MÁY ĐỌC SÁCH
 // ============================================================================
 async function initApp() {
+  loadReadingPreferences();
+  applyReadingPreferences();
   await loadVoices();
   bindEvents();
+  updateThemeButton();
 }
 
 async function loadVoices() {
@@ -101,14 +132,106 @@ async function loadVoices() {
   }
 }
 
+function loadReadingPreferences() {
+  try {
+    const raw = localStorage.getItem("vn_reader_prefs");
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (p.font) state.readingFont = p.font;
+      if (p.fontSize) state.fontSizePx = p.fontSize;
+      if (p.lineHeight) state.lineHeight = p.lineHeight;
+      if (p.pageWidth) state.pageWidth = p.pageWidth;
+      if (p.isJustified !== undefined) state.isJustified = p.isJustified;
+      if (p.hasIndent !== undefined) state.hasIndent = p.hasIndent;
+      if (p.isBookFlow !== undefined) state.isBookFlow = p.isBookFlow;
+      if (p.themeIndex !== undefined) state.themeIndex = p.themeIndex;
+    }
+  } catch (_) {}
+}
+
+function applyReadingPreferences() {
+  const root = document.documentElement;
+  root.style.setProperty("--font-reading", `var(--font-${state.readingFont})`);
+  root.style.setProperty("--font-size", `${state.fontSizePx}px`);
+  root.style.setProperty("--line-height", state.lineHeight);
+  root.style.setProperty("--reading-max-width", state.pageWidth);
+  root.style.setProperty("--para-indent", state.hasIndent ? "1.6em" : "0");
+  root.style.setProperty("--text-align", state.isJustified ? "justify" : "left");
+
+  const currentTheme = state.themes[state.themeIndex] || "sepia";
+  root.setAttribute("data-theme", currentTheme);
+
+  if (els.fontSizePopoverLabel) {
+    els.fontSizePopoverLabel.textContent = `${state.fontSizePx}px`;
+  }
+  if (els.justifyToggle) els.justifyToggle.checked = state.isJustified;
+  if (els.indentToggle) els.indentToggle.checked = state.hasIndent;
+  if (els.bookFlowToggle) els.bookFlowToggle.checked = state.isBookFlow;
+
+  // Cập nhật trạng thái active của các chip trong menu Aa
+  updateChipActiveState(els.fontFamilyChips, "data-font", state.readingFont);
+  updateChipActiveState(els.lineHeightChips, "data-lh", state.lineHeight);
+  updateChipActiveState(els.pageWidthChips, "data-width", state.pageWidth);
+
+  try {
+    localStorage.setItem(
+      "vn_reader_prefs",
+      JSON.stringify({
+        font: state.readingFont,
+        fontSize: state.fontSizePx,
+        lineHeight: state.lineHeight,
+        pageWidth: state.pageWidth,
+        isJustified: state.isJustified,
+        hasIndent: state.hasIndent,
+        isBookFlow: state.isBookFlow,
+        themeIndex: state.themeIndex,
+      })
+    );
+  } catch (_) {}
+}
+
+function updateChipActiveState(container, attr, value) {
+  if (!container) return;
+  container.querySelectorAll(".chip").forEach((chip) => {
+    if (chip.getAttribute(attr) === value) {
+      chip.classList.add("active");
+    } else {
+      chip.classList.remove("active");
+    }
+  });
+}
+
+function updateThemeButton() {
+  const theme = state.themes[state.themeIndex];
+  if (els.themeToggleBtn) {
+    els.themeToggleBtn.textContent =
+      theme === "sepia"
+        ? "📜"
+        : theme === "dark"
+        ? "🌙"
+        : theme === "eink"
+        ? "📱"
+        : "☀️";
+    els.themeToggleBtn.title = `Chủ đề hiện tại: ${
+      theme === "sepia"
+        ? "Giấy ngà (Sepia)"
+        : theme === "dark"
+        ? "Đêm sâu (OLED Dark)"
+        : theme === "eink"
+        ? "Mực điện tử (E-Ink)"
+        : "Sáng dịu (Daylight)"
+    }`;
+  }
+}
+
 function bindEvents() {
-  // Chọn file PDF
+  // 1. Chọn file PDF
   els.pdfFileInput.addEventListener("change", (e) => {
     const file = e.target.files?.[0];
     if (file) handlePdfUpload(file);
   });
 
-  // Kéo thả file PDF vào bất kỳ đâu trong workspace
+  // Kéo thả file PDF vào workspace
   window.addEventListener("dragover", (e) => {
     e.preventDefault();
     els.dropZone.classList.add("drag-over");
@@ -131,12 +254,19 @@ function bindEvents() {
     }
   });
 
-  // Điều hướng trang
+  // 2. Điều hướng trang
   els.prevPageBtn.addEventListener("click", () => {
     if (state.currentPage > 1) goToPage(state.currentPage - 1, false);
   });
-
   els.nextPageBtn.addEventListener("click", () => {
+    if (state.currentPage < state.totalPages) goToPage(state.currentPage + 1, false);
+  });
+
+  // Mũi tên lật trang nổi kiểu máy đọc sách (Kindle Oasis style)
+  els.bookPrevPageBtn?.addEventListener("click", () => {
+    if (state.currentPage > 1) goToPage(state.currentPage - 1, false);
+  });
+  els.bookNextPageBtn?.addEventListener("click", () => {
     if (state.currentPage < state.totalPages) goToPage(state.currentPage + 1, false);
   });
 
@@ -150,7 +280,7 @@ function bindEvents() {
     }
   });
 
-  // Điều khiển phát TTS
+  // 3. Điều khiển giọng đọc TTS
   els.playPauseBtn.addEventListener("click", togglePlayPause);
   els.stopBtn.addEventListener("click", stopReading);
 
@@ -166,6 +296,7 @@ function bindEvents() {
     playFromSentence(nextIdx);
   });
 
+  // Khi đổi giọng: DỪNG NGAY LẬP TỨC giọng cũ (0ms latency)
   els.voiceSelect.addEventListener("change", () => {
     if (state.isPlaying) {
       els.ttsAudio.pause();
@@ -179,7 +310,98 @@ function bindEvents() {
     els.ttsAudio.playbackRate = speed;
   });
 
-  // Chế độ bảng mã & OCR
+  // 4. Menu Aa (Kindle / Kobo Popover)
+  els.readingSettingsBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (els.readingSettingsPopover) {
+      els.readingSettingsPopover.hidden = !els.readingSettingsPopover.hidden;
+    }
+  });
+
+  document.addEventListener("click", (e) => {
+    if (
+      els.readingSettingsPopover &&
+      !els.readingSettingsPopover.hidden &&
+      !els.readingSettingsPopover.contains(e.target) &&
+      e.target !== els.readingSettingsBtn
+    ) {
+      els.readingSettingsPopover.hidden = true;
+    }
+  });
+
+  // Chọn phông chữ
+  els.fontFamilyChips?.addEventListener("click", (e) => {
+    const btn = e.target.closest(".chip");
+    if (!btn) return;
+    state.readingFont = btn.getAttribute("data-font");
+    applyReadingPreferences();
+  });
+
+  // Tăng / giảm cỡ chữ trong popover
+  els.fontIncPopoverBtn?.addEventListener("click", () => {
+    state.fontSizePx = Math.min(32, state.fontSizePx + 1);
+    applyReadingPreferences();
+  });
+
+  els.fontDecPopoverBtn?.addEventListener("click", () => {
+    state.fontSizePx = Math.max(13, state.fontSizePx - 1);
+    applyReadingPreferences();
+  });
+
+  // Chọn giãn dòng
+  els.lineHeightChips?.addEventListener("click", (e) => {
+    const btn = e.target.closest(".chip");
+    if (!btn) return;
+    state.lineHeight = btn.getAttribute("data-lh");
+    applyReadingPreferences();
+  });
+
+  // Chọn độ rộng trang sách
+  els.pageWidthChips?.addEventListener("click", (e) => {
+    const btn = e.target.closest(".chip");
+    if (!btn) return;
+    state.pageWidth = btn.getAttribute("data-width");
+    applyReadingPreferences();
+  });
+
+  // Tùy chọn căn lề, thụt đầu dòng, kiểu sách
+  els.justifyToggle?.addEventListener("change", () => {
+    state.isJustified = els.justifyToggle.checked;
+    applyReadingPreferences();
+  });
+
+  els.indentToggle?.addEventListener("change", () => {
+    state.hasIndent = els.indentToggle.checked;
+    applyReadingPreferences();
+  });
+
+  els.bookFlowToggle?.addEventListener("change", () => {
+    state.isBookFlow = els.bookFlowToggle.checked;
+    applyReadingPreferences();
+    renderSentences();
+  });
+
+  // 5. Chế độ đọc tập trung (Zen / Focus Mode)
+  els.zenModeBtn?.addEventListener("click", toggleZenMode);
+  els.exitZenBtn?.addEventListener("click", toggleZenMode);
+
+  // 6. Đổi chủ đề màu (Sepia -> Dark -> E-Ink -> Light)
+  els.themeToggleBtn.addEventListener("click", () => {
+    state.themeIndex = (state.themeIndex + 1) % state.themes.length;
+    applyReadingPreferences();
+    updateThemeButton();
+  });
+
+  // 7. Cài đặt FPT.AI / Proxy modal
+  els.settingsBtn?.addEventListener("click", openSettingsModal);
+  els.closeSettingsBtn?.addEventListener("click", closeSettingsModal);
+  els.cancelSettingsBtn?.addEventListener("click", closeSettingsModal);
+  els.saveSettingsBtn?.addEventListener("click", saveSettings);
+  els.settingsModal?.addEventListener("click", (e) => {
+    if (e.target === els.settingsModal) closeSettingsModal();
+  });
+
+  // 8. Chế độ bảng mã & OCR
   els.encodingModeSelect.addEventListener("change", () => {
     if (state.docId) {
       goToPage(state.currentPage, false);
@@ -192,7 +414,7 @@ function bindEvents() {
     }
   });
 
-  // Chỉnh sửa văn bản thủ công / Dán văn bản trực tiếp
+  // 9. Chỉnh sửa văn bản thủ công
   els.editModeBtn.addEventListener("click", () => {
     els.manualTextArea.value = state.cleanText;
     els.editorBox.hidden = !els.editorBox.hidden;
@@ -222,7 +444,7 @@ function bindEvents() {
     els.editorBox.hidden = true;
   });
 
-  // Zoom ảnh PDF & Cỡ chữ đọc
+  // 10. Zoom PDF & Toggle Cột PDF
   els.zoomInBtn.addEventListener("click", () => updateZoom(15));
   els.zoomOutBtn.addEventListener("click", () => updateZoom(-15));
 
@@ -238,16 +460,6 @@ function bindEvents() {
     els.showPdfPaneBtn.hidden = true;
   });
 
-  els.fontIncBtn.addEventListener("click", () => {
-    state.fontSizePx = Math.min(28, state.fontSizePx + 2);
-    els.sentencesContainer.style.fontSize = `${state.fontSizePx}px`;
-  });
-
-  els.fontDecBtn.addEventListener("click", () => {
-    state.fontSizePx = Math.max(14, state.fontSizePx - 2);
-    els.sentencesContainer.style.fontSize = `${state.fontSizePx}px`;
-  });
-
   els.copyCleanTextBtn.addEventListener("click", async () => {
     if (!state.cleanText) return;
     await navigator.clipboard.writeText(state.cleanText);
@@ -259,24 +471,7 @@ function bindEvents() {
   // Tải MP3 toàn trang
   els.downloadMp3Btn.addEventListener("click", downloadFullPageMp3);
 
-  // Cài đặt giọng đọc FPT.AI / Proxy
-  els.settingsBtn?.addEventListener("click", openSettingsModal);
-  els.closeSettingsBtn?.addEventListener("click", closeSettingsModal);
-  els.cancelSettingsBtn?.addEventListener("click", closeSettingsModal);
-  els.saveSettingsBtn?.addEventListener("click", saveSettings);
-  els.settingsModal?.addEventListener("click", (e) => {
-    if (e.target === els.settingsModal) closeSettingsModal();
-  });
-
-  // Đổi giao diện Sáng / Tối / Sepia
-  els.themeToggleBtn.addEventListener("click", () => {
-    state.themeIndex = (state.themeIndex + 1) % state.themes.length;
-    const theme = state.themes[state.themeIndex];
-    document.documentElement.setAttribute("data-theme", theme);
-    els.themeToggleBtn.textContent = theme === "dark" ? "🌙" : theme === "sepia" ? "📜" : "☀️";
-  });
-
-  // Phím tắt bàn phím
+  // 11. Phím tắt bàn phím
   window.addEventListener("keydown", (e) => {
     const tag = document.activeElement?.tagName?.toLowerCase();
     if (tag === "input" || tag === "textarea" || tag === "select") return;
@@ -290,12 +485,29 @@ function bindEvents() {
     } else if (e.code === "ArrowRight" && state.docId && state.currentPage < state.totalPages) {
       e.preventDefault();
       goToPage(state.currentPage + 1, false);
+    } else if (e.code === "KeyF") {
+      e.preventDefault();
+      toggleZenMode();
+    } else if (e.code === "Escape") {
+      if (state.isZenMode) toggleZenMode();
+      if (els.readingSettingsPopover && !els.readingSettingsPopover.hidden) {
+        els.readingSettingsPopover.hidden = true;
+      }
     }
   });
 }
 
+function toggleZenMode() {
+  state.isZenMode = !state.isZenMode;
+  document.body.classList.toggle("zen-mode", state.isZenMode);
+  if (els.exitZenBtn) els.exitZenBtn.hidden = !state.isZenMode;
+  if (state.isZenMode && els.readingSettingsPopover) {
+    els.readingSettingsPopover.hidden = true;
+  }
+}
+
 // ============================================================================
-// 2. XỬ LÝ FILE PDF & HIỂN THỊ TRANG
+// 2. XỬ LÝ FILE PDF & HIỂN THỊ TRANG SÁCH
 // ============================================================================
 async function handlePdfUpload(file) {
   stopReading();
@@ -341,7 +553,7 @@ async function handlePdfUpload(file) {
   }
 }
 
-async function goToPage(pageNumber, autoPlayAfterLoad = false) {
+async function goToPage(pageNumber, autoPlay = false) {
   if (!state.docId) return;
   stopReading();
 
@@ -349,29 +561,32 @@ async function goToPage(pageNumber, autoPlayAfterLoad = false) {
   els.pageInput.value = pageNumber;
   els.prevPageBtn.disabled = pageNumber <= 1;
   els.nextPageBtn.disabled = pageNumber >= state.totalPages;
+  if (els.bookPrevPageBtn) els.bookPrevPageBtn.disabled = pageNumber <= 1;
+  if (els.bookNextPageBtn) els.bookNextPageBtn.disabled = pageNumber >= state.totalPages;
 
-  // Cập nhật ảnh trang PDF bên trái
+  // Hiển thị ảnh trang PDF gốc
   els.pdfPageImage.src = `/api/doc/${state.docId}/page/${pageNumber}/image?dpi=170`;
 
-  // Trích xuất và sửa lỗi văn bản Tiếng Việt bên phải
+  // Tải văn bản trang đã được sửa lỗi font
   const mode = els.encodingModeSelect.value || "auto";
-  els.sentencesContainer.innerHTML = `<div class="empty-page-notice"><p>⏳ Đang trích xuất và chuẩn hóa văn bản Tiếng Việt trang ${pageNumber}...</p></div>`;
-
   try {
     const res = await fetch(`/api/doc/${state.docId}/page/${pageNumber}?mode=${mode}`);
-    if (!res.ok) throw new Error("Không thể trích xuất trang PDF");
+    if (!res.ok) throw new Error("Không thể trích xuất văn bản trang này");
     const data = await res.json();
-
     applyPageData(data);
 
-    // Nếu phát hiện trang bị lỗi font nặng hoặc là ảnh scan và bật Tự động OCR
+    // Tự động quét OCR nếu trang bị lỗi font hoặc là ảnh scan
     if (data.needs_ocr && els.autoOcrCheckbox.checked) {
-      await runBrowserVietnameseOcr(autoPlayAfterLoad);
-    } else if (autoPlayAfterLoad && state.sentences.length > 0) {
+      console.log(`[OCR] Trang ${pageNumber} cần OCR, đang kích hoạt Tesseract.js...`);
+      runBrowserVietnameseOcr(autoPlay);
+      return;
+    }
+
+    if (autoPlay && state.sentences.length > 0) {
       playFromSentence(0);
     }
   } catch (err) {
-    els.sentencesContainer.innerHTML = `<div class="empty-page-notice"><p>❌ Lỗi: ${err.message}</p></div>`;
+    console.error("Lỗi tải trang:", err);
   }
 }
 
@@ -380,7 +595,6 @@ function applyPageData(data) {
   state.sentences = data.sentences || [];
   state.currentSentenceIndex = -1;
 
-  // Cập nhật badge trạng thái
   els.statusBadge.hidden = false;
   els.statusReasonLabel.textContent = data.reason || "";
 
@@ -395,7 +609,7 @@ function applyPageData(data) {
     els.statusBadge.textContent = "✨ Đã sửa VNI → Unicode";
   } else if (data.encoding_detected === "mojibake") {
     els.statusBadge.className = "status-badge fixed";
-    els.statusBadge.textContent = "✨ Đã sửa lỗi mã UTF-8";
+    els.statusBadge.textContent = "✨ Đã sửa lỗi UTF-8";
   } else if (data.encoding_detected === "ocr_vi") {
     els.statusBadge.className = "status-badge fixed";
     els.statusBadge.textContent = "🔍 Đã quét OCR Tiếng Việt";
@@ -424,19 +638,49 @@ function renderSentences() {
         </button>
       </div>
     `;
+    updateBookFooter();
     return;
   }
 
-  els.sentencesContainer.innerHTML = state.sentences
-    .map(
-      (sentence, idx) => `
-      <div class="sentence-item" id="sentence-${idx}" data-index="${idx}">
-        <span class="sentence-index">#${idx + 1}</span>
-        <span class="sentence-text">${escapeHtml(sentence)}</span>
-      </div>
-    `
-    )
-    .join("");
+  if (state.isBookFlow) {
+    // CHẾ ĐỘ ĐOẠN VĂN SÁCH (KINDLE / E-READER BOOK FLOW)
+    els.sentencesContainer.classList.remove("list-mode");
+    const paragraphs = groupSentencesIntoParagraphs(state.cleanText, state.sentences);
+
+    els.sentencesContainer.innerHTML = paragraphs
+      .map((para) => {
+        const fullText = para.map((item) => item.text).join(" ").trim();
+        // Nhận diện tiêu đề sách (dưới 65 ký tự và không kết thúc bằng dấu chấm)
+        const isHeading = para.length === 1 && fullText.length < 65 && !fullText.endsWith(".");
+        const tagClass = isHeading ? "book-heading" : "book-paragraph";
+
+        const spans = para
+          .map(
+            (item) => `
+            <span class="sentence-item" id="sentence-${item.index}" data-index="${item.index}">
+              ${escapeHtml(item.text)} 
+            </span>
+          `
+          )
+          .join("");
+
+        return `<div class="${tagClass}">${spans}</div>`;
+      })
+      .join("");
+  } else {
+    // CHẾ ĐỘ DANH SÁCH TỪNG CÂU
+    els.sentencesContainer.classList.add("list-mode");
+    els.sentencesContainer.innerHTML = state.sentences
+      .map(
+        (sentence, idx) => `
+        <div class="sentence-item" id="sentence-${idx}" data-index="${idx}">
+          <span class="sentence-index">#${idx + 1}</span>
+          <span class="sentence-text">${escapeHtml(sentence)}</span>
+        </div>
+      `
+      )
+      .join("");
+  }
 
   // Click vào câu nào đọc ngay từ câu đó
   els.sentencesContainer.querySelectorAll(".sentence-item").forEach((item) => {
@@ -445,6 +689,77 @@ function renderSentences() {
       playFromSentence(idx);
     });
   });
+
+  updateBookFooter();
+}
+
+function groupSentencesIntoParagraphs(cleanText, sentences) {
+  if (!cleanText || !sentences || sentences.length === 0) {
+    return [sentences.map((text, index) => ({ text, index }))];
+  }
+
+  const rawParagraphs = cleanText.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  if (rawParagraphs.length <= 1) {
+    return [sentences.map((text, index) => ({ text, index }))];
+  }
+
+  const result = [];
+  let sentIdx = 0;
+
+  for (const rawP of rawParagraphs) {
+    const currentGroup = [];
+    let accumulated = "";
+
+    while (sentIdx < sentences.length) {
+      const sent = sentences[sentIdx];
+      currentGroup.push({ text: sent, index: sentIdx });
+      sentIdx++;
+      accumulated = (accumulated + " " + sent).trim();
+
+      // Kiểm tra xem đoạn văn này đã đủ câu chưa
+      if (accumulated.length >= rawP.length - 8 || sentIdx === sentences.length) {
+        break;
+      }
+    }
+
+    if (currentGroup.length > 0) {
+      result.push(currentGroup);
+    }
+  }
+
+  // Nếu còn sót câu nào chưa vào nhóm
+  if (sentIdx < sentences.length) {
+    const lastGroup = [];
+    while (sentIdx < sentences.length) {
+      lastGroup.push({ text: sentences[sentIdx], index: sentIdx });
+      sentIdx++;
+    }
+    result.push(lastGroup);
+  }
+
+  return result;
+}
+
+function updateBookFooter() {
+  if (els.bookFooterTitle) {
+    els.bookFooterTitle.textContent = state.filename || "Sách điện tử";
+  }
+  if (els.bookPageIndicator) {
+    els.bookPageIndicator.textContent = `Trang ${state.currentPage} / ${state.totalPages || 0}`;
+  }
+  const pct = state.totalPages > 0 ? Math.round((state.currentPage / state.totalPages) * 100) : 0;
+  if (els.bookPercentBadge) {
+    els.bookPercentBadge.textContent = `${pct}%`;
+  }
+  if (els.bookProgressFill) {
+    els.bookProgressFill.style.width = `${pct}%`;
+  }
+  // Ước tính thời gian đọc: ~220 từ/phút
+  const wordCount = state.cleanText ? state.cleanText.trim().split(/\s+/).length : 0;
+  const mins = Math.max(1, Math.ceil(wordCount / 220));
+  if (els.bookEstTime) {
+    els.bookEstTime.textContent = wordCount > 0 ? `~${mins} phút đọc` : "~0 phút";
+  }
 }
 
 // ============================================================================
@@ -515,23 +830,20 @@ async function processRawTextFromClient(rawText, customReason, badgeType = "unic
 }
 
 // ============================================================================
-// 4. BỘ PHÁT GIỌNG ĐỌC AI (LOOKAHEAD PRE-FETCH & HIGHLIGHT TỪNG CÂU)
+// 4. BỘ PHÁT GIỌNG ĐỌC AI & TÔ SÁNG TỪNG CÂU (WHISPERSYNC STYLE)
 // ============================================================================
 function togglePlayPause() {
   if (state.sentences.length === 0) return;
 
   if (state.isPlaying && !state.isPaused) {
-    // Tạm dừng
     state.isPaused = true;
     els.ttsAudio.pause();
     els.playPauseBtn.textContent = "▶ Đọc tiếp";
   } else if (state.isPlaying && state.isPaused) {
-    // Tiếp tục
     state.isPaused = false;
     els.ttsAudio.play();
     els.playPauseBtn.textContent = "⏸ Tạm dừng";
   } else {
-    // Bắt đầu đọc từ câu hiện tại hoặc câu đầu tiên
     const startIdx = state.currentSentenceIndex >= 0 ? state.currentSentenceIndex : 0;
     playFromSentence(startIdx);
   }
@@ -577,7 +889,6 @@ async function fetchSentenceAudioUrl(sentenceText) {
 }
 
 async function prefetchUpcomingSentences(fromIndex) {
-  // Tải trước lần lượt từng câu tiếp theo trong nền (tránh gửi dồn dập nhiều request cùng lúc)
   for (let offset = 1; offset <= 2; offset++) {
     const idx = fromIndex + offset;
     if (idx < state.sentences.length) {
@@ -599,7 +910,7 @@ async function playFromSentence(index) {
   state.isPaused = false;
   state.currentSentenceIndex = index;
 
-  // Dừng ngay audio hiện tại để lập tức ngắt giọng cũ
+  // Dừng ngay audio hiện tại để ngắt giọng cũ ngay tức khắc
   els.ttsAudio.pause();
   els.ttsAudio.currentTime = 0;
   els.playPauseBtn.textContent = "⏳ Đang đổi giọng...";
@@ -607,7 +918,7 @@ async function playFromSentence(index) {
 
   try {
     const audioUrl = await fetchSentenceAudioUrl(state.sentences[index]);
-    if (sessionId !== state.playSessionId) return; // Đã chuyển câu khác hoặc đổi giọng khác
+    if (sessionId !== state.playSessionId) return;
 
     els.ttsAudio.src = audioUrl;
     els.ttsAudio.playbackRate = parseFloat(els.speedSelect.value || "1.0");
@@ -623,7 +934,6 @@ async function playFromSentence(index) {
         state.docId &&
         state.currentPage < state.totalPages
       ) {
-        // Tự động lật sang trang tiếp theo và đọc tiếp
         goToPage(state.currentPage + 1, true);
       } else {
         stopReading();
@@ -632,7 +942,7 @@ async function playFromSentence(index) {
 
     await els.ttsAudio.play();
 
-    // Tải trước câu tiếp theo SAU KHI câu hiện tại đã bắt đầu phát (tránh nghẽn mạng)
+    // Chỉ tải ngầm câu tiếp theo sau khi câu hiện tại đã bắt đầu phát thành công
     prefetchUpcomingSentences(index);
   } catch (err) {
     console.warn("Lỗi tải âm thanh TTS, chuyển sang Web Speech API dự phòng:", err);

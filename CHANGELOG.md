@@ -4,6 +4,29 @@ Toàn bộ các thay đổi, tính năng mới và cải tiến của dự án *
 
 ---
 
+## [1.2.0] - 2026-10-23
+
+### Added
+- **Nâng Cấp Giao Diện Toàn Diện Theo Phong Cách Máy Đọc Sách (Kindle / Kobo / Boox):**
+  - **Menu "Aa" Đặc Trưng Của E-Reader:** Popup tùy chỉnh toàn diện:
+    - 4 Phông chữ chuẩn xuất bản: *Merriweather* (Sách serif truyền thống), *Literata* (Google Play Books E-Reader), *Inter* (Hiện đại không chân), *Georgia* (Cổ điển).
+    - Tăng/giảm cỡ chữ trực quan từng pixel.
+    - Chỉnh khoảng cách dòng: Gọn (1.5), Chuẩn (1.8), Thoáng (2.1).
+    - Chỉnh độ rộng trang sách: Chuẩn máy đọc sách (720px), Vừa (880px), Tràn lề (100%).
+    - Tùy chọn căn đều 2 lề (Justify) & thụt đầu dòng (Paragraph indent 1.6em) chuẩn sách in.
+  - **4 Bộ Màu Chủ Đề E-Reader:**
+    - 📜 **Giấy ngà (Sepia - Mặc định):** Màu giấy sách thật vàng ấm `#fcf6e8` với mực than dịu mắt, chống mỏi mắt khi đọc lâu.
+    - 🌙 **Đêm sâu (OLED Dark):** Nền than tối dịu, chữ sáng ấm, không gây lóa khi đọc đêm.
+    - 📱 **Mực điện tử (E-Ink Monochrome):** Đơn sắc tối giản siêu nét mô phỏng màn hình mực điện tử Kindle/Boox.
+    - ☀️ **Sáng dịu (Daylight Soft):** Nền trắng sứ trang nhã, tương phản cao ban ngày.
+  - **Bố Cục Đoạn Văn Sách (Book Flow):** Tự động gom các câu thành các đoạn văn sách tự nhiên, loại bỏ các nhãn số `#1`, `#2` thô cứng để tạo trải nghiệm đọc như cầm cuốn sách thật.
+  - **Tô Sáng Bút Dạ Quang Sách (Whispersync Highlighter):** Câu đang đọc được highlight mềm mại kiểu bút dạ quang sách (màu vàng hổ phách dịu), êm mắt và tự động cuộn nhẹ nhàng.
+  - **Chân Trang Tiến Độ Đọc Sách (E-Reader Footer):** Hiển thị tên sách, ước tính thời gian đọc còn lại (WPM), thanh tiến độ phần trăm % mượt mà và số trang `Trang X / Y`.
+  - **Mũi Tên Lật Trang Nổi (Kindle Oasis Navigators):** Hai nút lật trang mỏng tinh tế ở 2 mép màn hình, bấm hoặc dùng phím mũi tên để lật trang tức thì.
+  - **Chế Độ Đọc Tập Trung (Zen / Focus Mode - Phím F):** Ẩn toàn bộ thanh công cụ thừa, đưa trang sách vào chính giữa toàn màn hình để người đọc chìm đắm hoàn toàn vào nội dung.
+
+---
+
 ## [1.1.0] - 2026-10-23
 
 ### Added

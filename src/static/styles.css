@@ -1,19 +1,71 @@
+/* ============================================================================
+   VN PDF Reader — E-Reader Experience (Kindle / Kobo / Boox Style)
+   Design System & Typography
+   ============================================================================ */
+
+:root {
+  /* Typography Tokens */
+  --font-merriweather: "Merriweather", Georgia, "Times New Roman", serif;
+  --font-literata: "Literata", Georgia, serif;
+  --font-inter: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-georgia: Georgia, "Palatino Linotype", "Book Antiqua", serif;
+  --font-reading: var(--font-merriweather);
+  --font-size: 18px;
+  --line-height: 1.8;
+  --reading-max-width: 720px;
+  --para-indent: 1.6em;
+  --text-align: justify;
+}
+
+/* 1. SEPIA / WARM PAPER (Kindle Paperwhite Mặc định - Giấy ngà ấm áp) */
 :root,
+[data-theme="sepia"] {
+  --bg-app: #f4ecdc;
+  --bg-surface: #eae0cb;
+  --bg-elevated: #dfd4bc;
+  --bg-reader: #fcf6e8;
+  --bg-paper: #fcf6e8;
+  --text-primary: #382c22;
+  --text-secondary: #746355;
+  --border-color: #d8cbb5;
+  --accent: #b45309;
+  --accent-hover: #92400e;
+  --play-bg: #15803d;
+  --play-hover: #166534;
+  --sentence-hover: rgba(180, 83, 9, 0.08);
+  --sentence-active-bg: #fed7aa;
+  --sentence-active-border: #ea580c;
+  --sentence-active-text: #2a1f17;
+  --popover-bg: #f8f1df;
+  --book-shadow: 0 4px 20px rgba(56, 44, 34, 0.08);
+  --badge-ok-bg: #dcfce7;
+  --badge-ok-text: #166534;
+  --badge-warn-bg: #fef08a;
+  --badge-warn-text: #854d0e;
+  --badge-fix-bg: #ffedd5;
+  --badge-fix-text: #9a3412;
+}
+
+/* 2. DARK NIGHT (Đêm Sâu OLED - Dịu mắt, không lóa) */
 [data-theme="dark"] {
-  --bg-app: #0f172a;
-  --bg-surface: #1e293b;
-  --bg-elevated: #334155;
-  --bg-reader: #131c31;
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --border-color: #334155;
+  --bg-app: #121316;
+  --bg-surface: #1a1c22;
+  --bg-elevated: #242730;
+  --bg-reader: #16171b;
+  --bg-paper: #16171b;
+  --text-primary: #e4e6eb;
+  --text-secondary: #8c93a4;
+  --border-color: #2b2e38;
   --accent: #38bdf8;
   --accent-hover: #0284c7;
   --play-bg: #10b981;
   --play-hover: #059669;
-  --sentence-hover: rgba(56, 189, 248, 0.1);
-  --sentence-active-bg: rgba(16, 185, 129, 0.22);
-  --sentence-active-border: #10b981;
+  --sentence-hover: rgba(56, 189, 248, 0.12);
+  --sentence-active-bg: rgba(251, 191, 36, 0.22);
+  --sentence-active-border: #f59e0b;
+  --sentence-active-text: #fef3c7;
+  --popover-bg: #1e2028;
+  --book-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
   --badge-ok-bg: rgba(16, 185, 129, 0.2);
   --badge-ok-text: #34d399;
   --badge-warn-bg: rgba(245, 158, 11, 0.2);
@@ -22,11 +74,41 @@
   --badge-fix-text: #38bdf8;
 }
 
+/* 3. E-INK MONOCHROME (Mực điện tử Boox / Kindle B&W - Tối giản sắc nét) */
+[data-theme="eink"] {
+  --bg-app: #ebebeb;
+  --bg-surface: #dedede;
+  --bg-elevated: #cfcfcf;
+  --bg-reader: #f9f9f9;
+  --bg-paper: #ffffff;
+  --text-primary: #111111;
+  --text-secondary: #555555;
+  --border-color: #cccccc;
+  --accent: #222222;
+  --accent-hover: #000000;
+  --play-bg: #222222;
+  --play-hover: #000000;
+  --sentence-hover: rgba(0, 0, 0, 0.07);
+  --sentence-active-bg: #e2e2e2;
+  --sentence-active-border: #111111;
+  --sentence-active-text: #000000;
+  --popover-bg: #f2f2f2;
+  --book-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  --badge-ok-bg: #e5e5e5;
+  --badge-ok-text: #111111;
+  --badge-warn-bg: #e5e5e5;
+  --badge-warn-text: #111111;
+  --badge-fix-bg: #e5e5e5;
+  --badge-fix-text: #111111;
+}
+
+/* 4. LIGHT DAYLIGHT (Sáng Dịu Ban Ngày) */
 [data-theme="light"] {
   --bg-app: #f1f5f9;
   --bg-surface: #ffffff;
   --bg-elevated: #e2e8f0;
   --bg-reader: #ffffff;
+  --bg-paper: #ffffff;
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --border-color: #cbd5e1;
@@ -35,37 +117,17 @@
   --play-bg: #059669;
   --play-hover: #047857;
   --sentence-hover: rgba(2, 132, 199, 0.08);
-  --sentence-active-bg: #d1fae5;
-  --sentence-active-border: #059669;
+  --sentence-active-bg: #bae6fd;
+  --sentence-active-border: #0284c7;
+  --sentence-active-text: #0369a1;
+  --popover-bg: #ffffff;
+  --book-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
   --badge-ok-bg: #d1fae5;
   --badge-ok-text: #065f46;
   --badge-warn-bg: #fef3c7;
   --badge-warn-text: #92400e;
   --badge-fix-bg: #e0f2fe;
   --badge-fix-text: #075985;
-}
-
-[data-theme="sepia"] {
-  --bg-app: #f4ecd8;
-  --bg-surface: #fdf6e3;
-  --bg-elevated: #e8dfc8;
-  --bg-reader: #fbf3db;
-  --text-primary: #3b2f2f;
-  --text-secondary: #6e5c4f;
-  --border-color: #d6c7b2;
-  --accent: #b45309;
-  --accent-hover: #92400e;
-  --play-bg: #15803d;
-  --play-hover: #166534;
-  --sentence-hover: rgba(180, 83, 9, 0.08);
-  --sentence-active-bg: #fde68a;
-  --sentence-active-border: #b45309;
-  --badge-ok-bg: #dcfce7;
-  --badge-ok-text: #166534;
-  --badge-warn-bg: #fef08a;
-  --badge-warn-text: #854d0e;
-  --badge-fix-bg: #ffedd5;
-  --badge-fix-text: #9a3412;
 }
 
 * {
@@ -82,18 +144,23 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-/* TOPBAR */
+/* ============================================================================
+   TOPBAR & HEADER
+   ============================================================================ */
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 18px;
+  padding: 8px 18px;
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-color);
   flex-wrap: wrap;
+  z-index: 100;
+  transition: all 0.2s ease;
 }
 
 .brand {
@@ -103,17 +170,17 @@ body {
 }
 
 .brand-icon {
-  font-size: 26px;
+  font-size: 24px;
 }
 
 .brand h1 {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.2;
 }
 
 .brand .subtitle {
-  font-size: 11.5px;
+  font-size: 11px;
   color: var(--text-secondary);
 }
 
@@ -141,7 +208,7 @@ body {
 }
 
 .page-indicator input {
-  width: 54px;
+  width: 52px;
   padding: 3px 6px;
   text-align: center;
   border-radius: 5px;
@@ -151,7 +218,7 @@ body {
   font-weight: 600;
 }
 
-/* BUTTONS & SELECTS */
+/* BUTTONS */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -174,7 +241,7 @@ body {
 }
 
 .btn:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
@@ -186,7 +253,7 @@ body {
 .btn-play {
   background: var(--play-bg);
   color: #fff;
-  min-width: 118px;
+  min-width: 124px;
 }
 
 .btn-play:hover:not(:disabled) {
@@ -198,29 +265,28 @@ body {
   border-color: var(--border-color);
 }
 
-.btn-accent {
-  background: #6366f1;
-  color: #fff;
-}
-
-.btn-outline {
-  background: transparent;
-  border-color: var(--border-color);
-}
-
 .btn-icon {
   padding: 7px 10px;
+  font-size: 14px;
 }
 
-.btn-sm {
-  padding: 5px 10px;
-  font-size: 12.5px;
+.btn-aa {
+  font-family: var(--font-georgia);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  padding: 6px 12px;
 }
 
 .btn-xs {
-  padding: 3px 8px;
+  padding: 4px 9px;
   font-size: 12px;
   border-radius: 6px;
+}
+
+.btn-sm {
+  padding: 6px 11px;
+  font-size: 12.5px;
 }
 
 .btn-lg {
@@ -228,37 +294,167 @@ body {
   font-size: 15px;
 }
 
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border-color);
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: var(--bg-elevated);
+}
+
+.btn-accent {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* SELECTS */
 .select-control {
-  padding: 6px 10px;
+  padding: 7px 11px;
   border-radius: 8px;
   border: 1px solid var(--border-color);
-  background: var(--bg-app);
+  background: var(--bg-elevated);
   color: var(--text-primary);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-}
-
-.select-sm {
-  padding: 4px 8px;
-  font-size: 12.5px;
+  outline: none;
 }
 
 .speed-select {
   width: 78px;
 }
 
-/* SUBBAR */
+.select-sm {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+/* ============================================================================
+   KINDLE-STYLE "Aa" POPOVER MENU
+   ============================================================================ */
+.reading-popover {
+  position: absolute;
+  top: 56px;
+  right: 60px;
+  width: 320px;
+  background: var(--popover-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+  padding: 16px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: popoverFadeIn 0.15s ease-out;
+}
+
+@keyframes popoverFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.popover-section {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.popover-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+
+.popover-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chip-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.chip {
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 7px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.chip:hover {
+  border-color: var(--accent);
+}
+
+.chip.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.font-size-stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.font-size-stepper strong {
+  min-width: 44px;
+  text-align: center;
+  font-size: 13.5px;
+}
+
+.toggle-row {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.toggle-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+
+/* ============================================================================
+   SUBBAR (METADATA & CONTROLS)
+   ============================================================================ */
 .subbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 7px 18px;
-  background: var(--bg-app);
+  gap: 14px;
+  padding: 6px 18px;
+  background-color: var(--bg-app);
   border-bottom: 1px solid var(--border-color);
   font-size: 12.5px;
   flex-wrap: wrap;
+  transition: all 0.2s ease;
 }
 
 .subbar-left,
@@ -271,17 +467,17 @@ body {
 
 .doc-title {
   font-weight: 600;
-  max-width: 280px;
+  max-width: 340px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .status-badge {
-  padding: 2px 9px;
-  border-radius: 999px;
-  font-weight: 600;
   font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
   background: var(--badge-ok-bg);
   color: var(--badge-ok-text);
 }
@@ -298,19 +494,17 @@ body {
 
 .status-reason {
   color: var(--text-secondary);
+  font-size: 11.5px;
 }
 
 .checkbox-label {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   cursor: pointer;
-  user-select: none;
+  font-size: 12px;
   color: var(--text-secondary);
-}
-
-.checkbox-label input {
-  cursor: pointer;
+  user-select: none;
 }
 
 .divider {
@@ -319,7 +513,9 @@ body {
   background: var(--border-color);
 }
 
-/* WORKSPACE */
+/* ============================================================================
+   WORKSPACE & EMPTY STATE
+   ============================================================================ */
 .workspace {
   flex: 1;
   display: flex;
@@ -327,23 +523,6 @@ body {
   position: relative;
 }
 
-.workspace.drag-over::after {
-  content: "Thả file PDF vào đây để mở và đọc ngay";
-  position: absolute;
-  inset: 12px;
-  background: rgba(15, 23, 42, 0.88);
-  border: 3px dashed var(--accent);
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--accent);
-  z-index: 50;
-}
-
-/* EMPTY STATE */
 .empty-state {
   flex: 1;
   display: flex;
@@ -354,25 +533,27 @@ body {
 
 .empty-card {
   max-width: 600px;
+  text-align: center;
   background: var(--bg-surface);
   border: 2px dashed var(--border-color);
   border-radius: 18px;
-  padding: 36px 32px;
-  text-align: center;
+  padding: 38px 32px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
 }
 
 .empty-icon {
-  font-size: 48px;
+  font-size: 46px;
   margin-bottom: 12px;
 }
 
 .empty-card h2 {
-  font-size: 22px;
+  font-size: 21px;
   margin-bottom: 8px;
 }
 
 .empty-card p {
   color: var(--text-secondary);
+  font-size: 14.5px;
   margin-bottom: 20px;
 }
 
@@ -386,7 +567,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  font-size: 14px;
+  font-size: 13.5px;
   line-height: 1.5;
 }
 
@@ -397,13 +578,16 @@ body {
   flex-wrap: wrap;
 }
 
-/* SPLIT VIEW */
+/* ============================================================================
+   SPLIT CONTAINER
+   ============================================================================ */
 .split-container {
   flex: 1;
   display: grid;
-  grid-template-columns: 45% 55%;
+  grid-template-columns: 42% 58%;
   height: 100%;
   overflow: hidden;
+  transition: grid-template-columns 0.25s ease;
 }
 
 .split-container.single-pane {
@@ -415,6 +599,7 @@ body {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  position: relative;
 }
 
 .pdf-pane {
@@ -433,8 +618,14 @@ body {
   padding: 8px 16px;
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-color);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
+}
+
+.reader-tag {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
 }
 
 .hint-text {
@@ -463,11 +654,259 @@ body {
   max-width: 100%;
   height: auto;
   border-radius: 6px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
   transition: width 0.15s ease;
 }
 
-/* OCR PROGRESS */
+/* ============================================================================
+   E-READER VIEWPORT & BOOK PAPER CANVAS
+   ============================================================================ */
+.book-viewport {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  justify-content: center;
+  position: relative;
+  padding: 0 20px;
+}
+
+/* Mũi tên lật trang nổi ở mép màn hình */
+.book-nav-arrow {
+  position: sticky;
+  top: 45%;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+  opacity: 0.45;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.book-nav-arrow:hover {
+  opacity: 1;
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+  transform: scale(1.08);
+}
+
+.book-nav-arrow.prev {
+  margin-right: auto;
+  left: 12px;
+}
+
+.book-nav-arrow.next {
+  margin-left: auto;
+  right: 12px;
+}
+
+/* Trang giấy sách trung tâm */
+.book-page-canvas {
+  width: 100%;
+  max-width: var(--reading-max-width, 720px);
+  min-height: 100%;
+  background: var(--bg-paper);
+  box-shadow: var(--book-shadow);
+  padding: 40px 52px 90px;
+  margin: 16px auto;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  transition: max-width 0.2s ease;
+}
+
+/* NỘI DUNG ĐỌC SÁCH */
+.sentences-container {
+  font-family: var(--font-reading);
+  font-size: var(--font-size, 18px);
+  line-height: var(--line-height, 1.8);
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+/* Đoạn văn sách (Book Paragraph) */
+.book-paragraph {
+  margin-bottom: 1.25em;
+  text-align: var(--text-align, justify);
+  text-indent: var(--para-indent, 1.6em);
+  text-justify: inter-word;
+  hyphens: auto;
+}
+
+/* Tiêu đề sách (Book Heading) */
+.book-heading {
+  font-family: var(--font-georgia);
+  font-size: 1.35em;
+  font-weight: 700;
+  margin: 1.2em 0 0.8em;
+  text-align: center;
+  text-indent: 0;
+  letter-spacing: -0.3px;
+  color: var(--text-primary);
+}
+
+/* Câu đọc trong sách kiểu E-Reader */
+.sentence-item {
+  display: inline;
+  padding: 2px 3px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+  text-indent: 0;
+}
+
+.sentence-item:hover {
+  background-color: var(--sentence-hover);
+}
+
+/* Câu đang đọc: Tô sáng kiểu bút dạ quang sách (Whispersync Highlighter) */
+.sentence-item.active {
+  background-color: var(--sentence-active-bg);
+  box-shadow: 0 0 0 3px var(--sentence-active-bg);
+  color: var(--sentence-active-text, inherit);
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+/* Chế độ xem danh sách câu riêng biệt (tùy chọn) */
+.sentences-container.list-mode .sentence-item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  border-left: 3px solid transparent;
+  border-radius: 6px;
+}
+
+.sentences-container.list-mode .sentence-item:hover {
+  background-color: var(--sentence-hover);
+}
+
+.sentences-container.list-mode .sentence-item.active {
+  background-color: var(--sentence-active-bg);
+  border-left-color: var(--sentence-active-border);
+}
+
+.sentences-container.list-mode .sentence-index {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  opacity: 0.65;
+  user-select: none;
+}
+
+/* ============================================================================
+   CHÂN TRANG MÁY ĐỌC SÁCH (E-READER FOOTER PROGRESS)
+   ============================================================================ */
+.book-footer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 24px;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-color);
+  font-size: 12px;
+  color: var(--text-secondary);
+  z-index: 50;
+  user-select: none;
+}
+
+.book-footer-left,
+.book-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.book-footer-doc {
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+.book-progress-wrapper {
+  flex: 1;
+  max-width: 380px;
+}
+
+.book-progress-track {
+  height: 4px;
+  background: var(--border-color);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.book-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+.book-percent-badge {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ============================================================================
+   CHẾ ĐỘ TẬP TRUNG ĐỌC SÁCH (ZEN / FOCUS E-READER MODE)
+   ============================================================================ */
+body.zen-mode .topbar,
+body.zen-mode .subbar,
+body.zen-mode .pdf-pane {
+  display: none !important;
+}
+
+body.zen-mode .split-container {
+  grid-template-columns: 100% !important;
+}
+
+body.zen-mode .pane-header {
+  display: none;
+}
+
+body.zen-mode .book-page-canvas {
+  margin-top: 24px;
+}
+
+.exit-zen-btn {
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  z-index: 999;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.exit-zen-btn:hover {
+  opacity: 1;
+}
+
+/* ============================================================================
+   OCR PROGRESS & EDIT BOX
+   ============================================================================ */
 .ocr-progress-box {
   margin: 12px 18px 0;
   padding: 12px 16px;
@@ -497,7 +936,6 @@ body {
   transition: width 0.2s ease;
 }
 
-/* MANUAL EDITOR */
 .editor-box {
   padding: 14px 18px;
   border-bottom: 1px solid var(--border-color);
@@ -526,44 +964,6 @@ body {
   gap: 8px;
 }
 
-/* SENTENCES READER */
-.sentences-container {
-  flex: 1;
-  overflow-y: auto;
-  padding: 22px 28px 60px;
-  font-size: 18px;
-  line-height: 1.75;
-}
-
-.sentence-item {
-  padding: 8px 12px;
-  margin-bottom: 8px;
-  border-radius: 8px;
-  border-left: 4px solid transparent;
-  cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
-}
-
-.sentence-item:hover {
-  background-color: var(--sentence-hover);
-}
-
-.sentence-item.active {
-  background-color: var(--sentence-active-bg);
-  border-left-color: var(--sentence-active-border);
-  font-weight: 500;
-}
-
-.sentence-index {
-  display: inline-block;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  margin-right: 8px;
-  opacity: 0.65;
-  user-select: none;
-}
-
 .empty-page-notice {
   padding: 28px;
   text-align: center;
@@ -581,7 +981,9 @@ body {
   display: none !important;
 }
 
-/* SETTINGS MODAL */
+/* ============================================================================
+   SETTINGS MODAL
+   ============================================================================ */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -658,4 +1060,18 @@ body {
   padding: 12px 18px;
   border-top: 1px solid var(--border-color);
   background: var(--bg-app);
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .split-container {
+    grid-template-columns: 100% !important;
+  }
+  .pdf-pane {
+    display: none;
+  }
+  .reading-popover {
+    right: 16px;
+    width: 290px;
+  }
 }
