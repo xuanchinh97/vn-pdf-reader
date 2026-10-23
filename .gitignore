@@ -1,0 +1,36 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Pytest & Test caches
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Audio & Temporary Test Files
+*.mp3
+*.wav
+*.ogg
+test_*.mp3
+test_*.wav
+
+# Uploaded / Downloaded PDFs
+*.pdf
+
+# Editor & System Files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# CodeGraph
+.codegraph/

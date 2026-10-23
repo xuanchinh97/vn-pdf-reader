@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VN PDF Reader — Đọc PDF Tiếng Việt Tự Nhiên</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <!-- Tesseract.js v5 hỗ trợ OCR Tiếng Việt trực tiếp trên trình duyệt không cần cài đặt -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+<body>
+  <!-- HEADER / TOOLBAR -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon">📖</div>
+      <div>
+        <h1>VN PDF Reader</h1>
+        <span class="subtitle">Sửa lỗi font TCVN3/VNI • Quét OCR • Giọng đọc AI</span>
+      </div>
+    </div>
+
+    <!-- Chọn file & Điều hướng trang -->
+    <div class="toolbar-group">
+      <label class="btn btn-primary" for="pdfFileInput" title="Mở file PDF từ máy tính">
+        📂 Mở PDF
+      </label>
+      <input type="file" id="pdfFileInput" accept=".pdf,application/pdf" hidden />
+
+      <div class="page-nav" id="pageNavGroup">
+        <button class="btn btn-icon" id="prevPageBtn" title="Trang trước (Phím mũi tên trái)" disabled>◀</button>
+        <div class="page-indicator">
+          <span>Trang</span>
+          <input type="number" id="pageInput" min="1" value="1" disabled />
+          <span>/ <strong id="totalPagesLabel">0</strong></span>
+        </div>
+        <button class="btn btn-icon" id="nextPageBtn" title="Trang sau (Phím mũi tên phải)" disabled>▶</button>
+      </div>
+    </div>
+
+    <!-- Bộ điều khiển giọng đọc (TTS Player) -->
+    <div class="toolbar-group player-controls">
+      <button class="btn btn-icon" id="prevSentenceBtn" title="Câu trước" disabled>⏮</button>
+      <button class="btn btn-play" id="playPauseBtn" title="Đọc / Tạm dừng (Phím Space)" disabled>
+        ▶ Đọc ngay
+      </button>
+      <button class="btn btn-icon" id="stopBtn" title="Dừng đọc" disabled>⏹</button>
+      <button class="btn btn-icon" id="nextSentenceBtn" title="Câu tiếp theo" disabled>⏭</button>
+
+      <select id="voiceSelect" class="select-control" title="Chọn giọng đọc">
+        <option value="vi-VN-HoaiMyNeural">🎙️ Hoài My (Nữ - Miền Nam)</option>
+        <option value="vi-VN-NamMinhNeural">🎙️ Nam Minh (Nam - Miền Bắc)</option>
+      </select>
+
+      <select id="speedSelect" class="select-control speed-select" title="Tốc độ đọc">
+        <option value="0.85">0.85x</option>
+        <option value="1.0" selected>1.0x</option>
+        <option value="1.15">1.15x</option>
+        <option value="1.25">1.25x</option>
+        <option value="1.5">1.5x</option>
+        <option value="1.75">1.75x</option>
+        <option value="2.0">2.0x</option>
+      </select>
+    </div>
+
+    <!-- Tùy chọn nâng cao & Giao diện -->
+    <div class="toolbar-group">
+      <button class="btn btn-secondary" id="downloadMp3Btn" title="Tải file âm thanh MP3 của toàn bộ trang này" disabled>
+        ⬇️ Tải MP3
+      </button>
+      <button class="btn btn-icon" id="settingsBtn" title="Cài đặt API Key FPT.AI">
+        ⚙️
+      </button>
+      <button class="btn btn-icon" id="themeToggleBtn" title="Đổi giao diện Sáng / Tối / Sepia">
+        🌙
+      </button>
+    </div>
+  </header>
+
+  <!-- THANH CÔNG CỤ XỬ LÝ FONT & OCR -->
+  <section class="subbar">
+    <div class="subbar-left">
+      <span class="doc-title" id="docTitleLabel">Chưa mở tài liệu nào</span>
+      <span class="status-badge" id="statusBadge" hidden>Chuẩn Unicode</span>
+      <span class="status-reason" id="statusReasonLabel"></span>
+    </div>
+
+    <div class="subbar-right">
+      <label class="checkbox-label" title="Tự động chuyển sang trang tiếp theo và đọc tiếp khi hết trang">
+        <input type="checkbox" id="autoNextPageCheckbox" checked />
+        <span>Tự lật trang</span>
+      </label>
+
+      <label class="checkbox-label" title="Tự động quét OCR Tiếng Việt nếu phát hiện trang PDF bị lỗi font nặng hoặc là ảnh scan">
+        <input type="checkbox" id="autoOcrCheckbox" checked />
+        <span>Tự động OCR khi lỗi font</span>
+      </label>
+
+      <div class="divider"></div>
+
+      <label for="encodingModeSelect" class="control-label">Chế độ mã chữ:</label>
+      <select id="encodingModeSelect" class="select-control select-sm" disabled>
+        <option value="auto">Tự động nhận diện</option>
+        <option value="tcvn3">Ép chuyển mã TCVN3 (ABC)</option>
+        <option value="vni">Ép chuyển mã VNI-Windows</option>
+        <option value="unicode">Giữ nguyên Unicode gốc</option>
+      </select>
+
+      <button class="btn btn-sm btn-accent" id="ocrPageBtn" title="Chụp ảnh trang này và quét lại chữ Tiếng Việt bằng OCR (dùng khi PDF bị lỗi font không cứu được)" disabled>
+        🔍 Quét OCR Trang Này
+      </button>
+
+      <button class="btn btn-sm btn-outline" id="editModeBtn" title="Sửa trực tiếp văn bản trước khi đọc" disabled>
+        ✏️ Sửa chữ
+      </button>
+    </div>
+  </section>
+
+  <!-- KHU VỰC CHÍNH: CHIA ĐÔI MÀN HÌNH (TRANG PDF GỐC & VĂN BẢN ĐÃ LÀM SẠCH) -->
+  <main class="workspace" id="dropZone">
+    <!-- Màn hình chào khi chưa chọn file -->
+    <div class="empty-state" id="emptyState">
+      <div class="empty-card">
+        <div class="empty-icon">📄✨</div>
+        <h2>Kéo thả file PDF Tiếng Việt vào đây</h2>
+        <p>
+          Hoặc bấm nút <strong>"📂 Mở PDF"</strong> ở góc trên bên trái để bắt đầu.
+        </p>
+        <ul class="feature-list">
+          <li>✅ <strong>Tự động sửa lỗi font:</strong> Khắc phục triệt để lỗi bảng mã TCVN3, VNI, dấu rời rạc và lỗi ngắt dòng giữa câu.</li>
+          <li>✅ <strong>Quét OCR Tiếng Việt tích hợp sẵn:</strong> Đọc được cả PDF scan ảnh hoặc PDF bị hỏng bảng mã ToUnicode CMap.</li>
+          <li>✅ <strong>Giọng đọc AI tự nhiên:</strong> Tích hợp giọng Nữ Hoài My & Nam Minh truyền cảm, tô sáng từng câu đang đọc.</li>
+        </ul>
+        <div class="empty-actions">
+          <label class="btn btn-primary btn-lg" for="pdfFileInput">
+            📂 Chọn file PDF từ máy tính
+          </label>
+          <button class="btn btn-outline btn-lg" id="pasteTextDemoBtn">
+            📝 Hoặc dán văn bản bất kỳ để nghe thử
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Giao diện Split-View khi đã mở PDF -->
+    <div class="split-container" id="splitContainer" hidden>
+      <!-- CỘT TRÁI: TRANG PDF GỐC -->
+      <section class="pane pdf-pane" id="pdfPane">
+        <div class="pane-header">
+          <span>🖼️ Trang PDF gốc</span>
+          <div class="zoom-controls">
+            <button class="btn btn-xs" id="zoomOutBtn" title="Thu nhỏ">➖</button>
+            <span id="zoomLabel">100%</span>
+            <button class="btn btn-xs" id="zoomInBtn" title="Phóng to">➕</button>
+            <button class="btn btn-xs" id="togglePdfPaneBtn" title="Ẩn/Hiện khung PDF gốc">Ẩn PDF</button>
+          </div>
+        </div>
+        <div class="pdf-canvas-wrapper" id="pdfImageWrapper">
+          <img id="pdfPageImage" alt="Trang PDF" />
+        </div>
+      </section>
+
+      <!-- CỘT PHẢI: VĂN BẢN ĐÃ LÀM SẠCH & TÔ SÁNG TỪNG CÂU -->
+      <section class="pane reader-pane">
+        <div class="pane-header">
+          <div>
+            <span>🎧 Văn bản đã làm sạch cho giọng đọc</span>
+            <small class="hint-text">(Click vào bất kỳ câu nào để đọc từ câu đó)</small>
+          </div>
+          <div class="reader-header-actions">
+            <button class="btn btn-xs" id="showPdfPaneBtn" hidden>Hiện trang PDF gốc</button>
+            <button class="btn btn-xs" id="fontDecBtn" title="Giảm cỡ chữ">A-</button>
+            <button class="btn btn-xs" id="fontIncBtn" title="Tăng cỡ chữ">A+</button>
+            <button class="btn btn-xs" id="copyCleanTextBtn" title="Copy toàn bộ văn bản sạch của trang này">📋 Copy</button>
+          </div>
+        </div>
+
+        <!-- Thanh tiến trình OCR (khi đang quét) -->
+        <div class="ocr-progress-box" id="ocrProgressBox" hidden>
+          <div class="ocr-progress-header">
+            <span id="ocrProgressText">Đang quét nhận diện chữ Tiếng Việt (OCR)...</span>
+            <strong id="ocrProgressPercent">0%</strong>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="ocrProgressBar"></div>
+          </div>
+        </div>
+
+        <!-- Khung chỉnh sửa văn bản thủ công (ẩn mặc định) -->
+        <div class="editor-box" id="editorBox" hidden>
+          <textarea id="manualTextArea" placeholder="Nhập hoặc chỉnh sửa văn bản Tiếng Việt tại đây..."></textarea>
+          <div class="editor-actions">
+            <button class="btn btn-primary btn-sm" id="applyManualTextBtn">✅ Áp dụng & Tách câu đọc</button>
+            <button class="btn btn-outline btn-sm" id="cancelManualTextBtn">Hủy</button>
+          </div>
+        </div>
+
+        <!-- Danh sách các câu để đọc và highlight -->
+        <div class="sentences-container" id="sentencesContainer"></div>
+      </section>
+    </div>
+  </main>
+
+  <!-- MODAL CÀI ĐẶT FPT.AI -->
+  <div class="modal-backdrop" id="settingsModal" hidden>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>⚙️ Cài đặt Giọng đọc AI Cao Cấp</h3>
+        <button class="btn btn-icon btn-xs" id="closeSettingsBtn">✕</button>
+      </div>
+      <div class="modal-body">
+        <label for="fptApiKeyInput" class="setting-label">
+          <strong>FPT.AI API Key:</strong>
+          <small>Đăng ký miễn phí tại <a href="https://console.fpt.ai" target="_blank">console.fpt.ai</a> để lấy giọng Ban Mai, Thu Minh, Minh Quang.</small>
+        </label>
+        <input type="text" id="fptApiKeyInput" class="text-input" placeholder="Nhập API Key FPT.AI..." />
+        
+        <label for="proxyInput" class="setting-label" style="margin-top: 14px;">
+          <strong>HTTP Proxy (cho mạng công ty):</strong>
+        </label>
+        <input type="text" id="proxyInput" class="text-input" placeholder="http://10.10.101.208:3128" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="saveSettingsBtn">💾 Lưu Cài Đặt</button>
+        <button class="btn btn-outline" id="cancelSettingsBtn">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio element ẩn phục vụ phát giọng đọc -->
+  <audio id="ttsAudio" preload="auto"></audio>
+
+  <script src="/app.js"></script>
+</body>
+</html>
