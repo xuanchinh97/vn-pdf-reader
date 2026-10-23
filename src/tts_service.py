@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import json
 import os
+import re
 import sys
 import time
 import urllib.parse
@@ -126,6 +127,7 @@ class TTSService:
         self._proxy = self.config.get("http_proxy") or "http://10.10.101.208:3128"
         self._edge_blocked_until: float = 0.0
         self._fpt_blocked_until: float = 0.0
+        self._edge_lock = asyncio.Lock()
 
     def get_voices(self) -> List[Dict[str, str]]:
         return AVAILABLE_VOICES
@@ -175,19 +177,38 @@ class TTSService:
         )
         if time.time() >= self._edge_blocked_until:
             try:
+                # Tiền xử lý text cho Edge-TTS:
+                # 1. Loại bỏ các ký tự dấu câu ngắt dòng ở cuối (, ; - – — . …)
+                edge_text = re.sub(r"[\s,;\-–—\.…]+$", "", clean).strip()
+                # 2. Nếu câu sau khi strip vẫn có ký tự chữ/số, thêm dấu chấm "." ở cuối
+                # Microsoft Speech Neural bắt buộc câu có dấu ngắt hoàn chỉnh (. ? !) để tổng hợp âm thanh,
+                # nếu kết thúc bằng dấu phẩy, lửng lơ hoặc không có dấu ngắt, Edge-TTS sẽ trả lỗi NoAudioReceived
+                if re.search(r"[\w\d]", edge_text):
+                    if not edge_text.endswith((".", "!", "?", ":")):
+                        edge_text += "."
+                else:
+                    edge_text = clean
+
                 rate_str = speed_to_edge_rate(speed)
-                communicate = edge_tts.Communicate(
-                    text=clean,
-                    voice=edge_voice,
-                    rate=rate_str,
-                    proxy=self._proxy,
-                )
-                await asyncio.wait_for(communicate.save(str(mp3_path)), timeout=18.0)
+                # Dùng lock để tuần tự hóa các cuộc gọi Edge-TTS (kể cả prefetch ngầm)
+                # Microsoft WebSocket server sẽ chặn NoAudioReceived nếu gửi đồng thời nhiều kết nối cùng IP
+                async with self._edge_lock:
+                    communicate = edge_tts.Communicate(
+                        text=edge_text,
+                        voice=edge_voice,
+                        rate=rate_str,
+                        proxy=self._proxy,
+                    )
+                    await asyncio.wait_for(communicate.save(str(mp3_path)), timeout=18.0)
                 if mp3_path.exists() and mp3_path.stat().st_size > 128:
                     return mp3_path
+            except edge_tts.exceptions.NoAudioReceived:
+                # Nếu chỉ là do nội dung câu đặc thù không sinh được audio trên Edge,
+                # chuyển sang Google fallback cho RIÊNG câu này, TUYỆT ĐỐI KHÔNG block _edge_blocked_until
+                print(f"[TTS] Edge-TTS không nhận audio cho câu này ('{clean[:30]}...'), dùng Google fallback cho riêng câu này.")
             except Exception as exc:
-                print(f"[TTS] Edge-TTS gặp lỗi ({type(exc).__name__}: {exc}), chuyển sang Google fallback...")
-                self._edge_blocked_until = time.time() + 10.0
+                print(f"[TTS] Edge-TTS gặp lỗi mạng ({type(exc).__name__}: {exc}), tạm khóa 5s và chuyển sang Google fallback...")
+                self._edge_blocked_until = time.time() + 5.0
 
         # 3. Fallback cuối cùng: Google Translate TTS
         lang = "vi"
