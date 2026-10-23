@@ -11,6 +11,7 @@ from typing import Dict, List, Optional
 
 import edge_tts
 import httpx
+import soundfile as sf
 
 try:
     if hasattr(sys.stdout, "reconfigure"):
@@ -53,17 +54,46 @@ def speed_to_edge_rate(speed: float) -> str:
 
 
 AVAILABLE_VOICES: List[Dict[str, str]] = [
-    # Nhóm giọng đọc Microsoft Edge Neural (Khuyên dùng - Nhanh, Tự nhiên, Ổn định)
+    # 1. Nhóm giọng đọc AI Offline Kokoro (Chất lượng cao, Tự nhiên, Trầm ấm, Không lo mạng/proxy)
+    {
+        "id": "kokoro-tuan_ngoc",
+        "name": "Tuấn Ngọc (Nam Trầm Ấm - Kokoro AI ⭐ Đề xuất)",
+        "provider": "kokoro",
+        "lang": "vi",
+        "gender": "Male",
+    },
+    {
+        "id": "kokoro-thanh_dat",
+        "name": "Thành Đạt (Nam Truyền Cảm - Kokoro AI ⭐)",
+        "provider": "kokoro",
+        "lang": "vi",
+        "gender": "Male",
+    },
+    {
+        "id": "kokoro-diem_trinh",
+        "name": "Diễm Trinh (Nữ Dịu Dàng - Kokoro AI ⭐)",
+        "provider": "kokoro",
+        "lang": "vi",
+        "gender": "Female",
+    },
+    {
+        "id": "kokoro-mai_linh",
+        "name": "Mai Linh (Nữ Trong Trẻo - Kokoro AI ⭐)",
+        "provider": "kokoro",
+        "lang": "vi",
+        "gender": "Female",
+    },
+    # 2. Nhóm giọng đọc Microsoft Edge Neural
     {
         "id": "vi-VN-HoaiMyNeural",
-        "name": "Hoài My (Nữ Nam Bộ - Microsoft Edge ⭐ Nhanh & Mượt)",
+        "name": "Hoài My (Nữ Nam Bộ - Microsoft Edge)",
         "provider": "edge",
         "lang": "vi",
         "gender": "Female",
     },
     {
         "id": "vi-VN-NamMinhNeural",
-        "name": "Nam Minh (Nam Bắc Bộ - Microsoft Edge ⭐ Nhanh & Mượt)",
+        "name": "Nam Minh (Nam Bắc Bộ - Microsoft Edge)",
         "provider": "edge",
         "lang": "vi",
         "gender": "Male",
@@ -128,6 +158,8 @@ class TTSService:
         self._edge_blocked_until: float = 0.0
         self._fpt_blocked_until: float = 0.0
         self._edge_lock = asyncio.Lock()
+        self._kokoro_instances: Dict[str, object] = {}
+        self._kokoro_lock = asyncio.Lock()
 
     def get_voices(self) -> List[Dict[str, str]]:
         return AVAILABLE_VOICES
@@ -153,7 +185,18 @@ class TTSService:
         if mp3_path.exists() and mp3_path.stat().st_size > 128:
             return mp3_path
 
-        # 1. Nếu chọn giọng FPT.AI
+        # 1. Nếu chọn giọng Kokoro AI (Chạy hoàn toàn cục bộ trên CPU)
+        if voice.startswith("kokoro-"):
+            kokoro_voice = voice.replace("kokoro-", "")
+            try:
+                content = await asyncio.to_thread(self._synthesize_kokoro, clean, kokoro_voice)
+                if content and len(content) > 1000:
+                    mp3_path.write_bytes(content)
+                    return mp3_path
+            except Exception as exc:
+                print(f"[TTS] Kokoro AI gặp lỗi ({exc}), chuyển sang Microsoft Edge Neural...")
+
+        # 2. Nếu chọn giọng FPT.AI
         if voice.startswith("fpt-"):
             if time.time() >= self._fpt_blocked_until:
                 fpt_voice_name = voice.replace("fpt-", "")
@@ -214,6 +257,27 @@ class TTSService:
         lang = "vi"
         await asyncio.to_thread(self._google_tts_download, clean, lang, mp3_path)
         return mp3_path
+
+    def _synthesize_kokoro(self, text: str, voice_name: str) -> bytes:
+        """Tổng hợp giọng đọc bằng mô hình AI cục bộ Kokoro-Vietnamese."""
+        os.environ["HF_HUB_OFFLINE"] = "1"
+        from kokoro_vietnamese import KokoroVietnamese
+        import io
+
+        if voice_name not in self._kokoro_instances:
+            self._kokoro_instances[voice_name] = KokoroVietnamese(device="cpu", voice=voice_name)
+
+        tts = self._kokoro_instances[voice_name]
+        audio, _ = tts.synthesize(text)
+        
+        # Ghi sang định dạng MP3 (hoặc WAV nếu MP3 không hỗ trợ)
+        buf = io.BytesIO()
+        try:
+            sf.write(buf, audio, 24000, format="MP3")
+        except Exception:
+            buf = io.BytesIO()
+            sf.write(buf, audio, 24000, format="WAV")
+        return buf.getvalue()
 
     def _synthesize_fpt(self, text: str, voice_name: str, api_key: str) -> bytes:
         """Gọi FPT.AI API v5 để sinh giọng đọc chất lượng cao."""
