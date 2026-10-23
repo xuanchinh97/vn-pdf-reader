@@ -89,6 +89,21 @@ class TestTTSService(unittest.TestCase):
             # Circuit breaker phải được kích hoạt (thời gian chặn > 0)
             self.assertGreater(self.tts._edge_blocked_until, 0)
 
+    def test_speed_cache_key_differentiation(self):
+        import hashlib
+        text = "Kiểm thử mã hóa tốc độ vào khóa bộ nhớ đệm."
+        voice = "google-vi-female"
+
+        p_default = asyncio.run(self.tts.synthesize_speech(text, voice, speed=1.0))
+        p_fast = asyncio.run(self.tts.synthesize_speech(text, voice, speed=1.25))
+
+        expected_hash_default = hashlib.md5(f"{voice}|{text}".encode("utf-8")).hexdigest()
+        expected_hash_fast = hashlib.md5(f"{voice}|speed_1.25|{text}".encode("utf-8")).hexdigest()
+
+        self.assertEqual(p_default.name, f"{expected_hash_default}.mp3")
+        self.assertEqual(p_fast.name, f"{expected_hash_fast}.mp3")
+        self.assertNotEqual(p_default, p_fast)
+
 
 if __name__ == "__main__":
     unittest.main()

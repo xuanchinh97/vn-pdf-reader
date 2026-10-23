@@ -24,7 +24,16 @@ const state = {
   isZenMode: false,
   themeIndex: 0,              // 0: sepia, 1: dark, 2: eink, 3: light
   themes: ["sepia", "dark", "eink", "light"],
-  audioBlobCache: new Map(),  // key: `${voice}|${speed}|${text}` -> blobUrl
+  speed: 1.0,
+  toc: [],
+  bookmarks: [],
+  highlights: [],
+  sleepTimerMode: 0,
+  sleepTimerEndTimestamp: null,
+  sleepTimerInterval: null,
+  sleepStopOnPageEnd: false,
+  isSeeking: false,
+  audioBlobCache: new Map(),  // key: `${voice}|${text}` -> blobUrl
   ocrWorker: null,
   isOcrRunning: false,
   playSessionId: 0,
@@ -41,11 +50,55 @@ const els = {
   playPauseBtn: document.getElementById("playPauseBtn"),
   stopBtn: document.getElementById("stopBtn"),
   nextSentenceBtn: document.getElementById("nextSentenceBtn"),
+  skipBackBtn: document.getElementById("skipBackBtn"),
+  skipForwardBtn: document.getElementById("skipForwardBtn"),
+  speedDecBtn: document.getElementById("speedDecBtn"),
+  speedIncBtn: document.getElementById("speedIncBtn"),
+  speedValLabel: document.getElementById("speedValLabel"),
+  sleepTimerBtn: document.getElementById("sleepTimerBtn"),
+  sleepTimerPopover: document.getElementById("sleepTimerPopover"),
+  sleepCountdownLabel: document.getElementById("sleepCountdownLabel"),
+  sleepTimeRemaining: document.getElementById("sleepTimeRemaining"),
   voiceSelect: document.getElementById("voiceSelect"),
   speedSelect: document.getElementById("speedSelect"),
   downloadMp3Btn: document.getElementById("downloadMp3Btn"),
   readingSettingsBtn: document.getElementById("readingSettingsBtn"),
   readingSettingsPopover: document.getElementById("readingSettingsPopover"),
+  drawerToggleBtn: document.getElementById("drawerToggleBtn"),
+  tocDrawer: document.getElementById("tocDrawer"),
+  closeDrawerBtn: document.getElementById("closeDrawerBtn"),
+  drawerBackdrop: document.getElementById("drawerBackdrop"),
+  tabBtnToc: document.getElementById("tabBtnToc"),
+  tabBtnBookmarks: document.getElementById("tabBtnBookmarks"),
+  tabBtnHighlights: document.getElementById("tabBtnHighlights"),
+  drawerTabToc: document.getElementById("drawerTabToc"),
+  drawerTabBookmarks: document.getElementById("drawerTabBookmarks"),
+  drawerTabHighlights: document.getElementById("drawerTabHighlights"),
+  tocList: document.getElementById("tocList"),
+  bookmarksList: document.getElementById("bookmarksList"),
+  highlightsList: document.getElementById("highlightsList"),
+  bookmarkCount: document.getElementById("bookmarkCount"),
+  highlightCount: document.getElementById("highlightCount"),
+  bookmarkRibbonBtn: document.getElementById("bookmarkRibbonBtn"),
+  audioScrubberBar: document.getElementById("audioScrubberBar"),
+  audioScrubber: document.getElementById("audioScrubber"),
+  audioCurrentTime: document.getElementById("audioCurrentTime"),
+  audioDuration: document.getElementById("audioDuration"),
+  floatingSelectionBar: document.getElementById("floatingSelectionBar"),
+  floatLookupBtn: document.getElementById("floatLookupBtn"),
+  floatSpeakBtn: document.getElementById("floatSpeakBtn"),
+  floatCopyBtn: document.getElementById("floatCopyBtn"),
+  dictModal: document.getElementById("dictModal"),
+  closeDictBtn: document.getElementById("closeDictBtn"),
+  closeDictFooterBtn: document.getElementById("closeDictFooterBtn"),
+  dictSearchInput: document.getElementById("dictSearchInput"),
+  dictSearchBtn: document.getElementById("dictSearchBtn"),
+  dictResults: document.getElementById("dictResults"),
+  shortcutsBtn: document.getElementById("shortcutsBtn"),
+  shortcutsModal: document.getElementById("shortcutsModal"),
+  closeShortcutsBtn: document.getElementById("closeShortcutsBtn"),
+  closeShortcutsFooterBtn: document.getElementById("closeShortcutsFooterBtn"),
+  readerPane: document.getElementById("readerPane"),
   zenModeBtn: document.getElementById("zenModeBtn"),
   exitZenBtn: document.getElementById("exitZenBtn"),
   themeToggleBtn: document.getElementById("themeToggleBtn"),
@@ -114,6 +167,9 @@ async function initApp() {
   applyReadingPreferences();
   await loadVoices();
   bindEvents();
+  setupAudioScrubber();
+  setupSelectionListener();
+  setupMediaSession();
   updateThemeButton();
 }
 
@@ -296,6 +352,29 @@ function bindEvents() {
     playFromSentence(nextIdx);
   });
 
+  // Tua câu ⏪ 5s và ⏩ 10s (hỗ trợ tràn sang câu liền kề)
+  els.skipBackBtn?.addEventListener("click", () => seekAudioRelative(-5));
+  els.skipForwardBtn?.addEventListener("click", () => seekAudioRelative(10));
+
+  // Tăng giảm tốc độ đọc với Stepper [-] [1.0x] [+] bước nhảy 0.1x
+  els.speedDecBtn?.addEventListener("click", () => updateSpeed(-0.1));
+  els.speedIncBtn?.addEventListener("click", () => updateSpeed(0.1));
+
+  // Hẹn giờ tắt đọc sách (Sleep Timer)
+  els.sleepTimerBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (els.sleepTimerPopover) {
+      els.sleepTimerPopover.hidden = !els.sleepTimerPopover.hidden;
+    }
+  });
+
+  els.sleepTimerPopover?.addEventListener("click", (e) => {
+    const chip = e.target.closest(".chip");
+    if (!chip) return;
+    const sleepVal = chip.getAttribute("data-sleep");
+    setSleepTimer(sleepVal);
+  });
+
   // Khi đổi giọng: DỪNG NGAY LẬP TỨC giọng cũ (0ms latency)
   els.voiceSelect.addEventListener("change", () => {
     if (state.isPlaying) {
@@ -307,6 +386,8 @@ function bindEvents() {
 
   els.speedSelect.addEventListener("change", () => {
     const speed = parseFloat(els.speedSelect.value || "1.0");
+    state.speed = speed;
+    if (els.speedValLabel) els.speedValLabel.textContent = `${speed.toFixed(1)}x`;
     els.ttsAudio.playbackRate = speed;
   });
 
@@ -326,6 +407,14 @@ function bindEvents() {
       e.target !== els.readingSettingsBtn
     ) {
       els.readingSettingsPopover.hidden = true;
+    }
+    if (
+      els.sleepTimerPopover &&
+      !els.sleepTimerPopover.hidden &&
+      !els.sleepTimerPopover.contains(e.target) &&
+      e.target !== els.sleepTimerBtn
+    ) {
+      els.sleepTimerPopover.hidden = true;
     }
   });
 
@@ -471,7 +560,69 @@ function bindEvents() {
   // Tải MP3 toàn trang
   els.downloadMp3Btn.addEventListener("click", downloadFullPageMp3);
 
-  // 11. Phím tắt bàn phím
+  // 11. Mục lục, Dấu trang & Highlights (Drawer)
+  els.drawerToggleBtn?.addEventListener("click", toggleDrawer);
+  els.closeDrawerBtn?.addEventListener("click", closeDrawer);
+  els.drawerBackdrop?.addEventListener("click", closeDrawer);
+  els.tabBtnToc?.addEventListener("click", () => switchDrawerTab("toc"));
+  els.tabBtnBookmarks?.addEventListener("click", () => switchDrawerTab("bookmarks"));
+  els.tabBtnHighlights?.addEventListener("click", () => switchDrawerTab("highlights"));
+  els.bookmarkRibbonBtn?.addEventListener("click", toggleBookmarkCurrentPage);
+
+  // 12. Modal Phím tắt
+  els.shortcutsBtn?.addEventListener("click", openShortcutsModal);
+  els.closeShortcutsBtn?.addEventListener("click", closeShortcutsModal);
+  els.closeShortcutsFooterBtn?.addEventListener("click", closeShortcutsModal);
+  els.shortcutsModal?.addEventListener("click", (e) => {
+    if (e.target === els.shortcutsModal) closeShortcutsModal();
+  });
+
+  // 13. Modal Tra từ điển Tiếng Việt
+  els.closeDictBtn?.addEventListener("click", closeDictModal);
+  els.closeDictFooterBtn?.addEventListener("click", closeDictModal);
+  els.dictModal?.addEventListener("click", (e) => {
+    if (e.target === els.dictModal) closeDictModal();
+  });
+  els.dictSearchBtn?.addEventListener("click", () => lookupWord());
+  els.dictSearchInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") lookupWord();
+  });
+
+  // 14. Floating Selection Action Bar
+  els.floatingSelectionBar?.querySelectorAll(".hl-color-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const color = btn.getAttribute("data-color");
+      applyHighlight(color);
+    });
+  });
+
+  els.floatLookupBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (currentSelectedText) {
+      openDictModal(currentSelectedText);
+    }
+    if (els.floatingSelectionBar) els.floatingSelectionBar.hidden = true;
+  });
+
+  els.floatSpeakBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (currentSelectedText) {
+      const idx = state.sentences.findIndex((s) => s.includes(currentSelectedText));
+      if (idx >= 0) playFromSentence(idx);
+    }
+    if (els.floatingSelectionBar) els.floatingSelectionBar.hidden = true;
+  });
+
+  els.floatCopyBtn?.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    if (currentSelectedText) {
+      await navigator.clipboard.writeText(currentSelectedText);
+    }
+    if (els.floatingSelectionBar) els.floatingSelectionBar.hidden = true;
+  });
+
+  // 15. Phím tắt bàn phím E-Reader
   window.addEventListener("keydown", (e) => {
     const tag = document.activeElement?.tagName?.toLowerCase();
     if (tag === "input" || tag === "textarea" || tag === "select") return;
@@ -485,14 +636,33 @@ function bindEvents() {
     } else if (e.code === "ArrowRight" && state.docId && state.currentPage < state.totalPages) {
       e.preventDefault();
       goToPage(state.currentPage + 1, false);
+    } else if (e.code === "KeyB") {
+      e.preventDefault();
+      toggleBookmarkCurrentPage();
+    } else if (e.code === "KeyM") {
+      e.preventDefault();
+      toggleDrawer();
     } else if (e.code === "KeyF") {
       e.preventDefault();
       toggleZenMode();
+    } else if (e.key === "?" || (e.shiftKey && e.code === "Slash")) {
+      e.preventDefault();
+      openShortcutsModal();
     } else if (e.code === "Escape") {
       if (state.isZenMode) toggleZenMode();
       if (els.readingSettingsPopover && !els.readingSettingsPopover.hidden) {
         els.readingSettingsPopover.hidden = true;
       }
+      if (els.sleepTimerPopover && !els.sleepTimerPopover.hidden) {
+        els.sleepTimerPopover.hidden = true;
+      }
+      if (els.floatingSelectionBar && !els.floatingSelectionBar.hidden) {
+        els.floatingSelectionBar.hidden = true;
+      }
+      closeDrawer();
+      closeDictModal();
+      closeShortcutsModal();
+      closeSettingsModal();
     }
   });
 }
@@ -530,6 +700,9 @@ async function handlePdfUpload(file) {
     state.filename = info.filename;
     state.totalPages = info.page_count;
     state.currentPage = 1;
+    state.toc = info.toc || [];
+    renderTocList();
+    await loadAnnotations();
 
     // Cập nhật UI
     els.emptyState.hidden = true;
@@ -564,6 +737,9 @@ async function goToPage(pageNumber, autoPlay = false) {
   if (els.bookPrevPageBtn) els.bookPrevPageBtn.disabled = pageNumber <= 1;
   if (els.bookNextPageBtn) els.bookNextPageBtn.disabled = pageNumber >= state.totalPages;
 
+  // Cập nhật trạng thái ribbon bookmark cho trang hiện tại
+  updateBookmarkRibbonState();
+
   // Hiển thị ảnh trang PDF gốc
   els.pdfPageImage.src = `/api/doc/${state.docId}/page/${pageNumber}/image?dpi=170`;
 
@@ -574,6 +750,8 @@ async function goToPage(pageNumber, autoPlay = false) {
     if (!res.ok) throw new Error("Không thể trích xuất văn bản trang này");
     const data = await res.json();
     applyPageData(data);
+    updateBookmarkRibbonState();
+    renderHighlightsOnPage();
 
     // Tự động quét OCR nếu trang bị lỗi font hoặc là ảnh scan
     if (data.needs_ocr && els.autoOcrCheckbox.checked) {
@@ -690,6 +868,7 @@ function renderSentences() {
     });
   });
 
+  renderHighlightsOnPage();
   updateBookFooter();
 }
 
@@ -861,7 +1040,7 @@ function stopReading() {
 
 async function fetchSentenceAudioUrl(sentenceText) {
   const voice = els.voiceSelect.value;
-  const speed = parseFloat(els.speedSelect.value || "1.0");
+  // Luôn gửi speed: 1.0 lên server để tối đa hóa cache hit và triệt tiêu lỗi nhân đôi tốc độ
   const cacheKey = `${voice}|${sentenceText}`;
 
   if (state.audioBlobCache.has(cacheKey)) {
@@ -874,7 +1053,7 @@ async function fetchSentenceAudioUrl(sentenceText) {
     body: JSON.stringify({
       text: sentenceText,
       voice,
-      speed,
+      speed: 1.0,
     }),
   });
 
@@ -921,14 +1100,18 @@ async function playFromSentence(index) {
     if (sessionId !== state.playSessionId) return;
 
     els.ttsAudio.src = audioUrl;
-    els.ttsAudio.playbackRate = parseFloat(els.speedSelect.value || "1.0");
+    els.ttsAudio.playbackRate = state.speed;
     els.playPauseBtn.textContent = "⏸ Tạm dừng";
+    updateMediaSession(index);
 
     els.ttsAudio.onended = () => {
       if (sessionId !== state.playSessionId) return;
       const nextIdx = index + 1;
       if (nextIdx < state.sentences.length) {
         playFromSentence(nextIdx);
+      } else if (state.sleepStopOnPageEnd) {
+        stopReading();
+        cancelSleepTimer();
       } else if (
         els.autoNextPageCheckbox.checked &&
         state.docId &&
@@ -1034,7 +1217,7 @@ async function downloadFullPageMp3() {
 
   try {
     const voice = els.voiceSelect.value;
-    const speed = parseFloat(els.speedSelect.value || "1.0");
+    const speed = state.speed;
 
     const res = await fetch("/api/tts", {
       method: "POST",
@@ -1078,6 +1261,565 @@ function escapeHtml(str) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+// ============================================================================
+// 6. TIỆN ÍCH E-READER MỚI (DRAWER, BOOKMARKS, HIGHLIGHTS, DICT, AUDIO SCRUBBER)
+// ============================================================================
+
+function seekAudioRelative(delta) {
+  if (!els.ttsAudio) return;
+  const newTime = (els.ttsAudio.currentTime || 0) + delta;
+  if (delta < 0 && newTime < 0) {
+    if (state.currentSentenceIndex > 0) {
+      playFromSentence(state.currentSentenceIndex - 1);
+    } else {
+      els.ttsAudio.currentTime = 0;
+    }
+  } else if (delta > 0 && els.ttsAudio.duration && newTime > els.ttsAudio.duration) {
+    if (state.currentSentenceIndex + 1 < state.sentences.length) {
+      playFromSentence(state.currentSentenceIndex + 1);
+    } else {
+      els.ttsAudio.currentTime = els.ttsAudio.duration;
+    }
+  } else {
+    els.ttsAudio.currentTime = Math.max(0, Math.min(els.ttsAudio.duration || 0, newTime));
+  }
+}
+
+function updateSpeed(delta) {
+  state.speed = Math.max(0.5, Math.min(3.0, +(state.speed + delta).toFixed(1)));
+  if (els.speedValLabel) els.speedValLabel.textContent = `${state.speed.toFixed(1)}x`;
+  if (els.speedSelect) els.speedSelect.value = state.speed.toString();
+  if (els.ttsAudio) els.ttsAudio.playbackRate = state.speed;
+}
+
+function setSleepTimer(val) {
+  cancelSleepTimer();
+  state.sleepTimerMode = val;
+
+  els.sleepTimerPopover?.querySelectorAll(".chip").forEach((c) => {
+    c.classList.toggle("active", c.getAttribute("data-sleep") === String(val));
+  });
+
+  if (val === 0 || val === "0") {
+    if (els.sleepCountdownLabel) els.sleepCountdownLabel.hidden = true;
+    if (els.sleepTimerBtn) {
+      els.sleepTimerBtn.classList.remove("active");
+      els.sleepTimerBtn.title = "Hẹn giờ ngủ (Sleep Timer)";
+    }
+    return;
+  }
+
+  if (els.sleepTimerBtn) els.sleepTimerBtn.classList.add("active");
+
+  if (val === "page") {
+    if (els.sleepCountdownLabel) {
+      els.sleepCountdownLabel.hidden = false;
+      els.sleepTimeRemaining.textContent = "Hết trang này";
+    }
+    if (els.sleepTimerBtn) els.sleepTimerBtn.title = "Hẹn giờ: Dừng khi đọc hết trang";
+    state.sleepStopOnPageEnd = true;
+    return;
+  }
+
+  const minutes = parseInt(val, 10);
+  state.sleepTimerEndTimestamp = Date.now() + minutes * 60 * 1000;
+  if (els.sleepCountdownLabel) els.sleepCountdownLabel.hidden = false;
+  updateSleepTimerDisplay();
+
+  state.sleepTimerInterval = setInterval(() => {
+    updateSleepTimerDisplay();
+  }, 1000);
+}
+
+function updateSleepTimerDisplay() {
+  if (!state.sleepTimerEndTimestamp) return;
+  const remainingSec = Math.max(0, Math.round((state.sleepTimerEndTimestamp - Date.now()) / 1000));
+  if (els.sleepTimeRemaining) els.sleepTimeRemaining.textContent = formatTime(remainingSec);
+  if (els.sleepTimerBtn) els.sleepTimerBtn.title = `Hẹn giờ ngủ: còn ${formatTime(remainingSec)}`;
+
+  // Hiệu ứng fade-out âm lượng 10s cuối
+  if (remainingSec <= 10 && remainingSec > 0) {
+    els.ttsAudio.volume = Math.max(0, remainingSec / 10.0);
+  } else if (remainingSec === 0) {
+    stopReading();
+    cancelSleepTimer();
+    els.ttsAudio.volume = 1.0;
+  }
+}
+
+function cancelSleepTimer() {
+  if (state.sleepTimerInterval) {
+    clearInterval(state.sleepTimerInterval);
+    state.sleepTimerInterval = null;
+  }
+  state.sleepTimerEndTimestamp = null;
+  state.sleepStopOnPageEnd = false;
+  if (els.ttsAudio) els.ttsAudio.volume = 1.0;
+}
+
+function formatTime(sec) {
+  if (!sec || isNaN(sec) || sec < 0) return "0:00";
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s < 10 ? "0" : ""}${s}`;
+}
+
+function setupAudioScrubber() {
+  els.ttsAudio.addEventListener("timeupdate", () => {
+    if (state.isSeeking) return;
+    const cur = els.ttsAudio.currentTime || 0;
+    const dur = els.ttsAudio.duration || 0;
+    if (els.audioCurrentTime) els.audioCurrentTime.textContent = formatTime(cur);
+    if (els.audioDuration) els.audioDuration.textContent = formatTime(dur);
+    if (dur > 0 && els.audioScrubber) {
+      els.audioScrubber.value = (cur / dur) * 100;
+    }
+  });
+
+  els.audioScrubber?.addEventListener("input", () => {
+    state.isSeeking = true;
+    const dur = els.ttsAudio.duration || 0;
+    const target = (els.audioScrubber.value / 100) * dur;
+    if (els.audioCurrentTime) els.audioCurrentTime.textContent = formatTime(target);
+  });
+
+  els.audioScrubber?.addEventListener("change", () => {
+    const dur = els.ttsAudio.duration || 0;
+    els.ttsAudio.currentTime = (els.audioScrubber.value / 100) * dur;
+    state.isSeeking = false;
+  });
+}
+
+function setupMediaSession() {
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.setActionHandler("play", () => {
+      if (state.isPaused) togglePlayPause();
+      else if (!state.isPlaying) playFromSentence(Math.max(0, state.currentSentenceIndex));
+    });
+    navigator.mediaSession.setActionHandler("pause", () => {
+      if (state.isPlaying && !state.isPaused) togglePlayPause();
+    });
+    navigator.mediaSession.setActionHandler("previoustrack", () => {
+      if (state.currentSentenceIndex > 0) playFromSentence(state.currentSentenceIndex - 1);
+    });
+    navigator.mediaSession.setActionHandler("nexttrack", () => {
+      if (state.currentSentenceIndex + 1 < state.sentences.length) playFromSentence(state.currentSentenceIndex + 1);
+    });
+    navigator.mediaSession.setActionHandler("seekbackward", () => {
+      seekAudioRelative(-5);
+    });
+    navigator.mediaSession.setActionHandler("seekforward", () => {
+      seekAudioRelative(10);
+    });
+  }
+}
+
+function updateMediaSession(index) {
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: state.sentences[index] || "Đọc sách PDF",
+      artist: state.filename || "VN PDF Reader",
+      album: `Trang ${state.currentPage} / ${state.totalPages || 1}`,
+      artwork: [
+        { src: "/favicon.ico", sizes: "64x64", type: "image/x-icon" }
+      ]
+    });
+  }
+}
+
+async function loadAnnotations() {
+  if (!state.docId) return;
+  try {
+    const res = await fetch(`/api/doc/${state.docId}/annotations`);
+    if (res.ok) {
+      const data = await res.json();
+      state.bookmarks = data.bookmarks || [];
+      state.highlights = data.highlights || [];
+      updateBookmarkCount();
+      updateHighlightCount();
+      renderBookmarksList();
+      renderHighlightsList();
+      updateBookmarkRibbonState();
+      renderHighlightsOnPage();
+    }
+  } catch (err) {
+    console.warn("Lỗi tải annotations:", err);
+  }
+}
+
+async function saveAnnotations() {
+  if (!state.docId) return;
+  try {
+    await fetch(`/api/doc/${state.docId}/annotations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        bookmarks: state.bookmarks,
+        highlights: state.highlights,
+      }),
+    });
+  } catch (err) {
+    console.warn("Lỗi lưu annotations:", err);
+  }
+}
+
+function toggleBookmarkCurrentPage() {
+  if (!state.docId) return;
+  const existingIdx = state.bookmarks.findIndex((b) => b.page === state.currentPage);
+  if (existingIdx >= 0) {
+    state.bookmarks.splice(existingIdx, 1);
+  } else {
+    const preview = state.sentences[0] ? state.sentences[0].slice(0, 45) + "..." : "Trang " + state.currentPage;
+    state.bookmarks.push({
+      id: "bm_" + Date.now(),
+      page: state.currentPage,
+      title: `Trang ${state.currentPage} - ${preview}`,
+      created_at: Date.now(),
+    });
+  }
+  updateBookmarkRibbonState();
+  updateBookmarkCount();
+  renderBookmarksList();
+  saveAnnotations();
+}
+
+function updateBookmarkRibbonState() {
+  const isBookmarked = state.bookmarks.some((b) => b.page === state.currentPage);
+  if (els.bookmarkRibbonBtn) {
+    els.bookmarkRibbonBtn.classList.toggle("active", isBookmarked);
+    els.bookmarkRibbonBtn.title = isBookmarked
+      ? "Đã ghim trang này (Bấm để bỏ ghim - Phím B)"
+      : "Ghim dấu trang này (Phím B)";
+  }
+}
+
+function updateBookmarkCount() {
+  if (els.bookmarkCount) {
+    els.bookmarkCount.textContent = state.bookmarks.length;
+  }
+}
+
+function updateHighlightCount() {
+  if (els.highlightCount) {
+    els.highlightCount.textContent = state.highlights.length;
+  }
+}
+
+function renderTocList() {
+  if (!els.tocList) return;
+  if (!state.toc || state.toc.length === 0) {
+    els.tocList.innerHTML = `<div class="drawer-empty-hint">Chưa có mục lục cho tài liệu này.</div>`;
+    return;
+  }
+  els.tocList.innerHTML = state.toc
+    .map(
+      (item) => `
+      <div class="drawer-item level-${item.level || 1}" data-page="${item.page}">
+        <span class="drawer-item-title">${escapeHtml(item.title)}</span>
+        <span class="drawer-item-page">Trang ${item.page}</span>
+      </div>
+    `
+    )
+    .join("");
+
+  els.tocList.querySelectorAll(".drawer-item").forEach((el) => {
+    el.addEventListener("click", () => {
+      const page = parseInt(el.getAttribute("data-page"), 10);
+      goToPage(page, false);
+      closeDrawer();
+    });
+  });
+}
+
+function renderBookmarksList() {
+  if (!els.bookmarksList) return;
+  if (!state.bookmarks || state.bookmarks.length === 0) {
+    els.bookmarksList.innerHTML = `<div class="drawer-empty-hint">Chưa có dấu trang nào. Bấm 🔖 ở góc trên trang sách hoặc nhấn phím B để ghim.</div>`;
+    return;
+  }
+  const sorted = [...state.bookmarks].sort((a, b) => a.page - b.page);
+  els.bookmarksList.innerHTML = sorted
+    .map(
+      (b) => `
+      <div class="drawer-item" data-id="${b.id}" data-page="${b.page}">
+        <span class="drawer-item-title">${escapeHtml(b.title)}</span>
+        <span class="drawer-item-page">Trang ${b.page}</span>
+        <button class="drawer-item-del-btn" title="Xóa dấu trang" data-del-bm="${b.id}">✕</button>
+      </div>
+    `
+    )
+    .join("");
+
+  els.bookmarksList.querySelectorAll(".drawer-item").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      if (e.target.closest(".drawer-item-del-btn")) return;
+      const page = parseInt(el.getAttribute("data-page"), 10);
+      goToPage(page, false);
+      closeDrawer();
+    });
+  });
+
+  els.bookmarksList.querySelectorAll("[data-del-bm]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const id = btn.getAttribute("data-del-bm");
+      state.bookmarks = state.bookmarks.filter((b) => b.id !== id);
+      updateBookmarkCount();
+      renderBookmarksList();
+      updateBookmarkRibbonState();
+      saveAnnotations();
+    });
+  });
+}
+
+function renderHighlightsList() {
+  if (!els.highlightsList) return;
+  if (!state.highlights || state.highlights.length === 0) {
+    els.highlightsList.innerHTML = `<div class="drawer-empty-hint">Chưa có highlight nào. Bôi đen văn bản trong sách để tô màu.</div>`;
+    return;
+  }
+  const sorted = [...state.highlights].sort((a, b) => a.page - b.page);
+  const colorMap = {
+    yellow: "#ffd54f",
+    green: "#81c784",
+    pink: "#f48fb1",
+    blue: "#90caf9",
+  };
+  els.highlightsList.innerHTML = sorted
+    .map(
+      (hl) => `
+      <div class="drawer-item" data-id="${hl.id}" data-page="${hl.page}">
+        <span class="hl-color-dot" style="background-color: ${colorMap[hl.color] || '#ffd54f'};"></span>
+        <span class="drawer-item-title">"${escapeHtml(hl.text)}"</span>
+        <span class="drawer-item-page">Trang ${hl.page}</span>
+        <button class="drawer-item-del-btn" title="Xóa highlight" data-del-hl="${hl.id}">✕</button>
+      </div>
+    `
+    )
+    .join("");
+
+  els.highlightsList.querySelectorAll(".drawer-item").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      if (e.target.closest(".drawer-item-del-btn")) return;
+      const page = parseInt(el.getAttribute("data-page"), 10);
+      goToPage(page, false);
+      closeDrawer();
+    });
+  });
+
+  els.highlightsList.querySelectorAll("[data-del-hl]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const id = btn.getAttribute("data-del-hl");
+      state.highlights = state.highlights.filter((h) => h.id !== id);
+      updateHighlightCount();
+      renderHighlightsList();
+      renderHighlightsOnPage();
+      saveAnnotations();
+    });
+  });
+}
+
+function renderHighlightsOnPage() {
+  if (!els.sentencesContainer) return;
+  const pageHighlights = state.highlights.filter((h) => h.page === state.currentPage);
+  if (pageHighlights.length === 0) return;
+
+  els.sentencesContainer.querySelectorAll(".sentence-item").forEach((sentEl) => {
+    let html = sentEl.innerHTML;
+    pageHighlights.forEach((hl) => {
+      if (hl.text && sentEl.textContent.includes(hl.text)) {
+        const escaped = escapeHtml(hl.text);
+        if (!html.includes(`class="user-highlight highlight-${hl.color}"`)) {
+          html = html.replace(
+            escaped,
+            `<mark class="user-highlight highlight-${hl.color}" title="Highlight đã lưu">${escaped}</mark>`
+          );
+        }
+      }
+    });
+    sentEl.innerHTML = html;
+  });
+}
+
+function applyHighlight(color) {
+  if (!currentSelectedText || !state.docId) return;
+  state.highlights.push({
+    id: "hl_" + Date.now(),
+    page: state.currentPage,
+    text: currentSelectedText,
+    color: color || "yellow",
+    created_at: Date.now(),
+  });
+  saveAnnotations();
+  updateHighlightCount();
+  renderHighlightsList();
+  renderHighlightsOnPage();
+  if (els.floatingSelectionBar) els.floatingSelectionBar.hidden = true;
+  window.getSelection()?.removeAllRanges();
+}
+
+let currentSelectedText = "";
+
+function setupSelectionListener() {
+  document.addEventListener("selectionchange", () => {
+    const sel = window.getSelection();
+    const text = sel ? sel.toString().trim() : "";
+    if (!text || text.length < 2) {
+      if (els.floatingSelectionBar && !els.floatingSelectionBar.matches(":hover")) {
+        els.floatingSelectionBar.hidden = true;
+      }
+      return;
+    }
+
+    try {
+      const range = sel.getRangeAt(0);
+      if (!els.readerPane.contains(range.commonAncestorContainer)) {
+        if (els.floatingSelectionBar) els.floatingSelectionBar.hidden = true;
+        return;
+      }
+
+      currentSelectedText = text;
+      const rect = range.getBoundingClientRect();
+      if (els.floatingSelectionBar) {
+        els.floatingSelectionBar.style.left = `${rect.left + rect.width / 2}px`;
+        els.floatingSelectionBar.style.top = `${rect.top}px`;
+        els.floatingSelectionBar.hidden = false;
+      }
+    } catch (_) {}
+  });
+}
+
+function openDrawer(tabName = "toc") {
+  if (els.tocDrawer) {
+    els.tocDrawer.hidden = false;
+    els.drawerBackdrop.hidden = false;
+    switchDrawerTab(tabName);
+  }
+}
+
+function closeDrawer() {
+  if (els.tocDrawer) {
+    els.tocDrawer.hidden = true;
+    els.drawerBackdrop.hidden = true;
+  }
+}
+
+function toggleDrawer() {
+  if (els.tocDrawer && !els.tocDrawer.hidden) {
+    closeDrawer();
+  } else {
+    openDrawer("toc");
+  }
+}
+
+function switchDrawerTab(tabName) {
+  const tabs = [
+    { name: "toc", btn: els.tabBtnToc, pane: els.drawerTabToc },
+    { name: "bookmarks", btn: els.tabBtnBookmarks, pane: els.drawerTabBookmarks },
+    { name: "highlights", btn: els.tabBtnHighlights, pane: els.drawerTabHighlights },
+  ];
+  tabs.forEach((t) => {
+    const active = t.name === tabName;
+    t.btn?.classList.toggle("active", active);
+    if (t.pane) t.pane.hidden = !active;
+  });
+}
+
+async function openDictModal(initialWord = "") {
+  if (els.dictModal) els.dictModal.hidden = false;
+  if (initialWord) {
+    if (els.dictSearchInput) els.dictSearchInput.value = initialWord;
+    await lookupWord(initialWord);
+  } else if (els.dictSearchInput) {
+    els.dictSearchInput.focus();
+  }
+}
+
+function closeDictModal() {
+  if (els.dictModal) els.dictModal.hidden = true;
+}
+
+async function lookupWord(word) {
+  const query = (word || (els.dictSearchInput ? els.dictSearchInput.value : "")).trim();
+  if (!query) return;
+
+  if (els.dictResults) {
+    els.dictResults.innerHTML = `<div class="drawer-empty-hint">⏳ Đang tra từ điển: <strong>${escapeHtml(query)}</strong>...</div>`;
+  }
+  try {
+    const res = await fetch(`/api/dictionary/lookup?word=${encodeURIComponent(query)}`);
+    if (!res.ok) throw new Error("Lỗi kết nối từ điển");
+    const data = await res.json();
+    renderDictResults(data);
+  } catch (err) {
+    if (els.dictResults) {
+      els.dictResults.innerHTML = `<div class="drawer-empty-hint" style="color: #d9381e;">⚠️ Lỗi: ${escapeHtml(err.message)}</div>`;
+    }
+  }
+}
+
+function renderDictResults(data) {
+  if (!els.dictResults) return;
+  if (!data.found && (!data.meanings || data.meanings.length === 0)) {
+    els.dictResults.innerHTML = `
+      <div class="drawer-empty-hint">
+        Không tìm thấy định nghĩa cho từ "<strong>${escapeHtml(data.word)}</strong>".
+      </div>
+    `;
+    return;
+  }
+
+  let html = `
+    <div class="dict-word-title">
+      <span>${escapeHtml(data.word)}</span>
+      <button class="btn btn-xs btn-outline" id="dictSpeakWordBtn" title="Phát âm từ này">🔊 Nghe</button>
+    </div>
+  `;
+
+  if (data.meanings) {
+    data.meanings.forEach((m) => {
+      html += `<div class="dict-pos-tag">${escapeHtml(m.pos)}</div>`;
+      if (m.definitions && m.definitions.length > 0) {
+        html += `<ol class="dict-defs-list">`;
+        m.definitions.forEach((d) => {
+          html += `<li>${escapeHtml(d)}</li>`;
+        });
+        html += `</ol>`;
+      }
+    });
+  }
+
+  if (data.source) {
+    html += `<div class="dict-source-label">Nguồn: ${escapeHtml(data.source)}</div>`;
+  }
+
+  els.dictResults.innerHTML = html;
+
+  document.getElementById("dictSpeakWordBtn")?.addEventListener("click", async () => {
+    try {
+      const audioUrl = await fetchSentenceAudioUrl(data.word);
+      const audio = new Audio(audioUrl);
+      audio.playbackRate = state.speed;
+      audio.play();
+    } catch (_) {
+      if ("speechSynthesis" in window) {
+        const u = new SpeechSynthesisUtterance(data.word);
+        u.lang = "vi-VN";
+        window.speechSynthesis.speak(u);
+      }
+    }
+  });
+}
+
+function openShortcutsModal() {
+  if (els.shortcutsModal) els.shortcutsModal.hidden = false;
+}
+
+function closeShortcutsModal() {
+  if (els.shortcutsModal) els.shortcutsModal.hidden = true;
 }
 
 // Khởi chạy ứng dụng

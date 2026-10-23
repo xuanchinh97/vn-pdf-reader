@@ -4,6 +4,44 @@ Toàn bộ các thay đổi, tính năng mới và cải tiến của dự án *
 
 ---
 
+## [1.3.0] - 2026-10-23
+
+### Added
+- **Mục Lục 2 Tầng (2-Tier Table of Contents):**
+  - **Tầng 1 (Metadata Outline):** Trích xuất TOC có sẵn trong file PDF thông qua PyMuPDF `doc.get_toc(simple=True)`.
+  - **Tầng 2 (Heuristic Regex Scanner):** Tự động quét heuristic nhận diện cấu trúc chương, phần, mục (`Chương/Phần/Bài/Mục/Hồi/Tiết/Kỳ/Tập`) cho các tài liệu PDF scan hoặc tài liệu không nhúng sẵn metadata outline.
+  - API endpoint: `GET /api/doc/{doc_id}/toc` và tích hợp sẵn trong response `POST /api/upload`.
+  - Hỗ trợ nhảy trực tiếp đến trang và câu đầu tiên của chương khi bấm vào mục lục trong Drawer.
+- **Hệ Thống Đánh Dấu (Annotations - Bookmarks & Highlights):**
+  - API endpoints: `GET /api/doc/{doc_id}/annotations` và `POST /api/doc/{doc_id}/annotations` lưu trữ bền vững tại `~/.vn_pdf_reader/annotations/{doc_id}.json`.
+  - **Dấu trang (Bookmark Ribbon):** Nút dải ruy-băng ở góc trên bên phải trang sách (`🔖`), hỗ trợ phím tắt `B`, hiển thị visual ribbon khi trang được đánh dấu.
+  - **Tô màu ghi nhớ (Highlights):** Hỗ trợ 4 màu dạ quang chuẩn (Vàng ấm, Lục ngọc, Lam nhạt, Hồng đào), tự động áp dụng khi mở lại sách.
+- **Thanh Công Cụ Bôi Đen Nổi (Floating Selection Action Bar):**
+  - Tự động xuất hiện ngay trên vùng văn bản được người dùng bôi đen.
+  - Tích hợp 4 nút tô màu Highlight nhanh, Tra từ điển (`📖 Tra từ`), Đọc từ đây (`🔊 Đọc từ đây`), và Sao chép văn bản (`📋 Sao chép`).
+- **Tra Từ Điển Tiếng Việt (Vietnamese Dictionary Lookup):**
+  - API endpoint: `GET /api/dictionary/lookup?word=...` tích hợp Wiktionary tiếng Việt, cache bộ nhớ LRU và kho từ vựng dự phòng phong phú khi ngoại tuyến.
+  - Hỗ trợ corporate proxy tự động `http://10.101.101.208:3128`.
+  - Modal tra cứu từ vựng với định nghĩa nghĩa từ, từ loại, ví dụ câu và liên kết nguồn mở rộng.
+- **Bảng Ngăn Kéo Bên Hông (TOC & Annotations Drawer):**
+  - Ngăn kéo trượt mượt mà với 3 tab: `📑 Mục lục`, `🔖 Dấu trang`, `✨ Đã lưu (Highlights)`.
+  - Cho phép quản lý nhanh, xóa dấu trang, xóa highlight, và nhảy trang tức thì.
+- **Thanh Điều Khiển Phát Nâng Cao (Audio Scrubber & Controls):**
+  - **Thanh trượt thời gian âm thanh (Scrubber):** Hiển thị thời gian thực tế `0:00 / 0:12` và thanh tiến độ âm thanh câu hiện tại, cho phép tua tùy ý.
+  - **Nút tua nhanh / lùi (Skip buttons):** Tua lùi `⏪ 5s` và tua tiến `⏩ 10s`, tự động chuyển mượt mà giữa các câu lân cận khi vượt giới hạn độ dài câu.
+  - **Bộ điều chỉnh tốc độ dạng Stepper (`[-] [1.0x] [+]`):** Tăng/giảm tốc độ chính xác từng nấc `0.1x` (từ 0.5x đến 2.0x), bấm trực tiếp vào số tốc độ để reset về 1.0x.
+  - **Hẹn Giờ Tắt (Sleep Timer `🌙`):** Hỗ trợ hẹn giờ 15 phút, 30 phút, 45 phút hoặc hết trang hiện tại, hiển thị huy hiệu đếm ngược và tự động giảm âm dần (fade-out 10s) trước khi dừng phát.
+  - **Tích Hợp Media Session (`navigator.mediaSession`):** Hỗ trợ điều khiển phát/dừng, tua trước/sau thông qua phím cứng bàn phím, tai nghe bluetooth và thanh thông báo OS.
+  - **Bảng Hướng Dẫn Phím Tắt Modal (`?`):** Hiển thị danh mục phím tắt chi tiết (Space, J/K, Left/Right, B, F, ?, Esc).
+
+### Changed
+- **Tối Ưu Hóa Tách Biệt Tốc Độ Đọc (TTS Speed Decoupling & Server Cache Hit):**
+  - Client luôn gửi yêu cầu phát âm thanh từng câu ở tốc độ `speed: 1.0` để tối đa hóa tỷ lệ trúng cache (`audioBlobCache` và backend TTS cache) giữa các người dùng và các lần điều chỉnh tốc độ.
+  - Trình duyệt điều khiển tốc độ thực tế bằng `audio.playbackRate = state.speed`, loại bỏ hoàn toàn lỗi x2 tốc độ (double-speed bug).
+  - Tải file MP3 trọn trang (`downloadFullPageMp3`) mã hóa riêng biệt tốc độ vào khóa cache `md5(f"{voice}|speed_{speed:.2f}|{clean}")` để đảm bảo file MP3 tải về có đúng tốc độ mong muốn.
+
+---
+
 ## [1.2.0] - 2026-10-23
 
 ### Added

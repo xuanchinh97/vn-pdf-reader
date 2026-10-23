@@ -102,6 +102,67 @@ class TestPDFService(unittest.TestCase):
         with self.assertRaises(ValueError):
             pdf_service.extract_page_text(doc_id, 999)
 
+    def test_extract_toc_tier2_heuristic(self):
+        # standard_unicode.pdf không có TOC metadata, tầng 2 heuristic regex sẽ phát hiện các tiêu đề CHƯƠNG 1, 2, 3
+        info = pdf_service.register_pdf("test_standard.pdf", self.standard_pdf_bytes)
+        doc_id = info["doc_id"]
+
+        toc = pdf_service.extract_toc(doc_id)
+        self.assertIsInstance(toc, list)
+        self.assertGreaterEqual(len(toc), 1)
+        # Các mục trong TOC phải có level, title, page
+        first = toc[0]
+        self.assertIn("level", first)
+        self.assertIn("title", first)
+        self.assertIn("page", first)
+        self.assertIn("CHƯƠNG 1", first["title"].upper())
+
+    def test_extract_toc_tier1_metadata(self):
+        # Tạo PDF có sẵn outline metadata
+        import pymupdf as fitz
+        doc = fitz.open()
+        p1 = doc.new_page()
+        p1.insert_text((50, 100), "Trang 1")
+        p2 = doc.new_page()
+        p2.insert_text((50, 100), "Trang 2")
+        doc.set_toc([
+            [1, "Mục lục gốc 1", 1],
+            [1, "Mục lục gốc 2", 2],
+        ])
+        pdf_bytes = doc.tobytes()
+        doc.close()
+
+        info = pdf_service.register_pdf("test_toc_tier1.pdf", pdf_bytes)
+        doc_id = info["doc_id"]
+        self.assertIn("toc", info)
+        self.assertEqual(len(info["toc"]), 2)
+        self.assertEqual(info["toc"][0]["title"], "Mục lục gốc 1")
+        self.assertEqual(info["toc"][0]["page"], 1)
+        self.assertEqual(info["toc"][1]["title"], "Mục lục gốc 2")
+        self.assertEqual(info["toc"][1]["page"], 2)
+
+    def test_annotations_crud(self):
+        info = pdf_service.register_pdf("test_standard.pdf", self.standard_pdf_bytes)
+        doc_id = info["doc_id"]
+
+        # 1. Ban đầu rỗng
+        initial = pdf_service.get_annotations(doc_id)
+        self.assertEqual(initial, {"bookmarks": [], "highlights": []})
+
+        # 2. Lưu bookmark và highlight
+        test_data = {
+            "bookmarks": [{"id": "bm1", "page": 2, "title": "Trang 2", "created_at": 1729650000}],
+            "highlights": [{"id": "hl1", "page": 1, "text": "Hệ thống chuyển đổi", "color": "yellow"}],
+        }
+        saved = pdf_service.save_annotations(doc_id, test_data)
+        self.assertEqual(len(saved["bookmarks"]), 1)
+        self.assertEqual(len(saved["highlights"]), 1)
+
+        # 3. Đọc lại
+        retrieved = pdf_service.get_annotations(doc_id)
+        self.assertEqual(retrieved["bookmarks"][0]["id"], "bm1")
+        self.assertEqual(retrieved["highlights"][0]["color"], "yellow")
+
     def test_nonexistent_doc_id_raises_file_not_found(self):
         with self.assertRaises(FileNotFoundError):
             pdf_service.extract_page_text("non_existent_hash", 1)

@@ -142,7 +142,10 @@ class TTSService:
         if not clean:
             raise ValueError("Văn bản cần đọc không được để trống.")
 
-        cache_key = hashlib.md5(f"{voice}|{clean}".encode("utf-8")).hexdigest()
+        if abs(speed - 1.0) > 0.01:
+            cache_key = hashlib.md5(f"{voice}|speed_{speed:.2f}|{clean}".encode("utf-8")).hexdigest()
+        else:
+            cache_key = hashlib.md5(f"{voice}|{clean}".encode("utf-8")).hexdigest()
         mp3_path = TTS_CACHE_DIR / f"{cache_key}.mp3"
 
         if mp3_path.exists() and mp3_path.stat().st_size > 128:

@@ -1,8 +1,10 @@
 import base64
 import hashlib
 import io
+import json
+import re
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import pymupdf as fitz  # PyMuPDF 2.0+
 import httpx
@@ -12,6 +14,9 @@ from src.vn_text_processor import process_vietnamese_pdf_text
 
 STORAGE_DIR = Path.home() / ".vn_pdf_reader" / "docs"
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+ANNOTATIONS_DIR = Path.home() / ".vn_pdf_reader" / "annotations"
+ANNOTATIONS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 class PDFService:
@@ -33,11 +38,14 @@ class PDFService:
             metadata = doc.metadata or {}
             title = metadata.get("title") or filename
 
+        toc = self.extract_toc(doc_hash)
+
         return {
             "doc_id": doc_hash,
             "filename": filename,
             "title": title,
             "page_count": page_count,
+            "toc": toc,
         }
 
     def _get_pdf_path(self, doc_id: str) -> Path:
@@ -48,6 +56,86 @@ class PDFService:
             self._docs[doc_id] = candidate
             return candidate
         raise FileNotFoundError(f"Không tìm thấy tài liệu PDF với ID: {doc_id}")
+
+    def extract_toc(self, doc_id: str) -> List[Dict[str, Any]]:
+        """
+        Trích xuất mục lục tài liệu theo 2 tầng:
+        - Tầng 1: Lấy mục lục có sẵn của PDF (doc.get_toc(simple=True)).
+        - Tầng 2: Nếu rỗng, heuristic regex quét tiêu đề chương/phần/bài gắn với số trang.
+        """
+        pdf_path = self._get_pdf_path(doc_id)
+        with fitz.open(pdf_path) as doc:
+            # Tầng 1: doc.get_toc(simple=True)
+            raw_toc = doc.get_toc(simple=True)
+            if raw_toc:
+                toc = []
+                for item in raw_toc:
+                    if len(item) >= 3:
+                        lvl, title, pno = item[0], item[1], item[2]
+                        clean_title = re.sub(r'\s+', ' ', str(title)).strip()
+                        if clean_title:
+                            try:
+                                page_int = int(pno)
+                            except (ValueError, TypeError):
+                                page_int = 1
+                            try:
+                                lvl_int = int(lvl)
+                            except (ValueError, TypeError):
+                                lvl_int = 1
+                            toc.append({
+                                "level": lvl_int,
+                                "title": clean_title,
+                                "page": max(1, min(page_int, len(doc))),
+                            })
+                if toc:
+                    return toc
+
+            # Tầng 2: Heuristic regex quét các tiêu đề chương/phần/bài
+            chapter_pattern = re.compile(
+                r'^\s*(Chương\s+[0-9IVXLCDMivxlcdm]+|Phần\s+[0-9IVXLCDMivxlcdm]+|Bài\s+[0-9IVXLCDMivxlcdm0-9]+|Hồi\s+[0-9IVXLCDMivxlcdm0-9]+|Mục\s+[0-9IVXLCDMivxlcdm0-9]+|Quyển\s+[0-9IVXLCDMivxlcdm0-9]+|Chapter\s+[0-9IVXLCDMivxlcdm]+|Part\s+[0-9IVXLCDMivxlcdm]+|Lời nói đầu|Lời mở đầu|Mở đầu|Kết luận|Lời bạt|Phụ lục(?:\s+[0-9IVXLCDMivxlcdm]+)?)(?:\s*[:.\-–—]\s*(.*)|\s+(.*))?$',
+                re.IGNORECASE
+            )
+            toc = []
+            for page_idx in range(len(doc)):
+                pno = page_idx + 1
+                page = doc[page_idx]
+                text = page.get_text("text")
+                if not text:
+                    continue
+                lines = [re.sub(r'[\s\xa0]+', ' ', line).strip() for line in text.split("\n") if line.strip()]
+                for line in lines:
+                    if len(line) > 100:
+                        continue
+                    m = chapter_pattern.match(line)
+                    if m:
+                        clean_line = line.strip(" :.-–—")
+                        if not any(item["page"] == pno and item["title"].lower() == clean_line.lower() for item in toc):
+                            toc.append({
+                                "level": 1,
+                                "title": clean_line,
+                                "page": pno,
+                            })
+            return toc
+
+    def get_annotations(self, doc_id: str) -> Dict[str, Any]:
+        """Lấy danh sách bookmarks và highlights đã lưu của tài liệu."""
+        ann_file = ANNOTATIONS_DIR / f"{doc_id}.json"
+        if ann_file.exists():
+            try:
+                return json.loads(ann_file.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+        return {"bookmarks": [], "highlights": []}
+
+    def save_annotations(self, doc_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Lưu danh sách bookmarks và highlights của tài liệu vào file JSON."""
+        ann_file = ANNOTATIONS_DIR / f"{doc_id}.json"
+        clean_data = {
+            "bookmarks": data.get("bookmarks", []),
+            "highlights": data.get("highlights", []),
+        }
+        ann_file.write_text(json.dumps(clean_data, indent=2, ensure_ascii=False), encoding="utf-8")
+        return clean_data
 
     def extract_page_text(
         self, doc_id: str, page_number: int, force_mode: str = "auto"

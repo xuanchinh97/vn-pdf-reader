@@ -23,8 +23,11 @@
       </div>
     </div>
 
-    <!-- Chọn file & Điều hướng trang -->
+    <!-- Chọn file, Mục lục & Điều hướng trang -->
     <div class="toolbar-group">
+      <button class="btn btn-icon" id="drawerToggleBtn" title="Mục lục, Dấu trang & Highlights (Phím M)">
+        📑
+      </button>
       <label class="btn btn-primary" for="pdfFileInput" title="Mở file PDF từ máy tính">
         📂 Mở PDF
       </label>
@@ -44,9 +47,11 @@
     <!-- Bộ điều khiển giọng đọc (TTS Player) -->
     <div class="toolbar-group player-controls">
       <button class="btn btn-icon" id="prevSentenceBtn" title="Câu trước" disabled>⏮</button>
+      <button class="btn btn-icon btn-skip" id="skipBackBtn" title="Lùi 5 giây (hoặc câu trước)" disabled>⏪ 5s</button>
       <button class="btn btn-play" id="playPauseBtn" title="Đọc / Tạm dừng (Phím Space)" disabled>
         ▶ Đọc ngay
       </button>
+      <button class="btn btn-icon btn-skip" id="skipForwardBtn" title="Tiến 10 giây (hoặc câu tiếp)" disabled>⏩ 10s</button>
       <button class="btn btn-icon" id="stopBtn" title="Dừng đọc" disabled>⏹</button>
       <button class="btn btn-icon" id="nextSentenceBtn" title="Câu tiếp theo" disabled>⏭</button>
 
@@ -55,7 +60,13 @@
         <option value="vi-VN-NamMinhNeural">🎙️ Nam Minh (Nam - Miền Bắc)</option>
       </select>
 
-      <select id="speedSelect" class="select-control speed-select" title="Tốc độ đọc">
+      <div class="speed-stepper" title="Tốc độ đọc (Bước nhảy 0.1x)">
+        <button class="btn btn-xs stepper-btn" id="speedDecBtn" title="Giảm tốc độ">-</button>
+        <span class="speed-val" id="speedValLabel">1.0x</span>
+        <button class="btn btn-xs stepper-btn" id="speedIncBtn" title="Tăng tốc độ">+</button>
+      </div>
+
+      <select id="speedSelect" class="select-control speed-select" hidden>
         <option value="0.85">0.85x</option>
         <option value="1.0" selected>1.0x</option>
         <option value="1.15">1.15x</option>
@@ -64,6 +75,10 @@
         <option value="1.75">1.75x</option>
         <option value="2.0">2.0x</option>
       </select>
+
+      <button class="btn btn-icon" id="sleepTimerBtn" title="Hẹn giờ ngủ (Sleep Timer)">
+        🌙
+      </button>
     </div>
 
     <!-- Tùy chọn máy đọc sách & Giao diện -->
@@ -79,6 +94,9 @@
       </button>
       <button class="btn btn-icon" id="themeToggleBtn" title="Đổi chủ đề: Giấy ngà / Đêm / E-Ink / Sáng">
         📜
+      </button>
+      <button class="btn btn-icon" id="shortcutsBtn" title="Bảng phím tắt (Phím ?)">
+        ⌨️
       </button>
       <button class="btn btn-icon" id="settingsBtn" title="Cài đặt API Key FPT.AI & Proxy">
         ⚙️
@@ -143,6 +161,24 @@
           <input type="checkbox" id="bookFlowToggle" checked />
           <span>Chế độ đoạn văn sách</span>
         </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPOVER HẸN GIỜ NGỦ (SLEEP TIMER) -->
+  <div class="sleep-timer-popover" id="sleepTimerPopover" hidden>
+    <div class="popover-arrow"></div>
+    <div class="popover-section">
+      <div class="popover-title">🌙 Hẹn giờ tắt đọc sách</div>
+      <div class="chip-grid sleep-timer-grid">
+        <button class="chip active" data-sleep="0">Tắt hẹn giờ</button>
+        <button class="chip" data-sleep="15">15 phút</button>
+        <button class="chip" data-sleep="30">30 phút</button>
+        <button class="chip" data-sleep="45">45 phút</button>
+        <button class="chip" data-sleep="page">Hết trang này</button>
+      </div>
+      <div class="sleep-countdown" id="sleepCountdownLabel" hidden>
+        ⏳ Sẽ dừng đọc sau: <strong id="sleepTimeRemaining">15:00</strong> (fade-out 10s cuối)
       </div>
     </div>
   </div>
@@ -243,6 +279,13 @@
           </div>
         </div>
 
+        <!-- Audio Scrubber Bar hiển thị tiến trình và tua câu đang đọc -->
+        <div class="audio-scrubber-bar" id="audioScrubberBar">
+          <span class="audio-time" id="audioCurrentTime">0:00</span>
+          <input type="range" class="audio-scrubber" id="audioScrubber" min="0" max="100" value="0" step="0.1" title="Tua âm thanh câu hiện tại" />
+          <span class="audio-time" id="audioDuration">0:00</span>
+        </div>
+
         <!-- Thanh tiến trình OCR (khi đang quét) -->
         <div class="ocr-progress-box" id="ocrProgressBox" hidden>
           <div class="ocr-progress-header">
@@ -271,8 +314,28 @@
 
           <!-- Trang giấy sách trung tâm có giới hạn độ rộng đọc tối ưu -->
           <div class="book-page-canvas" id="bookPageCanvas">
+            <!-- Nút ruy băng ghim Bookmark ở góc trên trang sách -->
+            <button class="bookmark-ribbon-btn" id="bookmarkRibbonBtn" title="Ghim dấu trang này (Phím B)">
+              <svg viewBox="0 0 24 24" class="ribbon-svg" width="22" height="22">
+                <path fill="currentColor" d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
+              </svg>
+            </button>
             <div class="sentences-container book-flow" id="sentencesContainer"></div>
           </div>
+        </div>
+
+        <!-- THANH CÔNG CỤ NỔI KHI BÔI ĐEN VĂN BẢN (FLOATING SELECTION ACTION BAR) -->
+        <div class="floating-selection-bar" id="floatingSelectionBar" hidden>
+          <div class="hl-colors">
+            <button class="hl-color-btn hl-yellow" data-color="yellow" title="Tô màu Vàng"></button>
+            <button class="hl-color-btn hl-green" data-color="green" title="Tô màu Xanh lá"></button>
+            <button class="hl-color-btn hl-pink" data-color="pink" title="Tô màu Hồng"></button>
+            <button class="hl-color-btn hl-blue" data-color="blue" title="Tô màu Xanh dương"></button>
+          </div>
+          <div class="floating-divider"></div>
+          <button class="floating-btn" id="floatLookupBtn" title="Tra từ điển Tiếng Việt">📖 Tra từ</button>
+          <button class="floating-btn" id="floatSpeakBtn" title="Đọc câu này">🎙️ Đọc câu</button>
+          <button class="floating-btn" id="floatCopyBtn" title="Copy đoạn bôi đen">📋 Copy</button>
         </div>
 
         <!-- CHÂN TRANG MÁY ĐỌC SÁCH (E-READER FOOTER PROGRESS) -->
@@ -323,6 +386,85 @@
       <div class="modal-footer">
         <button class="btn btn-primary" id="saveSettingsBtn">💾 Lưu Cài Đặt</button>
         <button class="btn btn-outline" id="cancelSettingsBtn">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR DRAWER: MỤC LỤC, DẤU TRANG & HIGHLIGHTS -->
+  <aside class="drawer-panel" id="tocDrawer" hidden>
+    <div class="drawer-header">
+      <div class="drawer-tabs">
+        <button class="drawer-tab active" data-tab="toc" id="tabBtnToc">📑 Mục lục</button>
+        <button class="drawer-tab" data-tab="bookmarks" id="tabBtnBookmarks">🔖 Dấu trang (<span id="bookmarkCount">0</span>)</button>
+        <button class="drawer-tab" data-tab="highlights" id="tabBtnHighlights">🖍️ Highlights (<span id="highlightCount">0</span>)</button>
+      </div>
+      <button class="btn btn-icon btn-xs" id="closeDrawerBtn" title="Đóng ngăn bên">✕</button>
+    </div>
+    <div class="drawer-body">
+      <!-- Tab 1: Mục lục -->
+      <div class="drawer-tab-content active" id="drawerTabToc">
+        <div class="drawer-list" id="tocList">
+          <div class="drawer-empty-hint">Chưa có mục lục cho tài liệu này.</div>
+        </div>
+      </div>
+      <!-- Tab 2: Dấu trang -->
+      <div class="drawer-tab-content" id="drawerTabBookmarks" hidden>
+        <div class="drawer-list" id="bookmarksList">
+          <div class="drawer-empty-hint">Chưa có dấu trang nào. Bấm 🔖 ở góc trên trang sách hoặc nhấn phím B để ghim.</div>
+        </div>
+      </div>
+      <!-- Tab 3: Highlights -->
+      <div class="drawer-tab-content" id="drawerTabHighlights" hidden>
+        <div class="drawer-list" id="highlightsList">
+          <div class="drawer-empty-hint">Chưa có highlight nào. Bôi đen văn bản trong sách để tô màu.</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
+
+  <!-- MODAL TRA TỪ ĐIỂN TIẾNG VIỆT -->
+  <div class="modal-backdrop" id="dictModal" hidden>
+    <div class="modal-card dict-modal-card">
+      <div class="modal-header">
+        <h3>📖 Tra Cứu Từ Điển Tiếng Việt</h3>
+        <button class="btn btn-icon btn-xs" id="closeDictBtn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="dict-search-row">
+          <input type="text" id="dictSearchInput" class="text-input" placeholder="Nhập từ cần tra (Ví dụ: tri thức, hạnh phúc, sách...)" />
+          <button class="btn btn-primary" id="dictSearchBtn">🔍 Tra cứu</button>
+        </div>
+        <div class="dict-results" id="dictResults">
+          <div class="dict-empty-hint">Chọn hoặc nhập một từ tiếng Việt để xem định nghĩa chi tiết.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="closeDictFooterBtn">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL BẢNG PHÍM TẮT -->
+  <div class="modal-backdrop" id="shortcutsModal" hidden>
+    <div class="modal-card shortcuts-modal-card">
+      <div class="modal-header">
+        <h3>⌨️ Bảng Phím Tắt E-Reader</h3>
+        <button class="btn btn-icon btn-xs" id="closeShortcutsBtn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="shortcuts-grid">
+          <div class="shortcut-item"><kbd>Space</kbd> <span>Đọc / Tạm dừng câu</span></div>
+          <div class="shortcut-item"><kbd>◀ / ▶</kbd> <span>Trang trước / Trang sau</span></div>
+          <div class="shortcut-item"><kbd>B</kbd> <span>Ghim / Bỏ ghim Dấu trang (Bookmark)</span></div>
+          <div class="shortcut-item"><kbd>M</kbd> <span>Mở / Đóng Mục lục & Dấu trang (Drawer)</span></div>
+          <div class="shortcut-item"><kbd>F</kbd> <span>Bật / Tắt chế độ đọc tập trung (Zen Mode)</span></div>
+          <div class="shortcut-item"><kbd>?</kbd> <span>Mở bảng hướng dẫn phím tắt</span></div>
+          <div class="shortcut-item"><kbd>Esc</kbd> <span>Đóng tất cả cửa sổ popover / modal</span></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary btn-sm" id="closeShortcutsFooterBtn">Đã hiểu</button>
       </div>
     </div>
   </div>

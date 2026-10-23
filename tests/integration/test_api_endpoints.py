@@ -134,6 +134,78 @@ class TestAPIEndpoints(unittest.TestCase):
         resp = self.client.post("/api/tts", json=payload)
         self.assertEqual(resp.status_code, 400)
 
+    def test_get_doc_toc_endpoint(self):
+        with open(self.standard_pdf_path, "rb") as f:
+            up_resp = self.client.post(
+                "/api/upload",
+                files={"file": ("standard_unicode.pdf", f, "application/pdf")},
+            )
+        doc_id = up_resp.json()["doc_id"]
+        # Upload response phải có sẵn toc
+        self.assertIn("toc", up_resp.json())
+
+        # Gọi endpoint GET /api/doc/{doc_id}/toc
+        resp = self.client.get(f"/api/doc/{doc_id}/toc")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["doc_id"], doc_id)
+        self.assertIsInstance(data["toc"], list)
+        self.assertGreater(len(data["toc"]), 0)
+
+    def test_get_doc_toc_nonexistent(self):
+        resp = self.client.get("/api/doc/nonexistent_id/toc")
+        self.assertEqual(resp.status_code, 404)
+
+    def test_annotations_endpoints(self):
+        with open(self.standard_pdf_path, "rb") as f:
+            up_resp = self.client.post(
+                "/api/upload",
+                files={"file": ("standard_unicode.pdf", f, "application/pdf")},
+            )
+        doc_id = up_resp.json()["doc_id"]
+
+        # 1. GET ban đầu
+        get_resp = self.client.get(f"/api/doc/{doc_id}/annotations")
+        self.assertEqual(get_resp.status_code, 200)
+        data = get_resp.json()
+        self.assertIn("bookmarks", data)
+        self.assertIn("highlights", data)
+
+        # 2. POST lưu mới
+        payload = {
+            "bookmarks": [{"id": "b1", "page": 1, "title": "Dấu trang 1"}],
+            "highlights": [{"id": "h1", "page": 1, "text": "Đoạn hay", "color": "yellow"}],
+        }
+        post_resp = self.client.post(f"/api/doc/{doc_id}/annotations", json=payload)
+        self.assertEqual(post_resp.status_code, 200)
+        self.assertEqual(post_resp.json()["status"], "ok")
+
+        # 3. GET kiểm tra lại
+        get_resp2 = self.client.get(f"/api/doc/{doc_id}/annotations")
+        self.assertEqual(len(get_resp2.json()["bookmarks"]), 1)
+        self.assertEqual(len(get_resp2.json()["highlights"]), 1)
+        self.assertEqual(get_resp2.json()["bookmarks"][0]["title"], "Dấu trang 1")
+
+    def test_dictionary_lookup_offline_success(self):
+        resp = self.client.get("/api/dictionary/lookup?word=s%C3%A1ch")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["word"], "sách")
+        self.assertTrue(data["found"])
+        self.assertGreater(len(data["meanings"]), 0)
+        self.assertEqual(data["meanings"][0]["pos"], "Danh từ")
+
+    def test_dictionary_lookup_missing_param(self):
+        resp = self.client.get("/api/dictionary/lookup?word=")
+        self.assertEqual(resp.status_code, 400)
+
+    def test_dictionary_lookup_unknown_word(self):
+        resp = self.client.get("/api/dictionary/lookup?word=tutuongkhongtontai12345")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertFalse(data["found"])
+        self.assertIn("meanings", data)
+
 
 if __name__ == "__main__":
     unittest.main()
