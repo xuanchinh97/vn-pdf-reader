@@ -388,7 +388,13 @@ function bindEvents() {
     const speed = parseFloat(els.speedSelect.value || "1.0");
     state.speed = speed;
     if (els.speedValLabel) els.speedValLabel.textContent = `${speed.toFixed(1)}x`;
+    els.ttsAudio.defaultPlaybackRate = speed;
     els.ttsAudio.playbackRate = speed;
+  });
+
+  els.ttsAudio.addEventListener("play", () => {
+    els.ttsAudio.defaultPlaybackRate = state.speed;
+    els.ttsAudio.playbackRate = state.speed;
   });
 
   // 4. Menu Aa (Kindle / Kobo Popover)
@@ -608,7 +614,14 @@ function bindEvents() {
   els.floatSpeakBtn?.addEventListener("click", (e) => {
     e.stopPropagation();
     if (currentSelectedText) {
-      const idx = state.sentences.findIndex((s) => s.includes(currentSelectedText));
+      const q = currentSelectedText.trim();
+      let idx = state.sentences.findIndex((s) => s.includes(q) || q.includes(s));
+      if (idx < 0) {
+        const firstWords = q.split(/\s+/).slice(0, 3).join(" ");
+        if (firstWords.length >= 3) {
+          idx = state.sentences.findIndex((s) => s.includes(firstWords));
+        }
+      }
       if (idx >= 0) playFromSentence(idx);
     }
     if (els.floatingSelectionBar) els.floatingSelectionBar.hidden = true;
@@ -806,6 +819,8 @@ function renderSentences() {
   els.prevSentenceBtn.disabled = !hasSentences;
   els.nextSentenceBtn.disabled = !hasSentences;
   els.downloadMp3Btn.disabled = !hasSentences;
+  if (els.skipBackBtn) els.skipBackBtn.disabled = !hasSentences;
+  if (els.skipForwardBtn) els.skipForwardBtn.disabled = !hasSentences;
 
   if (!hasSentences) {
     els.sentencesContainer.innerHTML = `
@@ -1100,6 +1115,7 @@ async function playFromSentence(index) {
     if (sessionId !== state.playSessionId) return;
 
     els.ttsAudio.src = audioUrl;
+    els.ttsAudio.defaultPlaybackRate = state.speed;
     els.ttsAudio.playbackRate = state.speed;
     els.playPauseBtn.textContent = "⏸ Tạm dừng";
     updateMediaSession(index);
@@ -1141,7 +1157,7 @@ function speakWithBrowserFallback(text, index, sessionId) {
   window.speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(text);
   utter.lang = "vi-VN";
-  utter.rate = parseFloat(els.speedSelect.value || "1.0");
+  utter.rate = state.speed;
   els.playPauseBtn.textContent = "⏸ Tạm dừng";
 
   utter.onend = () => {
@@ -1269,21 +1285,48 @@ function escapeHtml(str) {
 
 function seekAudioRelative(delta) {
   if (!els.ttsAudio) return;
-  const newTime = (els.ttsAudio.currentTime || 0) + delta;
-  if (delta < 0 && newTime < 0) {
+  if (state.sentences.length === 0) return;
+
+  // Nếu chưa phát, bắt đầu phát từ câu hiện tại (hoặc câu 0)
+  if (!state.isPlaying || state.currentSentenceIndex < 0) {
+    const startIdx = state.currentSentenceIndex >= 0 ? state.currentSentenceIndex : 0;
+    playFromSentence(startIdx);
+    return;
+  }
+
+  const duration = els.ttsAudio.duration;
+  const currentTime = els.ttsAudio.currentTime || 0;
+
+  if (isNaN(duration) || duration <= 0) {
+    // Audio chưa load xong metadata
+    if (delta < 0 && state.currentSentenceIndex > 0) {
+      playFromSentence(state.currentSentenceIndex - 1);
+    } else if (delta > 0 && state.currentSentenceIndex + 1 < state.sentences.length) {
+      playFromSentence(state.currentSentenceIndex + 1);
+    }
+    return;
+  }
+
+  const newTime = currentTime + delta;
+  if (newTime < 0) {
     if (state.currentSentenceIndex > 0) {
       playFromSentence(state.currentSentenceIndex - 1);
     } else {
       els.ttsAudio.currentTime = 0;
     }
-  } else if (delta > 0 && els.ttsAudio.duration && newTime > els.ttsAudio.duration) {
+  } else if (newTime >= duration) {
     if (state.currentSentenceIndex + 1 < state.sentences.length) {
       playFromSentence(state.currentSentenceIndex + 1);
     } else {
-      els.ttsAudio.currentTime = els.ttsAudio.duration;
+      // Câu cuối cùng của trang: kích hoạt onended để tự lật trang hoặc dừng đọc
+      if (typeof els.ttsAudio.onended === "function") {
+        els.ttsAudio.onended();
+      } else {
+        stopReading();
+      }
     }
   } else {
-    els.ttsAudio.currentTime = Math.max(0, Math.min(els.ttsAudio.duration || 0, newTime));
+    els.ttsAudio.currentTime = Math.max(0, Math.min(duration, newTime));
   }
 }
 
@@ -1291,7 +1334,10 @@ function updateSpeed(delta) {
   state.speed = Math.max(0.5, Math.min(3.0, +(state.speed + delta).toFixed(1)));
   if (els.speedValLabel) els.speedValLabel.textContent = `${state.speed.toFixed(1)}x`;
   if (els.speedSelect) els.speedSelect.value = state.speed.toString();
-  if (els.ttsAudio) els.ttsAudio.playbackRate = state.speed;
+  if (els.ttsAudio) {
+    els.ttsAudio.defaultPlaybackRate = state.speed;
+    els.ttsAudio.playbackRate = state.speed;
+  }
 }
 
 function setSleepTimer(val) {
@@ -1616,7 +1662,7 @@ function renderHighlightsList() {
       state.highlights = state.highlights.filter((h) => h.id !== id);
       updateHighlightCount();
       renderHighlightsList();
-      renderHighlightsOnPage();
+      renderSentences(); // Tái tạo DOM sạch, gỡ bỏ hoàn toàn thẻ mark đã xóa
       saveAnnotations();
     });
   });
@@ -1628,10 +1674,43 @@ function renderHighlightsOnPage() {
   if (pageHighlights.length === 0) return;
 
   els.sentencesContainer.querySelectorAll(".sentence-item").forEach((sentEl) => {
+    const idx = parseInt(sentEl.getAttribute("data-index"), 10);
+    const sentText = (state.sentences[idx] || sentEl.textContent || "").trim();
+    if (!sentText) return;
     let html = sentEl.innerHTML;
+
     pageHighlights.forEach((hl) => {
-      if (hl.text && sentEl.textContent.includes(hl.text)) {
-        const escaped = escapeHtml(hl.text);
+      if (!hl.text) return;
+      const targetText = hl.text.trim();
+      let matchPart = "";
+
+      // 1. Khớp nguyên văn trong câu
+      if (sentText.includes(targetText)) {
+        matchPart = targetText;
+      }
+      // 2. Câu nằm trọn trong đoạn bôi đen dài nhiều câu
+      else if (targetText.includes(sentText) && sentText.length > 5) {
+        matchPart = sentText;
+      }
+      // 3. Khớp phần đầu hoặc đuôi câu (khi bôi đen vắt ngang qua 2 câu)
+      else {
+        // Tìm overlap lớn nhất (ít nhất 4 ký tự)
+        const maxLen = Math.min(targetText.length, sentText.length);
+        for (let len = maxLen; len >= 4; len--) {
+          const targetPrefix = targetText.slice(0, len);
+          const targetSuffix = targetText.slice(-len);
+          if (sentText.endsWith(targetPrefix)) {
+            matchPart = targetPrefix;
+            break;
+          } else if (sentText.startsWith(targetSuffix)) {
+            matchPart = targetSuffix;
+            break;
+          }
+        }
+      }
+
+      if (matchPart) {
+        const escaped = escapeHtml(matchPart);
         if (!html.includes(`class="user-highlight highlight-${hl.color}"`)) {
           html = html.replace(
             escaped,
@@ -1656,7 +1735,7 @@ function applyHighlight(color) {
   saveAnnotations();
   updateHighlightCount();
   renderHighlightsList();
-  renderHighlightsOnPage();
+  renderSentences(); // Tái tạo DOM sạch và tô đầy đủ các highlights
   if (els.floatingSelectionBar) els.floatingSelectionBar.hidden = true;
   window.getSelection()?.removeAllRanges();
 }

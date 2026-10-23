@@ -167,6 +167,63 @@ class TestPDFService(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             pdf_service.extract_page_text("non_existent_hash", 1)
 
+    def test_extract_toc_multi_line_and_printed_dot_leaders(self):
+        import pymupdf as fitz
+        fontfile = "C:/Windows/Fonts/arial.ttf" if Path("C:/Windows/Fonts/arial.ttf").exists() else None
+        fontname = "arial" if fontfile else None
+        doc = fitz.open()
+        p1 = doc.new_page()
+        # Mô phỏng trang mục lục in có số trang ở cuối
+        p1.insert_textbox(
+            fitz.Rect(50, 50, 500, 200),
+            "Chương 1: Bình minh ............ 2\nChương 2: Hoàng hôn ............ 3",
+            fontfile=fontfile,
+            fontname=fontname,
+        )
+        p2 = doc.new_page()
+        # Mô phỏng tiêu đề 2 dòng: dòng 1 là Chương 1, dòng 2 là tiêu đề
+        p2.insert_textbox(
+            fitz.Rect(50, 50, 500, 200),
+            "Chương 1\nTiếng gọi nơi hoang dã\nNội dung chương một...",
+            fontfile=fontfile,
+            fontname=fontname,
+        )
+        p3 = doc.new_page()
+        p3.insert_textbox(
+            fitz.Rect(50, 50, 500, 200),
+            "Chương 2: Khởi đầu mới\nNội dung chương hai...",
+            fontfile=fontfile,
+            fontname=fontname,
+        )
+        pdf_bytes = doc.tobytes()
+        doc.close()
+
+        info = pdf_service.register_pdf("test_toc_advanced.pdf", pdf_bytes)
+        doc_id = info["doc_id"]
+        toc = pdf_service.extract_toc(doc_id)
+        self.assertIsInstance(toc, list)
+        self.assertGreaterEqual(len(toc), 2)
+        # Kiểm tra mục lục in bóc tách chính xác số trang đích
+        first_item = toc[0]
+        self.assertIn("Chương 1: Bình minh", first_item["title"])
+        self.assertEqual(first_item["page"], 2)
+
+    def test_annotations_null_safety(self):
+        info = pdf_service.register_pdf("test_standard.pdf", self.standard_pdf_bytes)
+        doc_id = info["doc_id"]
+        # Lưu payload chứa None
+        saved = pdf_service.save_annotations(doc_id, {"bookmarks": None, "highlights": None})
+        self.assertEqual(saved["bookmarks"], [])
+        self.assertEqual(saved["highlights"], [])
+        retrieved = pdf_service.get_annotations(doc_id)
+        self.assertEqual(retrieved["bookmarks"], [])
+        self.assertEqual(retrieved["highlights"], [])
+
+    def test_path_traversal_sanitization(self):
+        # Kiểm tra doc_id có chứa ký tự path traversal không làm hỏng hoặc lộ thư mục
+        res = pdf_service.get_annotations("../../etc/passwd")
+        self.assertEqual(res, {"bookmarks": [], "highlights": []})
+
 
 if __name__ == "__main__":
     unittest.main()

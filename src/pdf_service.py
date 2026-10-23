@@ -10,7 +10,14 @@ import pymupdf as fitz  # PyMuPDF 2.0+
 import httpx
 from PIL import Image, ImageEnhance, ImageOps
 
-from src.vn_text_processor import process_vietnamese_pdf_text
+from src.vn_text_processor import (
+    process_vietnamese_pdf_text,
+    convert_tcvn3_to_unicode,
+    is_likely_tcvn3,
+    convert_vni_to_unicode,
+    is_likely_vni,
+    fix_detached_diacritics,
+)
 
 STORAGE_DIR = Path.home() / ".vn_pdf_reader" / "docs"
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
@@ -49,11 +56,12 @@ class PDFService:
         }
 
     def _get_pdf_path(self, doc_id: str) -> Path:
-        if doc_id in self._docs and self._docs[doc_id].exists():
-            return self._docs[doc_id]
-        candidate = STORAGE_DIR / f"{doc_id}.pdf"
+        safe_id = re.sub(r'[^a-zA-Z0-9_\-]', '', doc_id)
+        if safe_id in self._docs and self._docs[safe_id].exists():
+            return self._docs[safe_id]
+        candidate = STORAGE_DIR / f"{safe_id}.pdf"
         if candidate.exists():
-            self._docs[doc_id] = candidate
+            self._docs[safe_id] = candidate
             return candidate
         raise FileNotFoundError(f"Không tìm thấy tài liệu PDF với ID: {doc_id}")
 
@@ -61,7 +69,8 @@ class PDFService:
         """
         Trích xuất mục lục tài liệu theo 2 tầng:
         - Tầng 1: Lấy mục lục có sẵn của PDF (doc.get_toc(simple=True)).
-        - Tầng 2: Nếu rỗng, heuristic regex quét tiêu đề chương/phần/bài gắn với số trang.
+        - Tầng 2: Nếu rỗng, heuristic regex quét tiêu đề chương/phần/bài gắn với số trang,
+                  hỗ trợ tài liệu mã TCVN3/VNI, mục lục in (dot leaders) và tiêu đề 2 dòng.
         """
         pdf_path = self._get_pdf_path(doc_id)
         with fitz.open(pdf_path) as doc:
@@ -99,40 +108,78 @@ class PDFService:
             for page_idx in range(len(doc)):
                 pno = page_idx + 1
                 page = doc[page_idx]
-                text = page.get_text("text")
-                if not text:
+                raw_text = page.get_text("text")
+                if not raw_text:
                     continue
-                lines = [re.sub(r'[\s\xa0]+', ' ', line).strip() for line in text.split("\n") if line.strip()]
-                for line in lines:
-                    if len(line) > 100:
+
+                # Tách từng dòng văn bản gốc trước để giữ nguyên ranh giới dòng của tiêu đề chương
+                raw_lines = [re.sub(r'[\s\xa0]+', ' ', line).strip() for line in raw_text.split("\n") if line.strip()]
+                lines = []
+                for l in raw_lines:
+                    if is_likely_tcvn3(l):
+                        l = convert_tcvn3_to_unicode(l)
+                    elif is_likely_vni(l):
+                        l = convert_vni_to_unicode(l)
+                    l = fix_detached_diacritics(l)
+                    lines.append(l)
+                for i, line in enumerate(lines):
+                    if len(line) > 120:
                         continue
                     m = chapter_pattern.match(line)
                     if m:
                         clean_line = line.strip(" :.-–—")
-                        if not any(item["page"] == pno and item["title"].lower() == clean_line.lower() for item in toc):
+                        # Kiểm tra xem có phải dòng mục lục in có số trang ở cuối (... 15)
+                        p_match = re.search(r'[\.\-–—\s]{2,}\s*(\d+)\s*$', clean_line)
+                        target_pno = pno
+                        if p_match:
+                            try:
+                                matched_p = int(p_match.group(1))
+                                if 1 <= matched_p <= len(doc):
+                                    target_pno = matched_p
+                                    clean_line = clean_line[:p_match.start()].strip(" :.-–—")
+                            except Exception:
+                                pass
+
+                        # Nếu dòng chỉ có "Chương 1" mà chưa có tên chương, và dòng sau là tiêu đề ngắn
+                        if not m.group(2) and not m.group(3) and not p_match and i + 1 < len(lines):
+                            next_line = lines[i + 1]
+                            if (
+                                0 < len(next_line) <= 80
+                                and not chapter_pattern.match(next_line)
+                                and not next_line.endswith((".", ",", ";"))
+                            ):
+                                clean_line = f"{clean_line}: {next_line}"
+
+                        if not any(item["page"] == target_pno and item["title"].lower() == clean_line.lower() for item in toc):
                             toc.append({
                                 "level": 1,
                                 "title": clean_line,
-                                "page": pno,
+                                "page": target_pno,
                             })
             return toc
 
     def get_annotations(self, doc_id: str) -> Dict[str, Any]:
         """Lấy danh sách bookmarks và highlights đã lưu của tài liệu."""
-        ann_file = ANNOTATIONS_DIR / f"{doc_id}.json"
+        safe_id = re.sub(r'[^a-zA-Z0-9_\-]', '', doc_id)
+        ann_file = ANNOTATIONS_DIR / f"{safe_id}.json"
         if ann_file.exists():
             try:
-                return json.loads(ann_file.read_text(encoding="utf-8"))
+                data = json.loads(ann_file.read_text(encoding="utf-8"))
+                return {
+                    "bookmarks": data.get("bookmarks") or [],
+                    "highlights": data.get("highlights") or [],
+                }
             except Exception:
                 pass
         return {"bookmarks": [], "highlights": []}
 
     def save_annotations(self, doc_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """Lưu danh sách bookmarks và highlights của tài liệu vào file JSON."""
-        ann_file = ANNOTATIONS_DIR / f"{doc_id}.json"
+        safe_id = re.sub(r'[^a-zA-Z0-9_\-]', '', doc_id)
+        ann_file = ANNOTATIONS_DIR / f"{safe_id}.json"
         clean_data = {
-            "bookmarks": data.get("bookmarks", []),
-            "highlights": data.get("highlights", []),
+            "bookmarks": data.get("bookmarks") or [],
+            "highlights": data.get("highlights") or [],
         }
         ann_file.write_text(json.dumps(clean_data, indent=2, ensure_ascii=False), encoding="utf-8")
         return clean_data

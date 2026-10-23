@@ -460,6 +460,238 @@ OFFLINE_DICTIONARY = {
         ],
         "source": "Từ điển Tiếng Việt"
     },
+    "tâm hồn": {
+        "word": "tâm hồn",
+        "found": True,
+        "meanings": [
+            {
+                "pos": "Danh từ",
+                "definitions": [
+                    "Đời sống nội tâm, tình cảm và cảm xúc sâu kín của con người.",
+                    "Thế giới tinh thần và phẩm chất đạo đức bên trong mỗi cá nhân."
+                ]
+            }
+        ],
+        "source": "Từ điển Tiếng Việt"
+    },
+    "gia đình": {
+        "word": "gia đình",
+        "found": True,
+        "meanings": [
+            {
+                "pos": "Danh từ",
+                "definitions": [
+                    "Tập hợp những người gắn bó với nhau do quan hệ hôn nhân, huyết thống hoặc nuôi dưỡng.",
+                    "Tổ ấm và tế bào cơ bản của xã hội."
+                ]
+            }
+        ],
+        "source": "Từ điển Tiếng Việt"
+    },
+    "xã hội": {
+        "word": "xã hội",
+        "found": True,
+        "meanings": [
+            {
+                "pos": "Danh từ",
+                "definitions": [
+                    "Cộng đồng người cùng chung sống và quan hệ với nhau trong những điều kiện lịch sử nhất định.",
+                    "Toàn bộ các mối quan hệ giữa người với người trong một tổ chức cộng đồng."
+                ]
+            }
+        ],
+        "source": "Từ điển Tiếng Việt"
+    },
+    "tương lai": {
+        "word": "tương lai",
+        "found": True,
+        "meanings": [
+            {
+                "pos": "Danh từ",
+                "definitions": [
+                    "Khoảng thời gian về sau, những gì sẽ xảy ra tiếp theo trong cuộc đời hoặc lịch sử.",
+                    "Triển vọng tốt đẹp phía trước."
+                ]
+            }
+        ],
+        "source": "Từ điển Tiếng Việt"
+    },
+    "quá khứ": {
+        "word": "quá khứ",
+        "found": True,
+        "meanings": [
+            {
+                "pos": "Danh từ",
+                "definitions": [
+                    "Khoảng thời gian đã qua đi, những sự việc, biến cố đã diễn ra trước hiện tại."
+                ]
+            }
+        ],
+        "source": "Từ điển Tiếng Việt"
+    },
+    "hiện tại": {
+        "word": "hiện tại",
+        "found": True,
+        "meanings": [
+            {
+                "pos": "Danh từ",
+                "definitions": [
+                    "Khoảng thời gian đang diễn ra ngay lúc này, đối lập với quá khứ và tương lai."
+                ]
+            }
+        ],
+        "source": "Từ điển Tiếng Việt"
+    },
+    "lý tưởng": {
+        "word": "lý tưởng",
+        "found": True,
+        "meanings": [
+            {
+                "pos": "Danh từ / Tính từ",
+                "definitions": [
+                    "Mục đích cao đẹp, hoàn mỹ mà con người hướng tới và phấn đấu đạt được.",
+                    "Đạt đến mức độ mẫu mực, hoàn hảo nhất."
+                ]
+            }
+        ],
+        "source": "Từ điển Tiếng Việt"
+    },
+    "ước mơ": {
+        "word": "ước mơ",
+        "found": True,
+        "meanings": [
+            {
+                "pos": "Danh từ / Động từ",
+                "definitions": [
+                    "Khát khao, mong muốn tha thiết về những điều tốt đẹp trong tương lai."
+                ]
+            }
+        ],
+        "source": "Từ điển Tiếng Việt"
+    },
+    "hy vọng": {
+        "word": "hy vọng",
+        "found": True,
+        "meanings": [
+            {
+                "pos": "Động từ / Danh từ",
+                "definitions": [
+                    "Niềm tin và sự mong đợi vào những điều may mắn, tốt lành sẽ đến."
+                ]
+            }
+        ],
+        "source": "Từ điển Tiếng Việt"
+    },
+    "niềm tin": {
+        "word": "niềm tin",
+        "found": True,
+        "meanings": [
+            {
+                "pos": "Danh từ",
+                "definitions": [
+                    "Sự tin tưởng vững chắc vào một chân lý, giá trị hay vào chính bản thân mình."
+                ]
+            }
+        ],
+        "source": "Từ điển Tiếng Việt"
+    },
+    "đạo đức": {
+        "word": "đạo đức",
+        "found": True,
+        "meanings": [
+            {
+                "pos": "Danh từ",
+                "definitions": [
+                    "Hệ thống các quy tắc, chuẩn mực hành vi điều chỉnh mối quan hệ giữa người với người và với xã hội."
+                ]
+            }
+        ],
+        "source": "Từ điển Tiếng Việt"
+    },
+    "sáng tạo": {
+        "word": "sáng tạo",
+        "found": True,
+        "meanings": [
+            {
+                "pos": "Động từ / Tính từ",
+                "definitions": [
+                    "Khả năng tìm ra cái mới, độc đáo và có giá trị thiết thực trong nhận thức hoặc hành động."
+                ]
+            }
+        ],
+        "source": "Từ điển Tiếng Việt"
+    },
+    "bình yên": {
+        "word": "bình yên",
+        "found": True,
+        "meanings": [
+            {
+                "pos": "Tính từ",
+                "definitions": [
+                    "Trạng thái thanh thản, tĩnh lặng trong tâm hồn, không gặp phải sóng gió, hoạn nạn hay lo âu."
+                ]
+            }
+        ],
+        "source": "Từ điển Tiếng Việt"
+    },
+    "chân lý": {
+        "word": "chân lý",
+        "found": True,
+        "meanings": [
+            {
+                "pos": "Danh từ",
+                "definitions": [
+                    "Những nhận thức đúng đắn, phản ánh chính xác thực tại khách quan và được thực tiễn kiểm nghiệm."
+                ]
+            }
+        ],
+        "source": "Từ điển Tiếng Việt"
+    },
+    "dũng cảm": {
+        "word": "dũng cảm",
+        "found": True,
+        "meanings": [
+            {
+                "pos": "Tính từ",
+                "definitions": [
+                    "Khí phách dám đối mặt với khó khăn, hiểm nguy để bảo vệ lẽ phải và làm điều đúng đắn."
+                ]
+            }
+        ],
+        "source": "Từ điển Tiếng Việt"
+    },
+    "kiên trì": {
+        "word": "kiên trì",
+        "found": True,
+        "meanings": [
+            {
+                "pos": "Tính từ / Động từ",
+                "definitions": [
+                    "Bền bỉ, nhẫn nại tiếp tục hành động theo mục tiêu đã định dù gặp nhiều trở ngại."
+                ]
+            }
+        ],
+        "source": "Từ điển Tiếng Việt"
+    },
+    "yêu thương": {
+        "word": "yêu thương",
+        "found": True,
+        "meanings": [
+            {
+                "pos": "Động từ / Danh từ",
+                "definitions": [
+                    "Tình cảm gắn bó thiết tha, luôn quan tâm, chăm sóc và mong muốn điều tốt đẹp nhất cho người khác."
+                ]
+            }
+        ],
+        "source": "Từ điển Tiếng Việt"
+    },
+}
+
+IGNORED_WIKTIONARY_HEADERS = {
+    "từ nguyên", "dịch", "dịch nghĩa", "tham khảo", "xem thêm",
+    "mã ký tự", "chú thích", "liên kết ngoài", "ghi chú", "thành ngữ",
+    "từ liên quan", "chú thích nguồn",
 }
 
 
@@ -468,6 +700,7 @@ def _parse_wiktionary_extract(word: str, extract: str) -> Optional[dict]:
     meanings = []
     current_pos = "Nghĩa từ"
     current_defs = []
+    skip_current_section = False
 
     for line in lines:
         s = line.strip()
@@ -475,18 +708,20 @@ def _parse_wiktionary_extract(word: str, extract: str) -> Optional[dict]:
             continue
         if s.startswith("===") and s.endswith("==="):
             header = s.strip("=").strip()
-            if current_defs:
+            if current_defs and not skip_current_section:
                 meanings.append({"pos": current_pos, "definitions": current_defs})
                 current_defs = []
             current_pos = header
-        elif s.startswith("#") or s.startswith("*") or s.startswith("-"):
-            clean_def = s.lstrip("#*- ").strip()
-            if clean_def and len(clean_def) > 3:
-                current_defs.append(clean_def)
-        elif len(s) > 10 and not s.startswith("=="):
-            current_defs.append(s)
+            skip_current_section = header.lower() in IGNORED_WIKTIONARY_HEADERS
+        elif not skip_current_section:
+            if s.startswith("#") or s.startswith("*") or s.startswith("-"):
+                clean_def = s.lstrip("#*- ").strip()
+                if clean_def and len(clean_def) > 3 and not clean_def.startswith("="):
+                    current_defs.append(clean_def)
+            elif len(s) > 10 and not s.startswith("=="):
+                current_defs.append(s)
 
-    if current_defs:
+    if current_defs and not skip_current_section:
         meanings.append({"pos": current_pos, "definitions": current_defs})
 
     if meanings:
