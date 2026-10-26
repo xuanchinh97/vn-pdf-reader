@@ -4,6 +4,29 @@ Toàn bộ các thay đổi, tính năng mới và cải tiến của dự án *
 
 ---
 
+## [1.4.0] - 2026-10-26
+
+### Added
+- **Triết Lý Thiết Kế Tối Giản Apple Books (Steve Jobs Philosophy):**
+  - **Tách biệt 2 màn hình liền mạch:** Màn hình Home (Thư viện) và Màn hình Đọc Sách (Reader View).
+  - **Thư Viện Home Tối Giản:**
+    - Khối nạp sách trung tâm dạng Hero Card lớn với hiệu ứng kéo thả tập tin PDF nhẹ nhàng.
+    - Khu vực "Đang đọc dở" thông minh: Chỉ xuất hiện khi người dùng thực sự có sách trong lịch sử đọc, tự động lưu tiến độ trang và % vào `localStorage`.
+  - **Màn Hình Đọc Sách Chuyên Sâu (Reader View):**
+    - Header kính mờ (frosted glass) 52px tinh gọn, tích hợp nút `‹ Thư viện` quay về Home tức thì.
+    - Tiêu đề chương động (`.book-chapter-header`) đồng bộ tự động theo số trang và danh mục TOC.
+    - **Thanh Điều Khiển Âm Thanh Nổi (Floating Capsule Player):** Thiết kế bo tròn 44px nổi trên đáy màn hình, hiệu ứng sóng âm `waveform` động khi phát giọng đọc AI.
+    - Hỗ trợ chuyển chương trước (`⏮` / Phím `J`) và chương sau (`⏭` / Phím `K`), tự động tìm chương gần nhất trong TOC hoặc lật từng trang mượt mà nếu không có TOC.
+    - Bảng trượt Mục Lục & Dấu Trang (Slide-over Drawer) với hiệu ứng kính mờ `backdrop-filter: blur(32px)` và 3 tab riêng biệt: *Mục lục, Dấu trang, Highlight*.
+    - Bảng tùy chỉnh Typography `Aa` và menu mở rộng `⋯`.
+
+### Changed
+- Cập nhật phiên bản CSS/JS cache-busting sang `apple3.4`.
+- Loại bỏ các câu trích dẫn triết lý tĩnh thừa thãi trên màn hình đọc và chân trang.
+- Tinh giản Capsule Player: Loại bỏ nút tua câu `-5s`/`+10s` để thanh điều khiển gọn gàng, chuyển trọng tâm sang điều hướng chương.
+
+---
+
 ## [1.3.0] - 2026-10-23
 
 ### Added

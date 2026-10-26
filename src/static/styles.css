@@ -1,1598 +1,1211 @@
-/* ============================================================================
-   VN PDF Reader — E-Reader Experience (Kindle / Kobo / Boox Style)
-   Design System & Typography
-   ============================================================================ */
+/* ==========================================================================
+   VN PDF READER — APPLE MINIMALIST SYSTEM (STEVE JOBS PHILOSOPHY)
+   Two-Screen Seamless Flow: Home / Library <-> Reader View
+   "Simplicity is about subtracting the obvious and adding the meaningful."
+   ========================================================================== */
 
 :root {
-  /* Typography Tokens */
-  --font-merriweather: "Merriweather", Georgia, "Times New Roman", serif;
-  --font-literata: "Literata", Georgia, serif;
-  --font-inter: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-georgia: Georgia, "Palatino Linotype", "Book Antiqua", serif;
-  --font-reading: var(--font-merriweather);
-  --font-size: 18px;
-  --line-height: 1.8;
-  --reading-max-width: 720px;
-  --para-indent: 1.6em;
-  --text-align: justify;
+  /* Theme 1: Sepia (Giấy Ngà Ấm Áp - Default Apple Books) */
+  --bg-primary: #F7F3E9;
+  --bg-surface: rgba(247, 243, 233, 0.85);
+  --bg-card: rgba(255, 252, 246, 0.88);
+  --bg-capsule: rgba(255, 252, 246, 0.92);
+  --text-primary: #2C2621;
+  --text-secondary: #7A7265;
+  --text-tertiary: #A89F91;
+  --accent: #B25900;
+  --accent-soft: rgba(178, 89, 0, 0.12);
+  --highlight-bg: #FFE8A3;
+  --highlight-border: #F0CE68;
+  --border-subtle: rgba(44, 38, 33, 0.08);
+  --border-card: rgba(44, 38, 33, 0.12);
+  --shadow-card: 0 12px 32px -6px rgba(92, 64, 33, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04);
+  --shadow-hover: 0 20px 48px -8px rgba(92, 64, 33, 0.22), 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-capsule: 0 16px 40px -8px rgba(92, 64, 33, 0.18), 0 4px 12px rgba(0, 0, 0, 0.05);
+  --shadow-popover: 0 20px 48px -10px rgba(0, 0, 0, 0.15), 0 0 1px rgba(0,0,0,0.2);
+  
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", sans-serif;
+  --font-book: "Newsreader", "Merriweather", "Georgia", serif;
+  --font-size-base: 19px;
+  --line-height-base: 1.85;
+  --book-width: 680px;
 }
 
-/* 1. SEPIA / WARM PAPER (Kindle Paperwhite Mặc định - Giấy ngà ấm áp) */
-:root,
-[data-theme="sepia"] {
-  --bg-app: #f4ecdc;
-  --bg-surface: #eae0cb;
-  --bg-elevated: #dfd4bc;
-  --bg-reader: #fcf6e8;
-  --bg-paper: #fcf6e8;
-  --text-primary: #382c22;
-  --text-secondary: #746355;
-  --border-color: #d8cbb5;
-  --accent: #b45309;
-  --accent-hover: #92400e;
-  --play-bg: #15803d;
-  --play-hover: #166534;
-  --sentence-hover: rgba(180, 83, 9, 0.08);
-  --sentence-active-bg: #fed7aa;
-  --sentence-active-border: #ea580c;
-  --sentence-active-text: #2a1f17;
-  --popover-bg: #f8f1df;
-  --book-shadow: 0 4px 20px rgba(56, 44, 34, 0.08);
-  --badge-ok-bg: #dcfce7;
-  --badge-ok-text: #166534;
-  --badge-warn-bg: #fef08a;
-  --badge-warn-text: #854d0e;
-  --badge-fix-bg: #ffedd5;
-  --badge-fix-text: #9a3412;
+/* Theme 2: Chalk White (Trắng Phấn Tinh Khôi) */
+html[data-theme="white"],
+html[data-theme="light"] {
+  --bg-primary: #FBFBFD;
+  --bg-surface: rgba(251, 251, 253, 0.88);
+  --bg-card: #FFFFFF;
+  --bg-capsule: rgba(255, 255, 255, 0.94);
+  --text-primary: #1D1D1F;
+  --text-secondary: #6E6E73;
+  --text-tertiary: #86868B;
+  --accent: #0071E3;
+  --accent-soft: rgba(0, 113, 227, 0.1);
+  --highlight-bg: #E3F2FD;
+  --highlight-border: #90CAF9;
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-card: rgba(0, 0, 0, 0.08);
+  --shadow-card: 0 12px 32px -6px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.02);
+  --shadow-hover: 0 20px 48px -8px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.04);
+  --shadow-capsule: 0 16px 40px -8px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.04);
+  --shadow-popover: 0 20px 48px -10px rgba(0, 0, 0, 0.12);
 }
 
-/* 2. DARK NIGHT (Đêm Sâu OLED - Dịu mắt, không lóa) */
-[data-theme="dark"] {
-  --bg-app: #121316;
-  --bg-surface: #1a1c22;
-  --bg-elevated: #242730;
-  --bg-reader: #16171b;
-  --bg-paper: #16171b;
-  --text-primary: #e4e6eb;
-  --text-secondary: #8c93a4;
-  --border-color: #2b2e38;
-  --accent: #38bdf8;
-  --accent-hover: #0284c7;
-  --play-bg: #10b981;
-  --play-hover: #059669;
-  --sentence-hover: rgba(56, 189, 248, 0.12);
-  --sentence-active-bg: rgba(251, 191, 36, 0.22);
-  --sentence-active-border: #f59e0b;
-  --sentence-active-text: #fef3c7;
-  --popover-bg: #1e2028;
-  --book-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
-  --badge-ok-bg: rgba(16, 185, 129, 0.2);
-  --badge-ok-text: #34d399;
-  --badge-warn-bg: rgba(245, 158, 11, 0.2);
-  --badge-warn-text: #fbbf24;
-  --badge-fix-bg: rgba(56, 189, 248, 0.2);
-  --badge-fix-text: #38bdf8;
+/* Theme 3: Titanium Slate (Xám Titan Dịu Mắt) */
+html[data-theme="slate"],
+html[data-theme="eink"] {
+  --bg-primary: #202224;
+  --bg-surface: rgba(32, 34, 36, 0.88);
+  --bg-card: rgba(42, 45, 48, 0.9);
+  --bg-capsule: rgba(45, 48, 51, 0.92);
+  --text-primary: #F5F5F7;
+  --text-secondary: #98989D;
+  --text-tertiary: #6E6E73;
+  --accent: #E08A3E;
+  --accent-soft: rgba(224, 138, 62, 0.15);
+  --highlight-bg: rgba(224, 138, 62, 0.28);
+  --highlight-border: rgba(224, 138, 62, 0.5);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-card: rgba(255, 255, 255, 0.12);
+  --shadow-card: 0 12px 32px -6px rgba(0, 0, 0, 0.5);
+  --shadow-hover: 0 20px 48px -8px rgba(0, 0, 0, 0.7);
+  --shadow-capsule: 0 16px 40px -8px rgba(0, 0, 0, 0.5);
+  --shadow-popover: 0 20px 48px -10px rgba(0, 0, 0, 0.6);
 }
 
-/* 3. E-INK MONOCHROME (Mực điện tử Boox / Kindle B&W - Tối giản sắc nét) */
-[data-theme="eink"] {
-  --bg-app: #ebebeb;
-  --bg-surface: #dedede;
-  --bg-elevated: #cfcfcf;
-  --bg-reader: #f9f9f9;
-  --bg-paper: #ffffff;
-  --text-primary: #111111;
-  --text-secondary: #555555;
-  --border-color: #cccccc;
-  --accent: #222222;
-  --accent-hover: #000000;
-  --play-bg: #222222;
-  --play-hover: #000000;
-  --sentence-hover: rgba(0, 0, 0, 0.07);
-  --sentence-active-bg: #e2e2e2;
-  --sentence-active-border: #111111;
-  --sentence-active-text: #000000;
-  --popover-bg: #f2f2f2;
-  --book-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-  --badge-ok-bg: #e5e5e5;
-  --badge-ok-text: #111111;
-  --badge-warn-bg: #e5e5e5;
-  --badge-warn-text: #111111;
-  --badge-fix-bg: #e5e5e5;
-  --badge-fix-text: #111111;
-}
-
-/* 4. LIGHT DAYLIGHT (Sáng Dịu Ban Ngày) */
-[data-theme="light"] {
-  --bg-app: #f1f5f9;
-  --bg-surface: #ffffff;
-  --bg-elevated: #e2e8f0;
-  --bg-reader: #ffffff;
-  --bg-paper: #ffffff;
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --border-color: #cbd5e1;
-  --accent: #0284c7;
-  --accent-hover: #0369a1;
-  --play-bg: #059669;
-  --play-hover: #047857;
-  --sentence-hover: rgba(2, 132, 199, 0.08);
-  --sentence-active-bg: #bae6fd;
-  --sentence-active-border: #0284c7;
-  --sentence-active-text: #0369a1;
-  --popover-bg: #ffffff;
-  --book-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-  --badge-ok-bg: #d1fae5;
-  --badge-ok-text: #065f46;
-  --badge-warn-bg: #fef3c7;
-  --badge-warn-text: #92400e;
-  --badge-fix-bg: #e0f2fe;
-  --badge-fix-text: #075985;
+/* Theme 4: Midnight OLED (Đen Tuyền Tuyệt Đối) */
+html[data-theme="midnight"],
+html[data-theme="dark"] {
+  --bg-primary: #000000;
+  --bg-surface: rgba(18, 18, 18, 0.88);
+  --bg-card: rgba(28, 28, 30, 0.9);
+  --bg-capsule: rgba(28, 28, 30, 0.94);
+  --text-primary: #F5F5F7;
+  --text-secondary: #8E8E93;
+  --text-tertiary: #636366;
+  --accent: #E0A96D;
+  --accent-soft: rgba(224, 169, 109, 0.15);
+  --highlight-bg: rgba(224, 169, 109, 0.24);
+  --highlight-border: rgba(224, 169, 109, 0.45);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-card: rgba(255, 255, 255, 0.12);
+  --shadow-card: 0 12px 32px -6px rgba(0, 0, 0, 0.8);
+  --shadow-hover: 0 20px 48px -8px rgba(0, 0, 0, 0.95);
+  --shadow-capsule: 0 16px 40px -8px rgba(0, 0, 0, 0.8);
+  --shadow-popover: 0 20px 48px -10px rgba(0, 0, 0, 0.8);
 }
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
-  font-family: "Segoe UI", Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
-  background-color: var(--bg-app);
+  background-color: var(--bg-primary);
   color: var(--text-primary);
-  height: 100vh;
+  font-family: var(--font-ui);
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  transition: background-color 0.25s ease, color 0.25s ease;
+  overflow-x: hidden;
+  transition: background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), color 0.4s ease;
 }
 
-/* ============================================================================
-   TOPBAR & HEADER
-   ============================================================================ */
-.topbar {
+/* ==========================================================================
+   SCREEN MANAGEMENT (HOME <-> READER)
+   ========================================================================== */
+.screen-view {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.screen-view[hidden] {
+  display: none !important;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================================================
+   1. MÀN HÌNH HOME (APPLE BOOKS LIBRARY)
+   ========================================================================== */
+.home-topbar {
+  height: 60px;
+  padding: 0 32px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 8px 18px;
-  background-color: var(--bg-surface);
-  border-bottom: 1px solid var(--border-color);
-  flex-wrap: wrap;
-  z-index: 100;
-  transition: all 0.2s ease;
+  background: var(--bg-surface);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-bottom: 1px solid var(--border-subtle);
+  position: sticky;
+  top: 0;
+  z-index: 90;
 }
 
-.brand {
+.brand-group {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .brand-icon {
-  font-size: 24px;
-}
-
-.brand h1 {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #FFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.brand-name {
+  font-size: 17px;
   font-weight: 700;
-  line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 
-.brand .subtitle {
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-
-.toolbar-group {
+.topbar-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
-.page-nav {
+.home-container {
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 48px 24px 100px;
+  flex: 1;
   display: flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--bg-app);
-  padding: 4px 8px;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
+  flex-direction: column;
+  gap: 48px;
 }
 
-.page-indicator {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 13px;
-}
-
-.page-indicator input {
-  width: 52px;
-  padding: 3px 6px;
+/* HERO SECTION */
+.hero-section {
   text-align: center;
-  border-radius: 5px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-weight: 600;
+  max-width: 640px;
+  margin: 0 auto;
 }
 
-/* BUTTONS */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 7px 13px;
-  font-size: 13.5px;
-  font-weight: 600;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  color: var(--text-primary);
-  background: var(--bg-elevated);
-  user-select: none;
-}
-
-.btn:hover:not(:disabled) {
-  filter: brightness(1.08);
-}
-
-.btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: var(--accent);
-  color: #fff;
-}
-
-.btn-play {
-  background: var(--play-bg);
-  color: #fff;
-  min-width: 124px;
-}
-
-.btn-play:hover:not(:disabled) {
-  background: var(--play-hover);
-}
-
-.btn-secondary {
-  background: var(--bg-elevated);
-  border-color: var(--border-color);
-}
-
-.btn-icon {
-  padding: 7px 10px;
-  font-size: 14px;
-}
-
-.btn-aa {
-  font-family: var(--font-georgia);
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-  padding: 6px 12px;
-}
-
-.btn-xs {
-  padding: 4px 9px;
-  font-size: 12px;
-  border-radius: 6px;
-}
-
-.btn-sm {
-  padding: 6px 11px;
-  font-size: 12.5px;
-}
-
-.btn-lg {
-  padding: 11px 20px;
-  font-size: 15px;
-}
-
-.btn-outline {
-  background: transparent;
-  border: 1px solid var(--border-color);
-}
-
-.btn-outline:hover:not(:disabled) {
-  background: var(--bg-elevated);
-}
-
-.btn-accent {
-  background: var(--accent);
-  color: #fff;
-}
-
-/* SELECTS */
-.select-control {
-  padding: 7px 11px;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-elevated);
-  color: var(--text-primary);
+.hero-eyebrow {
   font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  outline: none;
-}
-
-.speed-select {
-  width: 78px;
-}
-
-.select-sm {
-  padding: 4px 8px;
-  font-size: 12px;
-}
-
-/* ============================================================================
-   KINDLE-STYLE "Aa" POPOVER MENU
-   ============================================================================ */
-.reading-popover {
-  position: absolute;
-  top: 56px;
-  right: 60px;
-  width: 320px;
-  background: var(--popover-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 14px;
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
-  padding: 16px;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  animation: popoverFadeIn 0.15s ease-out;
-}
-
-@keyframes popoverFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.popover-section {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.popover-title {
-  font-size: 11.5px;
-  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-secondary);
-}
-
-.popover-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.chip-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-}
-
-.chip {
-  padding: 6px 10px;
-  font-size: 12px;
-  border-radius: 7px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  cursor: pointer;
-  text-align: center;
-  transition: all 0.15s ease;
-}
-
-.chip:hover {
-  border-color: var(--accent);
-}
-
-.chip.active {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
+  letter-spacing: 0.12em;
   font-weight: 600;
-}
-
-.font-size-stepper {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  padding: 4px 8px;
-  border-radius: 8px;
-}
-
-.font-size-stepper strong {
-  min-width: 44px;
-  text-align: center;
-  font-size: 13.5px;
-}
-
-.toggle-row {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.toggle-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12.5px;
-  cursor: pointer;
-  color: var(--text-primary);
-}
-
-/* ============================================================================
-   SUBBAR (METADATA & CONTROLS)
-   ============================================================================ */
-.subbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 6px 18px;
-  background-color: var(--bg-app);
-  border-bottom: 1px solid var(--border-color);
-  font-size: 12.5px;
-  flex-wrap: wrap;
-  transition: all 0.2s ease;
-}
-
-.subbar-left,
-.subbar-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.doc-title {
-  font-weight: 600;
-  max-width: 340px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.status-badge {
-  font-size: 11.5px;
-  font-weight: 600;
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: var(--badge-ok-bg);
-  color: var(--badge-ok-text);
-}
-
-.status-badge.warn {
-  background: var(--badge-warn-bg);
-  color: var(--badge-warn-text);
-}
-
-.status-badge.fixed {
-  background: var(--badge-fix-bg);
-  color: var(--badge-fix-text);
-}
-
-.status-reason {
-  color: var(--text-secondary);
-  font-size: 11.5px;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  color: var(--text-secondary);
-  user-select: none;
-}
-
-.divider {
-  width: 1px;
-  height: 18px;
-  background: var(--border-color);
-}
-
-/* ============================================================================
-   WORKSPACE & EMPTY STATE
-   ============================================================================ */
-.workspace {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-  position: relative;
-}
-
-.empty-state {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-}
-
-.empty-card {
-  max-width: 600px;
-  text-align: center;
-  background: var(--bg-surface);
-  border: 2px dashed var(--border-color);
-  border-radius: 18px;
-  padding: 38px 32px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-}
-
-.empty-icon {
-  font-size: 46px;
+  color: var(--accent);
   margin-bottom: 12px;
 }
 
-.empty-card h2 {
+.hero-title {
+  font-family: var(--font-book);
+  font-size: 42px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin-bottom: 16px;
+}
+
+.hero-subtitle {
+  font-size: 16.5px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  font-weight: 400;
+}
+
+/* DROP ZONE / UPLOAD HERO CARD */
+.upload-hero-card {
+  background: var(--bg-card);
+  border: 1px dashed var(--border-card);
+  border-radius: 28px;
+  padding: 48px 32px;
+  text-align: center;
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.upload-hero-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-hover);
+}
+
+.upload-icon-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  transition: transform 0.25s ease;
+}
+
+.upload-hero-card:hover .upload-icon-circle {
+  transform: scale(1.1);
+}
+
+.upload-title {
   font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   margin-bottom: 8px;
 }
 
-.empty-card p {
-  color: var(--text-secondary);
+.upload-desc {
   font-size: 14.5px;
-  margin-bottom: 20px;
-}
-
-.feature-list {
-  list-style: none;
-  text-align: left;
-  background: var(--bg-app);
-  padding: 16px 20px;
-  border-radius: 12px;
+  color: var(--text-secondary);
   margin-bottom: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  font-size: 13.5px;
+  max-width: 440px;
+  margin-left: auto;
+  margin-right: auto;
   line-height: 1.5;
 }
 
-.empty-actions {
+.apple-capsule-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  border-radius: 9999px;
+  background: var(--accent);
+  color: #FFFFFF;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.apple-capsule-btn:hover {
+  transform: scale(1.04);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+}
+
+.upload-pills {
   display: flex;
-  gap: 12px;
+  align-items: center;
   justify-content: center;
   flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 24px;
+  font-size: 12.5px;
+  color: var(--text-tertiary);
 }
 
-/* ============================================================================
-   SPLIT CONTAINER
-   ============================================================================ */
-.split-container {
-  flex: 1;
+.pill-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* RECENT BOOKS GRID */
+.section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.section-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.books-grid {
   display: grid;
-  grid-template-columns: 42% 58%;
-  height: 100%;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+/* BOOK CARD (APPLE 3D BOOK COVER) */
+.book-card {
+  background: var(--bg-card);
+  border-radius: 20px;
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
+  padding: 18px;
+  display: flex;
+  gap: 16px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
   overflow: hidden;
-  transition: grid-template-columns 0.25s ease;
 }
 
-.split-container.single-pane {
-  grid-template-columns: 100%;
+.book-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-hover);
+  border-color: var(--accent);
 }
 
-.pane {
+.book-cover {
+  width: 74px;
+  height: 104px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #4A2E18 0%, #29180B 100%);
+  color: #FFE8A3;
+  padding: 10px 8px;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  overflow: hidden;
+  justify-content: space-between;
+  flex-shrink: 0;
+  box-shadow: 2px 4px 12px rgba(0, 0, 0, 0.25);
   position: relative;
+  user-select: none;
 }
 
-.pdf-pane {
-  border-right: 1px solid var(--border-color);
-  background: var(--bg-app);
+.book-cover::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 5px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.2) 0%, rgba(0,0,0,0.3) 100%);
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
 }
 
-.reader-pane {
-  background: var(--bg-reader);
+.cover-title {
+  font-family: var(--font-book);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.pane-header {
+.cover-author {
+  font-size: 8px;
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.book-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.book-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+
+.book-card-meta {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.book-card-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.progress-track {
+  height: 4px;
+  background: var(--border-subtle);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+.progress-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  display: flex;
+  justify-content: space-between;
+}
+
+.home-footer {
+  text-align: center;
+  padding: 32px 24px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.footer-quote {
+  font-family: var(--font-book);
+  font-style: italic;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+/* ==========================================================================
+   2. MÀN HÌNH ĐỌC SÁCH (READER VIEW)
+   ========================================================================== */
+.reader-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 52px;
+  padding: 0 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
   background: var(--bg-surface);
-  border-bottom: 1px solid var(--border-color);
-  font-size: 12.5px;
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-bottom: 1px solid var(--border-subtle);
+  z-index: 100;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
+}
+
+.zen-mode .reader-topbar {
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.topbar-left, .topbar-right-reader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Nút quay lại thư viện Apple */
+.back-home-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 16px;
+  border: none;
+  background: var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.back-home-btn:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.reader-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.reader-book-title {
+  font-size: 14px;
   font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  max-width: 360px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.reader-tag {
-  font-size: 12.5px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-}
-
-.hint-text {
-  font-weight: 400;
+.reader-page-subtitle {
+  font-size: 11.5px;
   color: var(--text-secondary);
-  margin-left: 6px;
-}
-
-.zoom-controls,
-.reader-header-actions {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.pdf-canvas-wrapper {
+.reader-page-subtitle input {
+  width: 34px;
+  text-align: center;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-primary);
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 4px;
+}
+
+.reader-page-subtitle input:focus {
+  outline: none;
+  background: var(--bg-card);
+  border-color: var(--accent);
+}
+
+.nav-arrow-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.nav-arrow-btn:hover:not(:disabled) {
+  background: var(--border-subtle);
+  color: var(--accent);
+}
+
+.nav-arrow-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Reading Viewport */
+.reader-viewport {
   flex: 1;
-  overflow: auto;
+  width: 100%;
   display: flex;
   justify-content: center;
-  align-items: flex-start;
-  padding: 16px;
+  padding: 80px 24px 160px;
 }
 
-#pdfPageImage {
-  max-width: 100%;
-  height: auto;
-  border-radius: 6px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
-  transition: width 0.15s ease;
+.book-container {
+  width: 100%;
+  max-width: var(--book-width);
+  font-family: var(--font-book);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+  color: var(--text-primary);
+  letter-spacing: 0.005em;
+  transition: max-width 0.3s ease, font-size 0.2s ease;
 }
 
-/* ============================================================================
-   E-READER VIEWPORT & BOOK PAPER CANVAS
-   ============================================================================ */
-.book-viewport {
-  flex: 1;
-  overflow-y: auto;
+.banner-quote {
+  text-align: center;
+  font-style: italic;
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  margin-bottom: 36px;
+  opacity: 0.8;
+}
+
+.book-chapter-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.book-chapter-num {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.book-chapter-title {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  margin-bottom: 16px;
+}
+
+.book-divider {
+  width: 48px;
+  height: 2px;
+  background: var(--accent);
+  margin: 0 auto;
+  opacity: 0.6;
+  border-radius: 2px;
+}
+
+.book-paragraph {
+  margin-bottom: 24px;
+  text-align: justify;
+  text-justify: inter-word;
+  text-indent: 1.8em;
+}
+
+/* Sentence Spans */
+.sentence-item,
+.sentence-span {
+  display: inline;
+  padding: 2px 2px;
+  margin: 0 1px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+}
+
+.sentence-item:hover,
+.sentence-span:hover {
+  background-color: var(--accent-soft);
+}
+
+.sentence-item.active,
+.sentence-span.active {
+  background-color: var(--highlight-bg) !important;
+  box-shadow: 0 0 0 2px var(--highlight-border);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   THE FLOATING CAPSULE PLAYER (VIÊN THUỐC ÂM THANH NỔI)
+   ========================================================================== */
+.floating-capsule {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 60px;
+  background: var(--bg-capsule);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid var(--border-subtle);
+  border-radius: 9999px;
+  box-shadow: var(--shadow-capsule);
   display: flex;
-  justify-content: center;
-  position: relative;
-  padding: 0 20px;
+  align-items: center;
+  padding: 0 14px;
+  gap: 10px;
+  z-index: 100;
+  user-select: none;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Mũi tên lật trang nổi ở mép màn hình */
-.book-nav-arrow {
-  position: sticky;
-  top: 45%;
+.floating-capsule[hidden] {
+  display: none !important;
+}
+
+.floating-capsule:hover {
+  box-shadow: 0 20px 48px -6px rgba(0,0,0,0.22);
+  transform: translateX(-50%) translateY(-2px);
+}
+
+.capsule-play-btn {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  border: 1px solid var(--border-color);
-  background: var(--bg-surface);
-  color: var(--text-secondary);
-  font-size: 24px;
-  line-height: 1;
-  cursor: pointer;
+  background: var(--accent);
+  color: #FFFFFF;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 20;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
-  opacity: 0.45;
-  transition: all 0.2s ease;
-  user-select: none;
-}
-
-.book-nav-arrow:hover {
-  opacity: 1;
-  color: var(--text-primary);
-  background: var(--bg-elevated);
-  transform: scale(1.08);
-}
-
-.book-nav-arrow.prev {
-  margin-right: auto;
-  left: 12px;
-}
-
-.book-nav-arrow.next {
-  margin-left: auto;
-  right: 12px;
-}
-
-/* Trang giấy sách trung tâm */
-.book-page-canvas {
-  width: 100%;
-  max-width: var(--reading-max-width, 720px);
-  min-height: 100%;
-  background: var(--bg-paper);
-  box-shadow: var(--book-shadow);
-  padding: 40px 52px 90px;
-  margin: 16px auto;
-  border-radius: 4px;
-  display: flex;
-  flex-direction: column;
-  transition: max-width 0.2s ease;
-}
-
-/* NỘI DUNG ĐỌC SÁCH */
-.sentences-container {
-  font-family: var(--font-reading);
-  font-size: var(--font-size, 18px);
-  line-height: var(--line-height, 1.8);
-  color: var(--text-primary);
-  word-break: break-word;
-}
-
-/* Đoạn văn sách (Book Paragraph) */
-.book-paragraph {
-  margin-bottom: 1.25em;
-  text-align: var(--text-align, justify);
-  text-indent: var(--para-indent, 1.6em);
-  text-justify: inter-word;
-  hyphens: auto;
-}
-
-/* Tiêu đề sách (Book Heading) */
-.book-heading {
-  font-family: var(--font-georgia);
-  font-size: 1.35em;
-  font-weight: 700;
-  margin: 1.2em 0 0.8em;
-  text-align: center;
-  text-indent: 0;
-  letter-spacing: -0.3px;
-  color: var(--text-primary);
-}
-
-/* Câu đọc trong sách kiểu E-Reader */
-.sentence-item {
-  display: inline;
-  padding: 2px 3px;
-  border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.15s ease, box-shadow 0.15s ease;
-  text-indent: 0;
+  font-size: 16px;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  flex-shrink: 0;
 }
 
-.sentence-item:hover {
-  background-color: var(--sentence-hover);
-}
+.capsule-play-btn:hover { transform: scale(1.08); }
+.capsule-play-btn:active { transform: scale(0.94); }
 
-/* Câu đang đọc: Tô sáng kiểu bút dạ quang sách (Whispersync Highlighter) */
-.sentence-item.active {
-  background-color: var(--sentence-active-bg);
-  box-shadow: 0 0 0 3px var(--sentence-active-bg);
-  color: var(--sentence-active-text, inherit);
-  border-radius: 4px;
-  font-weight: 500;
-}
-
-/* Chế độ xem danh sách câu riêng biệt (tùy chọn) */
-.sentences-container.list-mode .sentence-item {
+.capsule-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
   display: flex;
-  align-items: baseline;
-  gap: 10px;
-  padding: 8px 12px;
-  margin-bottom: 8px;
-  border-left: 3px solid transparent;
-  border-radius: 6px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
-.sentences-container.list-mode .sentence-item:hover {
-  background-color: var(--sentence-hover);
-}
+.capsule-btn:hover { background: var(--border-subtle); }
+.capsule-btn:active { transform: scale(0.92); }
 
-.sentences-container.list-mode .sentence-item.active {
-  background-color: var(--sentence-active-bg);
-  border-left-color: var(--sentence-active-border);
-}
-
-.sentences-container.list-mode .sentence-index {
+.capsule-btn.btn-skip {
   font-size: 11px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  opacity: 0.65;
-  user-select: none;
+  font-weight: 600;
 }
 
-/* ============================================================================
-   CHÂN TRANG MÁY ĐỌC SÁCH (E-READER FOOTER PROGRESS)
-   ============================================================================ */
-.book-footer-bar {
+.capsule-divider {
+  width: 1px;
+  height: 22px;
+  background: var(--border-subtle);
+}
+
+.capsule-pill {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 17px;
+  background: var(--border-subtle);
+  border: none;
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.capsule-pill:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.capsule-pill select {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  cursor: pointer;
+  outline: none;
+  max-width: 190px;
+}
+
+.capsule-pill select option {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.waveform-bars {
+  display: flex;
+  align-items: center;
+  gap: 2.5px;
+  height: 16px;
+  padding: 0 4px;
+}
+
+.waveform-bar {
+  width: 2.5px;
+  height: 5px;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: height 0.2s ease;
+}
+
+.playing .waveform-bar:nth-child(1),
+.waveform-bars.playing .waveform-bar:nth-child(1) { animation: wave 0.8s ease-in-out infinite alternate; }
+.playing .waveform-bar:nth-child(2),
+.waveform-bars.playing .waveform-bar:nth-child(2) { animation: wave 0.6s ease-in-out 0.2s infinite alternate; }
+.playing .waveform-bar:nth-child(3),
+.waveform-bars.playing .waveform-bar:nth-child(3) { animation: wave 0.9s ease-in-out 0.4s infinite alternate; }
+
+@keyframes wave {
+  0% { height: 4px; }
+  100% { height: 16px; }
+}
+
+/* ==========================================================================
+   POPOVERS ([Aa] & [⋯] CHUẨN APPLE)
+   ========================================================================== */
+.apple-popover {
+  position: fixed;
+  background: var(--bg-capsule);
+  backdrop-filter: blur(32px) saturate(200%);
+  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  box-shadow: var(--shadow-popover);
+  padding: 20px;
+  z-index: 150;
+  width: 320px;
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.apple-popover[hidden] {
+  display: none !important;
+}
+
+.reading-popover { top: 60px; right: 24px; }
+.more-popover { top: 60px; right: 24px; width: 300px; }
+.sleep-popover { bottom: 96px; left: 50%; transform: translateX(-50%); width: 280px; }
+
+.popover-header, .popover-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+
+.popover-section { margin-bottom: 18px; }
+.popover-section:last-child { margin-bottom: 0; }
+
+.theme-selector {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.theme-circle {
+  height: 42px;
+  border-radius: 10px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.theme-circle.white { background: #FFFFFF; color: #1C1C1E; border-color: rgba(0,0,0,0.1); }
+.theme-circle.sepia { background: #F7F3E9; color: #2C2621; border-color: rgba(0,0,0,0.1); }
+.theme-circle.slate { background: #25282A; color: #E5E5E7; }
+.theme-circle.midnight { background: #000000; color: #FFFFFF; }
+
+.theme-circle.active {
+  border-color: var(--accent);
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.size-stepper {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 8px 24px;
-  background: var(--bg-surface);
-  border-top: 1px solid var(--border-color);
-  font-size: 12px;
-  color: var(--text-secondary);
-  z-index: 50;
-  user-select: none;
+  background: var(--border-subtle);
+  border-radius: 12px;
+  padding: 4px;
 }
 
-.book-footer-left,
-.book-footer-right {
+.stepper-btn {
+  width: 44px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-book);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.stepper-btn:hover { background: var(--bg-primary); }
+
+.font-list, .chip-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.font-option, .chip {
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  transition: background 0.15s ease;
+}
+
+.font-option:hover, .chip:hover { background: var(--border-subtle); }
+.font-option.active, .chip.active {
+  color: var(--accent);
+  font-weight: 600;
+  background: var(--accent-soft);
+}
+
+.more-menu-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.more-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 13.5px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.more-menu-item:hover:not(:disabled) { background: var(--border-subtle); }
+
+.popover-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 8px 0;
+}
+
+/* DRAWER (APPLE BOOKS SLIDE-OVER) */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 200;
+  transition: opacity 0.3s ease;
+}
+
+.drawer-backdrop[hidden] { display: none !important; }
+
+.apple-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 360px;
+  background: var(--bg-capsule);
+  backdrop-filter: blur(32px) saturate(190%);
+  -webkit-backdrop-filter: blur(32px) saturate(190%);
+  border-right: 1px solid var(--border-subtle);
+  z-index: 201;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  box-shadow: var(--shadow-popover);
+  overflow: hidden;
+}
+
+.apple-drawer[hidden] { display: none !important; }
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.drawer-tabs {
+  display: flex;
+  background: var(--border-subtle);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+  flex: 1;
+}
+
+.drawer-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 4px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.drawer-tab.active {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.drawer-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.drawer-pane[hidden] { display: none !important; }
+
+.drawer-empty-hint {
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  padding: 40px 16px;
+  line-height: 1.6;
+}
+
+.drawer-item, .toc-item {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-primary);
+  margin-bottom: 3px;
+  transition: background 0.15s ease;
   gap: 8px;
 }
 
-.book-footer-doc {
-  max-width: 220px;
+.drawer-item:hover, .toc-item:hover { background: var(--border-subtle); }
+.drawer-item.active, .toc-item.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.drawer-item.level-2 { padding-left: 24px; font-size: 13px; opacity: 0.9; }
+.drawer-item.level-3 { padding-left: 36px; font-size: 12.5px; opacity: 0.8; }
+
+.drawer-item-title {
+  flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-weight: 500;
 }
 
-.book-progress-wrapper {
-  flex: 1;
-  max-width: 380px;
+.drawer-item-page {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
 }
 
-.book-progress-track {
-  height: 4px;
-  background: var(--border-color);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.book-progress-fill {
-  height: 100%;
-  background: var(--accent);
-  transition: width 0.3s ease;
-}
-
-.book-percent-badge {
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-/* ============================================================================
-   CHẾ ĐỘ TẬP TRUNG ĐỌC SÁCH (ZEN / FOCUS E-READER MODE)
-   ============================================================================ */
-body.zen-mode .topbar,
-body.zen-mode .subbar,
-body.zen-mode .pdf-pane {
-  display: none !important;
-}
-
-body.zen-mode .split-container {
-  grid-template-columns: 100% !important;
-}
-
-body.zen-mode .pane-header {
-  display: none;
-}
-
-body.zen-mode .book-page-canvas {
-  margin-top: 24px;
-}
-
-.exit-zen-btn {
-  position: fixed;
-  top: 16px;
-  right: 20px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
-  font-size: 12px;
-  font-weight: 600;
-  padding: 6px 14px;
-  border-radius: 20px;
+.drawer-item-del-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
-  z-index: 999;
-  opacity: 0.8;
-  transition: opacity 0.2s ease;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  opacity: 0.6;
 }
 
-.exit-zen-btn:hover {
+.drawer-item-del-btn:hover {
   opacity: 1;
+  color: #E53935;
+  background: rgba(229, 57, 53, 0.1);
 }
 
-/* ============================================================================
-   OCR PROGRESS & EDIT BOX
-   ============================================================================ */
-.ocr-progress-box {
-  margin: 12px 18px 0;
-  padding: 12px 16px;
-  background: var(--bg-surface);
-  border: 1px solid var(--accent);
-  border-radius: 10px;
-}
-
-.ocr-progress-header {
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-  margin-bottom: 8px;
-}
-
-.progress-bar-bg {
+.hl-color-dot {
+  width: 8px;
   height: 8px;
-  background: var(--bg-elevated);
-  border-radius: 999px;
-  overflow: hidden;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
-.progress-bar-fill {
-  height: 100%;
-  width: 0%;
-  background: var(--accent);
-  transition: width 0.2s ease;
-}
-
-.editor-box {
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border-color);
-  background: var(--bg-surface);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.editor-box textarea {
-  width: 100%;
-  min-height: 180px;
-  padding: 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-app);
-  color: var(--text-primary);
-  font-family: inherit;
-  font-size: 15px;
-  line-height: 1.6;
-  resize: vertical;
-}
-
-.editor-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.empty-page-notice {
-  padding: 28px;
-  text-align: center;
-  background: var(--bg-surface);
-  border: 1px dashed var(--border-color);
-  border-radius: 12px;
-  color: var(--text-secondary);
-}
-
-.empty-page-notice p {
-  margin-bottom: 14px;
-}
-
-[hidden] {
-  display: none !important;
-}
-
-/* ============================================================================
-   SETTINGS MODAL
-   ============================================================================ */
+/* MODAL */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(6px);
+  z-index: 300;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-  padding: 16px;
+  padding: 20px;
 }
+
+.modal-backdrop[hidden] { display: none !important; }
 
 .modal-card {
   width: 100%;
-  max-width: 480px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 14px;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  max-width: 440px;
+  background: var(--bg-capsule);
+  backdrop-filter: blur(32px);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  box-shadow: var(--shadow-popover);
+  padding: 24px;
 }
 
 .modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 20px;
 }
 
-.modal-header h3 {
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.modal-body {
-  padding: 18px;
-  display: flex;
-  flex-direction: column;
-}
-
-.setting-label {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 6px;
-  font-size: 13.5px;
-}
-
-.setting-label small {
-  color: var(--text-secondary);
-}
-
-.setting-label small a {
-  color: var(--accent);
-}
-
-.text-input {
+.apple-input {
   width: 100%;
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-app);
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-primary);
   color: var(--text-primary);
   font-size: 14px;
-  font-family: monospace;
+  margin-top: 6px;
+  outline: none;
 }
 
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 12px 18px;
-  border-top: 1px solid var(--border-color);
-  background: var(--bg-app);
+.apple-btn-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.apple-btn-icon:hover {
+  background: var(--border-subtle);
+  transform: scale(1.05);
+}
+
+.btn-aa {
+  font-family: var(--font-book);
+  font-size: 16px;
+  font-weight: 600;
 }
 
 /* RESPONSIVE */
-@media (max-width: 900px) {
-  .split-container {
-    grid-template-columns: 100% !important;
-  }
-  .pdf-pane {
-    display: none;
-  }
-  .reading-popover {
-    right: 16px;
-    width: 290px;
-  }
-}
-
-/* ============================================================================
-   SPEED STEPPER & SKIP BUTTONS & SLEEP TIMER
-   ============================================================================ */
-.btn-skip {
-  font-size: 11.5px;
-  font-weight: 600;
-  padding: 4px 8px;
-  min-width: 42px;
-}
-
-.speed-stepper {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 2px 4px;
-}
-
-.stepper-btn {
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.speed-val {
-  min-width: 38px;
-  text-align: center;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.sleep-timer-popover {
-  position: absolute;
-  top: 54px;
-  left: 360px;
-  width: 280px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  padding: 14px;
-  z-index: 1000;
-}
-
-.sleep-timer-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.sleep-countdown {
-  margin-top: 10px;
-  padding: 6px 10px;
-  background: var(--bg-app);
-  border-radius: 6px;
-  font-size: 12px;
-  color: var(--accent);
-  text-align: center;
-}
-
-/* ============================================================================
-   AUDIO SCRUBBER BAR
-   ============================================================================ */
-.audio-scrubber-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 16px;
-  background: var(--bg-surface);
-  border-bottom: 1px solid var(--border-color);
-  font-size: 11.5px;
-  color: var(--text-secondary);
-}
-
-.audio-time {
-  min-width: 32px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-}
-
-.audio-scrubber {
-  flex: 1;
-  height: 5px;
-  -webkit-appearance: none;
-  appearance: none;
-  background: var(--border-color);
-  border-radius: 4px;
-  outline: none;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.audio-scrubber::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--accent);
-  cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-}
-
-.audio-scrubber::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--accent);
-  cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-}
-
-/* ============================================================================
-   BOOKMARK RIBBON BUTTON
-   ============================================================================ */
-.bookmark-ribbon-btn {
-  position: absolute;
-  top: 12px;
-  right: 18px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--text-secondary);
-  opacity: 0.35;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  z-index: 10;
-}
-
-.bookmark-ribbon-btn:hover {
-  opacity: 0.85;
-  transform: scale(1.1);
-}
-
-.bookmark-ribbon-btn.active {
-  color: #d9381e;
-  opacity: 1;
-  transform: scale(1.15);
-  filter: drop-shadow(0 2px 5px rgba(217, 56, 30, 0.4));
-}
-
-/* ============================================================================
-   FLOATING SELECTION ACTION BAR
-   ============================================================================ */
-.floating-selection-bar {
-  position: fixed;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-  z-index: 1200;
-  transform: translate(-50%, -100%);
-  margin-top: -10px;
-  animation: floatFadeIn 0.15s ease-out;
-}
-
-.floating-selection-bar[hidden] {
-  display: none !important;
-}
-
-@keyframes floatFadeIn {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -90%);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, -100%);
-  }
-}
-
-.hl-colors {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.hl-color-btn {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  cursor: pointer;
-  transition: transform 0.15s, border-color 0.15s;
-}
-
-.hl-color-btn:hover {
-  transform: scale(1.25);
-}
-
-.hl-yellow { background-color: #ffd54f; }
-.hl-green { background-color: #81c784; }
-.hl-pink { background-color: #f48fb1; }
-.hl-blue { background-color: #90caf9; }
-
-.floating-divider {
-  width: 1px;
-  height: 20px;
-  background: var(--border-color);
-  margin: 0 4px;
-}
-
-.floating-btn {
-  background: none;
-  border: none;
-  color: var(--text-primary);
-  font-size: 12.5px;
-  font-weight: 500;
-  padding: 4px 8px;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  transition: background 0.15s;
-}
-
-.floating-btn:hover {
-  background: var(--bg-app);
-  color: var(--accent);
-}
-
-/* User Highlights on Book Text */
-mark.user-highlight {
-  border-radius: 3px;
-  padding: 1px 3px;
-  cursor: pointer;
-}
-
-mark.highlight-yellow {
-  background-color: rgba(255, 213, 79, 0.45);
-  color: inherit;
-}
-
-mark.highlight-green {
-  background-color: rgba(129, 199, 132, 0.45);
-  color: inherit;
-}
-
-mark.highlight-pink {
-  background-color: rgba(244, 143, 177, 0.45);
-  color: inherit;
-}
-
-mark.highlight-blue {
-  background-color: rgba(144, 202, 249, 0.45);
-  color: inherit;
-}
-
-/* ============================================================================
-   SIDEBAR DRAWER (TOC / BOOKMARKS / HIGHLIGHTS)
-   ============================================================================ */
-.drawer-panel {
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 360px;
-  max-width: 85vw;
-  background: var(--bg-surface);
-  border-right: 1px solid var(--border-color);
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
-  z-index: 2000;
-  display: flex;
-  flex-direction: column;
-  transform: translateX(0);
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.drawer-panel[hidden] {
-  display: none !important;
-}
-
-.drawer-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(2px);
-  z-index: 1999;
-}
-
-.drawer-backdrop[hidden] {
-  display: none !important;
-}
-
-.drawer-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--border-color);
-  background: var(--bg-app);
-}
-
-.drawer-tabs {
-  display: flex;
-  gap: 4px;
-}
-
-.drawer-tab {
-  background: none;
-  border: none;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.drawer-tab.active {
-  background: var(--bg-surface);
-  color: var(--accent);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.drawer-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px 0;
-}
-
-.drawer-tab-content[hidden] {
-  display: none !important;
-}
-
-.drawer-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.drawer-empty-hint {
-  padding: 24px 18px;
-  text-align: center;
-  color: var(--text-secondary);
-  font-size: 13.5px;
-  line-height: 1.5;
-}
-
-.drawer-item {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border-color);
-  cursor: pointer;
-  transition: background 0.15s;
-  gap: 10px;
-}
-
-.drawer-item:hover {
-  background: var(--bg-app);
-}
-
-.drawer-item-title {
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--text-primary);
-  flex: 1;
-  line-height: 1.4;
-}
-
-.drawer-item.level-2 .drawer-item-title {
-  padding-left: 16px;
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.drawer-item.level-3 .drawer-item-title {
-  padding-left: 28px;
-  font-size: 12.5px;
-  color: var(--text-secondary);
-}
-
-.drawer-item-page {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--accent);
-  background: var(--bg-app);
-  padding: 2px 6px;
-  border-radius: 4px;
-  white-space: nowrap;
-}
-
-.drawer-item-del-btn {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.drawer-item-del-btn:hover {
-  color: #d9381e;
-  background: rgba(217, 56, 30, 0.1);
-}
-
-.hl-color-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  display: inline-block;
-  margin-right: 6px;
-  flex-shrink: 0;
-  margin-top: 4px;
-}
-
-/* ============================================================================
-   DICTIONARY & SHORTCUTS MODALS
-   ============================================================================ */
-.dict-modal-card {
-  max-width: 540px;
-  width: 90vw;
-}
-
-.dict-search-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.dict-results {
-  max-height: 360px;
-  overflow-y: auto;
-  border-radius: 8px;
-  background: var(--bg-app);
-  padding: 14px;
-}
-
-.dict-word-title {
-  font-size: 19px;
-  font-weight: 700;
-  color: var(--accent);
-  margin-bottom: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.dict-pos-tag {
-  font-size: 12px;
-  font-weight: 600;
-  background: var(--bg-surface);
-  padding: 2px 8px;
-  border-radius: 4px;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
-  margin-top: 8px;
-  margin-bottom: 4px;
-  display: inline-block;
-}
-
-.dict-defs-list {
-  padding-left: 20px;
-  margin: 6px 0;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.dict-source-label {
-  font-size: 11.5px;
-  color: var(--text-secondary);
-  margin-top: 10px;
-  text-align: right;
-  font-style: italic;
-}
-
-.shortcuts-modal-card {
-  max-width: 520px;
-  width: 90vw;
-}
-
-.shortcuts-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-}
-
-.shortcut-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background: var(--bg-app);
-  border-radius: 8px;
-  font-size: 13.5px;
-}
-
-kbd {
-  display: inline-block;
-  padding: 3px 8px;
-  font-family: monospace;
-  font-size: 12.5px;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--text-primary);
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 5px;
-  box-shadow: 0 2px 0 var(--border-color);
+@media (max-width: 768px) {
+  .hero-title { font-size: 32px; }
+  .home-container { padding: 32px 16px 80px; gap: 36px; }
+  .upload-hero-card { padding: 32px 20px; }
+  .floating-capsule { bottom: 20px; height: 54px; padding: 0 10px; gap: 6px; }
+  .capsule-play-btn { width: 38px; height: 38px; }
+  .reader-book-title { max-width: 160px; }
 }

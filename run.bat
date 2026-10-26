@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 chcp 65001 >nul
 title VN PDF Reader - Đọc PDF Tiếng Việt Tự Nhiên
 cd /d "%~dp0"

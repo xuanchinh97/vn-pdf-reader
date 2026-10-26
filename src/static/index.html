@@ -3,475 +3,399 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VN PDF Reader — Đọc Sách & PDF Tiếng Việt Phong Cách E-Reader</title>
-  <link rel="stylesheet" href="/styles.css" />
-  <!-- Google Fonts chuẩn Typography cho Máy đọc sách (Merriweather, Literata, Inter) -->
+  <title>VN PDF Reader — Thư Viện & Đọc Sách Tối Giản</title>
+  
+  <!-- Phông chữ chuẩn Apple Books & Typography cao cấp -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;1,7..72,400&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&display=swap" rel="stylesheet" />
-  <!-- Tesseract.js v5 hỗ trợ OCR Tiếng Việt trực tiếp trên trình duyệt không cần cài đặt -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet" />
+  
+  <link rel="stylesheet" href="/styles.css?v=apple3.2" />
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
-  <!-- HEADER / TOOLBAR -->
-  <header class="topbar">
-    <div class="brand">
-      <div class="brand-icon">📖</div>
-      <div>
-        <h1>VN PDF Reader</h1>
-        <span class="subtitle">Sửa lỗi font TCVN3/VNI • Quét OCR • Giọng đọc AI</span>
+
+  <!-- ==========================================================================
+       SCREEN 1: MÀN HÌNH HOME (APPLE BOOKS LIBRARY)
+       ========================================================================== -->
+  <div id="homeScreen" class="screen-view">
+    <header class="home-topbar">
+      <div class="brand-group">
+        <div class="brand-icon">📖</div>
+        <div class="brand-name">VN PDF Reader</div>
       </div>
-    </div>
+      
+      <div class="topbar-right">
+        <button class="apple-btn-icon" id="themeBtn" title="Đổi màu không gian đọc (Sepia, Trắng, Slate, OLED)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+        </button>
+        <button class="apple-btn-icon" id="homeSettingsBtn" title="Cài đặt API & Proxy">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </button>
+      </div>
+    </header>
 
-    <!-- Chọn file, Mục lục & Điều hướng trang -->
-    <div class="toolbar-group">
-      <button class="btn btn-icon" id="drawerToggleBtn" title="Mục lục, Dấu trang & Highlights (Phím M)">
-        📑
-      </button>
-      <label class="btn btn-primary" for="pdfFileInput" title="Mở file PDF từ máy tính">
-        📂 Mở PDF
-      </label>
-      <input type="file" id="pdfFileInput" accept=".pdf,application/pdf" hidden />
+    <main class="home-container">
+      <section class="hero-section">
+        <div class="hero-eyebrow">Thư viện của bạn</div>
+        <h1 class="hero-title">Đắm chìm vào từng trang sách & giọng kể</h1>
+        <p class="hero-subtitle">Mở cuốn sách PDF bất kỳ. Tự động sửa lỗi font tiếng Việt và lắng nghe bằng giọng đọc AI tự nhiên.</p>
+      </section>
 
-      <div class="page-nav" id="pageNavGroup">
-        <button class="btn btn-icon" id="prevPageBtn" title="Trang trước (Phím mũi tên trái)" disabled>◀</button>
-        <div class="page-indicator">
-          <span>Trang</span>
-          <input type="number" id="pageInput" min="1" value="1" disabled />
-          <span>/ <strong id="totalPagesLabel">0</strong></span>
+      <!-- UPLOAD HERO HUB -->
+      <section class="upload-hero-card" id="homeDropZone">
+        <div class="upload-icon-circle">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
         </div>
-        <button class="btn btn-icon" id="nextPageBtn" title="Trang sau (Phím mũi tên phải)" disabled>▶</button>
-      </div>
-    </div>
-
-    <!-- Bộ điều khiển giọng đọc (TTS Player) -->
-    <div class="toolbar-group player-controls">
-      <button class="btn btn-icon" id="prevSentenceBtn" title="Câu trước" disabled>⏮</button>
-      <button class="btn btn-icon btn-skip" id="skipBackBtn" title="Lùi 5 giây (hoặc câu trước)" disabled>⏪ 5s</button>
-      <button class="btn btn-play" id="playPauseBtn" title="Đọc / Tạm dừng (Phím Space)" disabled>
-        ▶ Đọc ngay
-      </button>
-      <button class="btn btn-icon btn-skip" id="skipForwardBtn" title="Tiến 10 giây (hoặc câu tiếp)" disabled>⏩ 10s</button>
-      <button class="btn btn-icon" id="stopBtn" title="Dừng đọc" disabled>⏹</button>
-      <button class="btn btn-icon" id="nextSentenceBtn" title="Câu tiếp theo" disabled>⏭</button>
-
-      <select id="voiceSelect" class="select-control" title="Chọn giọng đọc">
-        <option value="vi-VN-HoaiMyNeural">🎙️ Hoài My (Nữ - Miền Nam)</option>
-        <option value="vi-VN-NamMinhNeural">🎙️ Nam Minh (Nam - Miền Bắc)</option>
-      </select>
-
-      <div class="speed-stepper" title="Tốc độ đọc (Bước nhảy 0.1x)">
-        <button class="btn btn-xs stepper-btn" id="speedDecBtn" title="Giảm tốc độ">-</button>
-        <span class="speed-val" id="speedValLabel">1.0x</span>
-        <button class="btn btn-xs stepper-btn" id="speedIncBtn" title="Tăng tốc độ">+</button>
-      </div>
-
-      <select id="speedSelect" class="select-control speed-select" hidden>
-        <option value="0.85">0.85x</option>
-        <option value="1.0" selected>1.0x</option>
-        <option value="1.15">1.15x</option>
-        <option value="1.25">1.25x</option>
-        <option value="1.5">1.5x</option>
-        <option value="1.75">1.75x</option>
-        <option value="2.0">2.0x</option>
-      </select>
-
-      <button class="btn btn-icon" id="sleepTimerBtn" title="Hẹn giờ ngủ (Sleep Timer)">
-        🌙
-      </button>
-    </div>
-
-    <!-- Tùy chọn máy đọc sách & Giao diện -->
-    <div class="toolbar-group">
-      <button class="btn btn-secondary" id="downloadMp3Btn" title="Tải file âm thanh MP3 của toàn bộ trang này" disabled>
-        ⬇️ Tải MP3
-      </button>
-      <button class="btn btn-icon btn-aa" id="readingSettingsBtn" title="Tùy chỉnh phong cách đọc sách: Phông, Cỡ chữ, Lề (Aa)">
-        Aa
-      </button>
-      <button class="btn btn-icon" id="zenModeBtn" title="Chế độ đọc tập trung (Toàn màn hình sách - Phím F)">
-        📖
-      </button>
-      <button class="btn btn-icon" id="themeToggleBtn" title="Đổi chủ đề: Giấy ngà / Đêm / E-Ink / Sáng">
-        📜
-      </button>
-      <button class="btn btn-icon" id="shortcutsBtn" title="Bảng phím tắt (Phím ?)">
-        ⌨️
-      </button>
-      <button class="btn btn-icon" id="settingsBtn" title="Cài đặt API Key FPT.AI & Proxy">
-        ⚙️
-      </button>
-    </div>
-  </header>
-
-  <!-- BẢNG TÙY CHỈNH PHONG CÁCH ĐỌC SÁCH (KINDLE / KOBO AA POPOVER) -->
-  <div class="reading-popover" id="readingSettingsPopover" hidden>
-    <div class="popover-arrow"></div>
-    <div class="popover-section">
-      <div class="popover-title">Phông chữ sách</div>
-      <div class="chip-grid" id="fontFamilyChips">
-        <button class="chip active" data-font="merriweather">📖 Sách (Merriweather)</button>
-        <button class="chip" data-font="literata">📱 E-Reader (Literata)</button>
-        <button class="chip" data-font="inter">🔤 Không chân (Inter)</button>
-        <button class="chip" data-font="georgia">✒️ Cổ điển (Georgia)</button>
-      </div>
-    </div>
-
-    <div class="popover-section">
-      <div class="popover-row">
-        <span class="popover-title">Cỡ chữ</span>
-        <div class="font-size-stepper">
-          <button class="btn btn-xs" id="fontDecPopoverBtn">A-</button>
-          <strong id="fontSizePopoverLabel">18px</strong>
-          <button class="btn btn-xs" id="fontIncPopoverBtn">A+</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="popover-section">
-      <div class="popover-title">Khoảng cách dòng</div>
-      <div class="chip-grid" id="lineHeightChips">
-        <button class="chip" data-lh="1.5">Gọn (1.5)</button>
-        <button class="chip active" data-lh="1.8">Chuẩn (1.8)</button>
-        <button class="chip" data-lh="2.1">Thoáng (2.1)</button>
-      </div>
-    </div>
-
-    <div class="popover-section">
-      <div class="popover-title">Độ rộng trang sách</div>
-      <div class="chip-grid" id="pageWidthChips">
-        <button class="chip active" data-width="720px">Sách (720px)</button>
-        <button class="chip" data-width="880px">Vừa (880px)</button>
-        <button class="chip" data-width="100%">Tràn lề (100%)</button>
-      </div>
-    </div>
-
-    <div class="popover-section">
-      <div class="popover-title">Định dạng đoạn văn</div>
-      <div class="toggle-row">
-        <label class="toggle-item">
-          <input type="checkbox" id="justifyToggle" checked />
-          <span>Căn đều 2 lề (Justified)</span>
+        <h2 class="upload-title">Kéo thả cuốn sách của bạn vào đây</h2>
+        <p class="upload-desc">Hoặc chọn tệp PDF từ máy tính của bạn để bắt đầu thưởng thức ngay lập tức.</p>
+        
+        <label class="apple-capsule-btn" for="pdfFileInput">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"></path></svg>
+          <span>Mở cuốn sách mới</span>
         </label>
-        <label class="toggle-item">
-          <input type="checkbox" id="indentToggle" checked />
-          <span>Thụt đầu dòng đoạn văn</span>
-        </label>
-        <label class="toggle-item">
-          <input type="checkbox" id="bookFlowToggle" checked />
-          <span>Chế độ đoạn văn sách</span>
-        </label>
-      </div>
-    </div>
-  </div>
+        <input type="file" id="pdfFileInput" accept=".pdf,application/pdf" hidden />
 
-  <!-- POPOVER HẸN GIỜ NGỦ (SLEEP TIMER) -->
-  <div class="sleep-timer-popover" id="sleepTimerPopover" hidden>
-    <div class="popover-arrow"></div>
-    <div class="popover-section">
-      <div class="popover-title">🌙 Hẹn giờ tắt đọc sách</div>
-      <div class="chip-grid sleep-timer-grid">
-        <button class="chip active" data-sleep="0">Tắt hẹn giờ</button>
-        <button class="chip" data-sleep="15">15 phút</button>
-        <button class="chip" data-sleep="30">30 phút</button>
-        <button class="chip" data-sleep="45">45 phút</button>
-        <button class="chip" data-sleep="page">Hết trang này</button>
-      </div>
-      <div class="sleep-countdown" id="sleepCountdownLabel" hidden>
-        ⏳ Sẽ dừng đọc sau: <strong id="sleepTimeRemaining">15:00</strong> (fade-out 10s cuối)
-      </div>
-    </div>
-  </div>
-
-  <!-- THANH CÔNG CỤ XỬ LÝ FONT & OCR -->
-  <section class="subbar">
-    <div class="subbar-left">
-      <span class="doc-title" id="docTitleLabel">Chưa mở tài liệu nào</span>
-      <span class="status-badge" id="statusBadge" hidden>Chuẩn Unicode</span>
-      <span class="status-reason" id="statusReasonLabel"></span>
-    </div>
-
-    <div class="subbar-right">
-      <label class="checkbox-label" title="Tự động chuyển sang trang tiếp theo và đọc tiếp khi hết trang">
-        <input type="checkbox" id="autoNextPageCheckbox" checked />
-        <span>Tự lật trang</span>
-      </label>
-
-      <label class="checkbox-label" title="Tự động quét OCR Tiếng Việt nếu phát hiện trang PDF bị lỗi font nặng hoặc là ảnh scan">
-        <input type="checkbox" id="autoOcrCheckbox" checked />
-        <span>Tự động OCR khi lỗi font</span>
-      </label>
-
-      <div class="divider"></div>
-
-      <label for="encodingModeSelect" class="control-label">Chế độ mã chữ:</label>
-      <select id="encodingModeSelect" class="select-control select-sm" disabled>
-        <option value="auto">Tự động nhận diện</option>
-        <option value="tcvn3">Ép chuyển mã TCVN3 (ABC)</option>
-        <option value="vni">Ép chuyển mã VNI-Windows</option>
-        <option value="unicode">Giữ nguyên Unicode gốc</option>
-      </select>
-
-      <button class="btn btn-sm btn-accent" id="ocrPageBtn" title="Chụp ảnh trang này và quét lại chữ Tiếng Việt bằng OCR (dùng khi PDF bị lỗi font không cứu được)" disabled>
-        🔍 Quét OCR Trang Này
-      </button>
-
-      <button class="btn btn-sm btn-outline" id="editModeBtn" title="Sửa trực tiếp văn bản trước khi đọc" disabled>
-        ✏️ Sửa chữ
-      </button>
-    </div>
-  </section>
-
-  <!-- KHU VỰC CHÍNH: CHIA ĐÔI MÀN HÌNH (TRANG PDF GỐC & VĂN BẢN ĐÃ LÀM SẠCH) -->
-  <main class="workspace" id="dropZone">
-    <!-- Màn hình chào khi chưa chọn file -->
-    <div class="empty-state" id="emptyState">
-      <div class="empty-card">
-        <div class="empty-icon">📄✨</div>
-        <h2>Kéo thả file PDF Tiếng Việt vào đây</h2>
-        <p>
-          Hoặc bấm nút <strong>"📂 Mở PDF"</strong> ở góc trên bên trái để bắt đầu.
-        </p>
-        <ul class="feature-list">
-          <li>✅ <strong>Tự động sửa lỗi font:</strong> Khắc phục triệt để lỗi bảng mã TCVN3, VNI, dấu rời rạc và lỗi ngắt dòng giữa câu.</li>
-          <li>✅ <strong>Quét OCR Tiếng Việt tích hợp sẵn:</strong> Đọc được cả PDF scan ảnh hoặc PDF bị hỏng bảng mã ToUnicode CMap.</li>
-          <li>✅ <strong>Giọng đọc AI tự nhiên:</strong> Tích hợp giọng Nữ Hoài My & Nam Minh truyền cảm, tô sáng từng câu đang đọc.</li>
-        </ul>
-        <div class="empty-actions">
-          <label class="btn btn-primary btn-lg" for="pdfFileInput">
-            📂 Chọn file PDF từ máy tính
-          </label>
-          <button class="btn btn-outline btn-lg" id="pasteTextDemoBtn">
-            📝 Hoặc dán văn bản bất kỳ để nghe thử
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Giao diện Split-View khi đã mở PDF -->
-    <div class="split-container" id="splitContainer" hidden>
-      <!-- CỘT TRÁI: TRANG PDF GỐC -->
-      <section class="pane pdf-pane" id="pdfPane">
-        <div class="pane-header">
-          <span>🖼️ Trang PDF gốc</span>
-          <div class="zoom-controls">
-            <button class="btn btn-xs" id="zoomOutBtn" title="Thu nhỏ">➖</button>
-            <span id="zoomLabel">100%</span>
-            <button class="btn btn-xs" id="zoomInBtn" title="Phóng to">➕</button>
-            <button class="btn btn-xs" id="togglePdfPaneBtn" title="Ẩn/Hiện khung PDF gốc">Ẩn PDF</button>
-          </div>
-        </div>
-        <div class="pdf-canvas-wrapper" id="pdfImageWrapper">
-          <img id="pdfPageImage" alt="Trang PDF" />
+        <div class="upload-pills">
+          <div class="pill-item">✨ Tự động nhận diện TCVN3 / VNI</div>
+          <div class="pill-item">•</div>
+          <div class="pill-item">🎙️ Giọng đọc Kokoro AI & Edge</div>
+          <div class="pill-item">•</div>
+          <div class="pill-item">🔒 100% Riêng tư trên máy</div>
         </div>
       </section>
 
-      <!-- CỘT PHẢI: KHÔNG GIAN ĐỌC SÁCH (E-READER CANVAS) -->
-      <section class="pane reader-pane" id="readerPane">
-        <div class="pane-header" id="readerPaneHeader">
-          <div class="reader-header-left">
-            <span class="reading-badge">📖 Sách Điện Tử</span>
-            <small class="hint-text">(Click vào câu bất kỳ để bắt đầu đọc)</small>
-          </div>
-          <div class="reader-header-actions">
-            <button class="btn btn-xs" id="showPdfPaneBtn" hidden>Hiện trang PDF gốc</button>
-            <button class="btn btn-xs" id="copyCleanTextBtn" title="Copy toàn bộ văn bản sạch của trang này">📋 Copy</button>
-          </div>
+      <!-- RECENT BOOKS / SÁCH GẦN ĐÂY -->
+      <section class="recent-section" id="recentSection" hidden>
+        <div class="section-header">
+          <h3 class="section-title">Đang đọc dở</h3>
         </div>
 
-        <!-- Audio Scrubber Bar hiển thị tiến trình và tua câu đang đọc -->
-        <div class="audio-scrubber-bar" id="audioScrubberBar">
-          <span class="audio-time" id="audioCurrentTime">0:00</span>
-          <input type="range" class="audio-scrubber" id="audioScrubber" min="0" max="100" value="0" step="0.1" title="Tua âm thanh câu hiện tại" />
-          <span class="audio-time" id="audioDuration">0:00</span>
+        <div class="books-grid" id="recentBooksGrid"></div>
+      </section>
+    </main>
+
+    <footer class="home-footer">
+      <div>VN PDF Reader • Trải nghiệm đọc sách & Nghe giọng AI chuẩn mực</div>
+    </footer>
+  </div>
+
+  <!-- ==========================================================================
+       SCREEN 2: MÀN HÌNH ĐỌC SÁCH (READER VIEW - PROTOTYPE)
+       ========================================================================== -->
+  <div id="readerScreen" class="screen-view" hidden>
+    <!-- HEADER ĐỌC SÁCH KÍNH MỜ -->
+    <header class="reader-topbar" id="header">
+      <div class="topbar-left">
+        <button class="back-home-btn" id="backToHomeBtn" title="Quay lại Thư viện (Home)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          <span>Thư viện</span>
+        </button>
+        <button class="apple-btn-icon" id="drawerToggleBtn" title="Mục lục & Dấu trang (Phím M)">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="15" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div class="reader-center" id="pageNavGroup">
+        <div class="reader-book-title" id="docTitleLabel">Hà Nội Ba Mươi Sáu Phố Phường — Thạch Lam</div>
+        <div class="reader-page-subtitle">
+          <button class="nav-arrow-btn" id="prevPageBtn" title="Trang trước (Phím ◀)">‹</button>
+          <span>Trang</span>
+          <input type="number" id="pageInput" min="1" value="15" />
+          <span>/ <strong id="totalPagesLabel">120</strong></span>
+          <button class="nav-arrow-btn" id="nextPageBtn" title="Trang sau (Phím ▶)">›</button>
         </div>
+      </div>
 
-        <!-- Thanh tiến trình OCR (khi đang quét) -->
-        <div class="ocr-progress-box" id="ocrProgressBox" hidden>
-          <div class="ocr-progress-header">
-            <span id="ocrProgressText">Đang quét nhận diện chữ Tiếng Việt (OCR)...</span>
-            <strong id="ocrProgressPercent">0%</strong>
+      <div class="topbar-right-reader">
+        <button class="apple-btn-icon btn-aa" id="readingSettingsBtn" title="Tùy chỉnh đọc sách (Aa)">
+          Aa
+        </button>
+        <button class="apple-btn-icon" id="moreOptionsBtn" title="Tùy chọn mở rộng">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="1.5"></circle><circle cx="19" cy="12" r="1.5"></circle><circle cx="5" cy="12" r="1.5"></circle></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- KHÔNG GIAN ĐỌC SÁCH -->
+    <main class="reader-viewport" id="dropZone">
+      <div id="emptyState" hidden></div>
+      <div id="splitContainer" style="width:100%; display:flex; justify-content:center;">
+        <section id="pdfPane" hidden><img id="pdfPageImage" alt="" /><div id="zoomOutBtn"></div><div id="zoomInBtn"></div><span id="zoomLabel"></span></section>
+        
+        <article class="book-container" id="readerPane">
+          <div class="book-chapter-header" id="chapterHeader">
+            <div class="book-chapter-num" id="chapterNum">Chương II</div>
+            <h1 class="book-chapter-title" id="chapterTitle">Quà Hà Nội & Hương Vị Cốm Mới</h1>
+            <div class="book-divider"></div>
           </div>
-          <div class="progress-bar-bg">
-            <div class="progress-bar-fill" id="ocrProgressBar"></div>
-          </div>
-        </div>
 
-        <!-- Khung chỉnh sửa văn bản thủ công (ẩn mặc định) -->
-        <div class="editor-box" id="editorBox" hidden>
-          <textarea id="manualTextArea" placeholder="Nhập hoặc chỉnh sửa văn bản Tiếng Việt tại đây..."></textarea>
-          <div class="editor-actions">
-            <button class="btn btn-primary btn-sm" id="applyManualTextBtn">✅ Áp dụng & Tách câu đọc</button>
-            <button class="btn btn-outline btn-sm" id="cancelManualTextBtn">Hủy</button>
-          </div>
-        </div>
-
-        <!-- KHUNG GIẤY SÁCH & NÚT LẬT TRANG (E-READER VIEWPORT) -->
-        <div class="book-viewport" id="bookViewport">
-          <!-- Nút lật trang mỏng 2 bên mép -->
-          <button class="book-nav-arrow prev" id="bookPrevPageBtn" title="Trang trước (Phím mũi tên trái)">‹</button>
-          <button class="book-nav-arrow next" id="bookNextPageBtn" title="Trang sau (Phím mũi tên phải)">›</button>
-
-          <!-- Trang giấy sách trung tâm có giới hạn độ rộng đọc tối ưu -->
           <div class="book-page-canvas" id="bookPageCanvas">
-            <!-- Nút ruy băng ghim Bookmark ở góc trên trang sách -->
-            <button class="bookmark-ribbon-btn" id="bookmarkRibbonBtn" title="Ghim dấu trang này (Phím B)">
-              <svg viewBox="0 0 24 24" class="ribbon-svg" width="22" height="22">
-                <path fill="currentColor" d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
-              </svg>
-            </button>
-            <div class="sentences-container book-flow" id="sentencesContainer"></div>
-          </div>
-        </div>
+            <button class="bookmark-ribbon-btn" id="bookmarkRibbonBtn" title="Ghim dấu trang" style="display:none;"></button>
+            
+            <div class="sentences-container book-flow" id="sentencesContainer">
+              <p class="book-paragraph">
+                <span class="sentence-item sentence-span active" id="sentence-0" data-index="0">Cốm là thức quà riêng biệt của đất nước, là thức dâng của những cánh đồng lúa bát ngát xanh, mang trong hương vị tất cả cái mộc mạc, giản dị và thanh khiết của đồng quê nội cỏ An Nam.</span>
+                <span class="sentence-item sentence-span" id="sentence-1" data-index="1">Ai đã nghĩ đầu tiên dùng cốm để làm quà sêu tết, không một thứ quà nào cao quý và trang trọng hơn.</span>
+                <span class="sentence-item sentence-span" id="sentence-2" data-index="2">Màu xanh tươi của cốm như ngọc thạch quý, đượm màu đỏ thắm của sợi rơm rạ khô vàng buộc chéo.</span>
+              </p>
 
-        <!-- THANH CÔNG CỤ NỔI KHI BÔI ĐEN VĂN BẢN (FLOATING SELECTION ACTION BAR) -->
-        <div class="floating-selection-bar" id="floatingSelectionBar" hidden>
-          <div class="hl-colors">
-            <button class="hl-color-btn hl-yellow" data-color="yellow" title="Tô màu Vàng"></button>
-            <button class="hl-color-btn hl-green" data-color="green" title="Tô màu Xanh lá"></button>
-            <button class="hl-color-btn hl-pink" data-color="pink" title="Tô màu Hồng"></button>
-            <button class="hl-color-btn hl-blue" data-color="blue" title="Tô màu Xanh dương"></button>
-          </div>
-          <div class="floating-divider"></div>
-          <button class="floating-btn" id="floatLookupBtn" title="Tra từ điển Tiếng Việt">📖 Tra từ</button>
-          <button class="floating-btn" id="floatSpeakBtn" title="Đọc câu này">🎙️ Đọc câu</button>
-          <button class="floating-btn" id="floatCopyBtn" title="Copy đoạn bôi đen">📋 Copy</button>
-        </div>
+              <p class="book-paragraph">
+                <span class="sentence-item sentence-span" id="sentence-3" data-index="3">Cốm không phải là thức quà của người vội vã; ăn cốm phải nhè nhẹ từng chút ít, thong thả và ngẫm nghĩ.</span>
+                <span class="sentence-item sentence-span" id="sentence-4" data-index="4">Lúc bấy giờ ta mới thấy thu lại cả trong hương vị ấy cái mùi thơm phức của lúa mới, của hoa cỏ dại ven bờ.</span>
+                <span class="sentence-item sentence-span" id="sentence-5" data-index="5">Trong vị ngọt của sữa đòng đòng phảng phất một chút thảo mộc êm đềm, thanh nhã như giọt sương mai đọng trên lá sen ngát hương.</span>
+              </p>
 
-        <!-- CHÂN TRANG MÁY ĐỌC SÁCH (E-READER FOOTER PROGRESS) -->
-        <footer class="book-footer-bar" id="bookFooterBar">
-          <div class="book-footer-left">
-            <span class="book-footer-doc" id="bookFooterTitle">Chưa mở sách</span>
-            <span class="book-footer-dot">•</span>
-            <span class="book-est-time" id="bookEstTime">~0 phút đọc</span>
-          </div>
-          <div class="book-progress-wrapper">
-            <div class="book-progress-track">
-              <div class="book-progress-fill" id="bookProgressFill" style="width: 0%;"></div>
+              <p class="book-paragraph">
+                <span class="sentence-item sentence-span" id="sentence-6" data-index="6">Mỗi sớm mùa thu se lạnh, tiếng rao của các cô gái làng Vòng gánh cốm trên vai ngân dài trong ngõ hẻm phố cổ.</span>
+                <span class="sentence-item sentence-span" id="sentence-7" data-index="7">Một làn khói mỏng từ ấm trà mạn vừa sôi, một đĩa cốm xanh bọc trong lá sen tươi ngát, làm sáng bừng cả một góc hiên nhà tĩnh lặng.</span>
+              </p>
             </div>
           </div>
-          <div class="book-footer-right">
-            <span id="bookPageIndicator">Trang 0 / 0</span>
-            <span class="book-percent-badge" id="bookPercentBadge">0%</span>
-          </div>
-        </footer>
 
-        <!-- Nút thoát chế độ tập trung Zen Mode -->
-        <button class="exit-zen-btn" id="exitZenBtn" hidden title="Thoát chế độ đọc tập trung (Phím Esc hoặc F)">
-          ✕ Thoát chế độ Sách
-        </button>
-      </section>
+          <!-- Các phần tử ẩn phục vụ API code cũ -->
+          <div id="audioScrubberBar" hidden><span id="audioCurrentTime"></span><input id="audioScrubber" type="range"/><span id="audioDuration"></span></div>
+          <div id="ocrProgressBox" hidden><span id="ocrProgressText"></span><strong id="ocrProgressPercent"></strong><div id="ocrProgressBar"></div></div>
+          <div id="editorBox" hidden><textarea id="manualTextArea"></textarea><button id="applyManualTextBtn"></button><button id="cancelManualTextBtn"></button></div>
+          <div id="floatingSelectionBar" hidden><button id="floatLookupBtn"></button><button id="floatSpeakBtn"></button><button id="floatCopyBtn"></button></div>
+          <footer id="bookFooterBar" hidden><span id="bookFooterTitle"></span><span id="bookEstTime"></span><div id="bookProgressFill"></div><span id="bookPageIndicator"></span><span id="bookPercentBadge"></span></footer>
+          <button id="exitZenBtn" hidden></button>
+        </article>
+      </div>
+    </main>
+
+    <!-- VIÊN THUỐC ÂM THANH NỔI (CHỈ HIỆN KHI ĐỌC SÁCH) -->
+    <div class="floating-capsule" id="capsulePlayer">
+      <button class="capsule-btn" id="prevChapterBtn" title="Chương trước (Phím J)">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
+      </button>
+
+      <button class="capsule-play-btn" id="playPauseBtn" title="Đọc / Tạm dừng (Phím Space)">
+        <svg id="playIcon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+      </button>
+
+      <button class="capsule-btn" id="nextChapterBtn" title="Chương sau (Phím K)">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+      </button>
+
+      <div class="capsule-divider"></div>
+
+      <div class="capsule-pill" id="voicePill">
+        <span>🎙️</span>
+        <select id="voiceSelect" title="Chọn giọng đọc"></select>
+      </div>
+
+      <button class="capsule-pill" id="speedPillBtn" title="Đổi tốc độ đọc">
+        <span id="speedValLabel">1.0x</span>
+        <button id="speedDecBtn" hidden></button>
+        <button id="speedIncBtn" hidden></button>
+        <select id="speedSelect" hidden></select>
+      </button>
+
+      <button class="capsule-btn" id="sleepTimerBtn" title="Hẹn giờ ngủ">🌙</button>
+
+      <div class="waveform-bars" id="waveformBars">
+        <div class="waveform-bar"></div>
+        <div class="waveform-bar"></div>
+        <div class="waveform-bar"></div>
+      </div>
+
+      <button id="prevSentenceBtn" hidden></button>
+      <button id="nextSentenceBtn" hidden></button>
+      <button id="skipBackBtn" hidden></button>
+      <button id="skipForwardBtn" hidden></button>
+      <button id="stopBtn" hidden></button>
     </div>
-  </main>
+  </div>
 
-  <!-- MODAL CÀI ĐẶT FPT.AI -->
-  <div class="modal-backdrop" id="settingsModal" hidden>
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3>⚙️ Cài đặt Giọng đọc AI Cao Cấp</h3>
-        <button class="btn btn-icon btn-xs" id="closeSettingsBtn">✕</button>
+  <!-- ==================== POPOVER [Aa] ==================== -->
+  <div class="apple-popover reading-popover" id="readingSettingsPopover" hidden>
+    <div class="popover-section">
+      <div class="popover-title">Chủ đề trang sách</div>
+      <div class="theme-selector">
+        <div class="theme-circle sepia active" data-theme-val="sepia" title="Giấy ngà">Sepia</div>
+        <div class="theme-circle white" data-theme-val="white" title="Trắng phấn">White</div>
+        <div class="theme-circle slate" data-theme-val="slate" title="Xám titan">Slate</div>
+        <div class="theme-circle midnight" data-theme-val="midnight" title="Đen tuyền">OLED</div>
+        <button id="themeToggleBtn" hidden></button>
       </div>
-      <div class="modal-body">
-        <label for="fptApiKeyInput" class="setting-label">
-          <strong>FPT.AI API Key:</strong>
-          <small>Đăng ký miễn phí tại <a href="https://console.fpt.ai" target="_blank">console.fpt.ai</a> để lấy giọng Ban Mai, Thu Minh, Minh Quang.</small>
-        </label>
-        <input type="text" id="fptApiKeyInput" class="text-input" placeholder="Nhập API Key FPT.AI..." />
-        
-        <label for="proxyInput" class="setting-label" style="margin-top: 14px;">
-          <strong>HTTP Proxy (cho mạng công ty):</strong>
-        </label>
-        <input type="text" id="proxyInput" class="text-input" placeholder="http://10.10.101.208:3128" />
+    </div>
+
+    <div class="popover-section">
+      <div class="popover-title">Cỡ chữ</div>
+      <div class="size-stepper">
+        <button class="stepper-btn" id="fontDecPopoverBtn">A-</button>
+        <strong id="fontSizePopoverLabel">19px</strong>
+        <button class="stepper-btn" id="fontIncPopoverBtn">A+</button>
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-primary" id="saveSettingsBtn">💾 Lưu Cài Đặt</button>
-        <button class="btn btn-outline" id="cancelSettingsBtn">Đóng</button>
+    </div>
+
+    <div class="popover-section">
+      <div class="popover-title">Kiểu phông</div>
+      <div class="font-list" id="fontFamilyChips">
+        <div class="font-option active" data-font="newsreader">
+          <span style="font-family: 'Newsreader', serif;">Cổ điển (Newsreader)</span>
+          <span class="check-mark">✓</span>
+        </div>
+        <div class="font-option" data-font="merriweather">
+          <span style="font-family: 'Merriweather', serif;">Ấm áp (Merriweather)</span>
+        </div>
+        <div class="font-option" data-font="literata">
+          <span style="font-family: 'Literata', serif;">E-Reader (Literata)</span>
+        </div>
+        <div class="font-option" data-font="inter">
+          <span style="font-family: 'Inter', sans-serif;">Không chân (San Francisco / Inter)</span>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- SIDEBAR DRAWER: MỤC LỤC, DẤU TRANG & HIGHLIGHTS -->
-  <aside class="drawer-panel" id="tocDrawer" hidden>
+  <!-- ==================== POPOVER [⋯] MORE OPTIONS ==================== -->
+  <div class="apple-popover more-popover" id="moreOptionsPopover" hidden>
+    <div class="more-menu-group">
+      <button class="more-menu-item" id="downloadMp3Btn">
+        <span class="menu-icon">⬇️</span>
+        <span class="menu-text">Tải file MP3 cả trang</span>
+      </button>
+      <button class="more-menu-item" id="zenModeBtn">
+        <span class="menu-icon">📖</span>
+        <span class="menu-text">Toàn màn hình (Zen Mode - Phím F)</span>
+      </button>
+      <button class="more-menu-item" id="shortcutsBtn">
+        <span class="menu-icon">⌨️</span>
+        <span class="menu-text">Bảng phím tắt (Phím ?)</span>
+      </button>
+      <button class="more-menu-item" id="settingsBtn">
+        <span class="menu-icon">⚙️</span>
+        <span class="menu-text">Cài đặt API FPT.AI & Proxy</span>
+      </button>
+    </div>
+
+    <div class="popover-divider"></div>
+
+    <div class="more-menu-group">
+      <button class="more-menu-item" id="ocrPageBtn">
+        <span class="menu-icon">🔍</span>
+        <span class="menu-text">Quét lại OCR trang này</span>
+      </button>
+      <button class="more-menu-item" id="editModeBtn">
+        <span class="menu-icon">✏️</span>
+        <span class="menu-text">Sửa trực tiếp chữ trong trang</span>
+      </button>
+      <button class="more-menu-item" id="copyCleanTextBtn">
+        <span class="menu-icon">📋</span>
+        <span class="menu-text">Sao chép văn bản sạch</span>
+      </button>
+    </div>
+
+    <!-- Tùy chọn ngầm -->
+    <div style="display:none;">
+      <button id="togglePdfPaneBtn"></button>
+      <button id="showPdfPaneBtn"></button>
+      <input type="checkbox" id="autoNextPageCheckbox" checked />
+      <input type="checkbox" id="autoOcrCheckbox" checked />
+      <select id="encodingModeSelect"><option value="auto">auto</option></select>
+      <span id="statusBadge"></span>
+      <span id="statusReasonLabel"></span>
+    </div>
+  </div>
+
+  <!-- ==================== POPOVER HẸN GIỜ NGỦ ==================== -->
+  <div class="apple-popover sleep-popover" id="sleepTimerPopover" hidden>
+    <div class="popover-title">🌙 Hẹn giờ tắt đọc sách</div>
+    <div class="chip-grid sleep-timer-grid">
+      <button class="chip active" data-sleep="0">Tắt hẹn giờ</button>
+      <button class="chip" data-sleep="15">15 phút</button>
+      <button class="chip" data-sleep="30">30 phút</button>
+      <button class="chip" data-sleep="45">45 phút</button>
+      <button class="chip" data-sleep="page">Hết trang này</button>
+    </div>
+    <div class="sleep-countdown" id="sleepCountdownLabel" hidden>
+      ⏳ Dừng đọc sau: <strong id="sleepTimeRemaining">15:00</strong>
+    </div>
+  </div>
+
+  <!-- ==================== SIDEBAR DRAWER (MỤC LỤC & DẤU TRANG) ==================== -->
+  <aside class="apple-drawer" id="tocDrawer" hidden>
     <div class="drawer-header">
       <div class="drawer-tabs">
-        <button class="drawer-tab active" data-tab="toc" id="tabBtnToc">📑 Mục lục</button>
-        <button class="drawer-tab" data-tab="bookmarks" id="tabBtnBookmarks">🔖 Dấu trang (<span id="bookmarkCount">0</span>)</button>
-        <button class="drawer-tab" data-tab="highlights" id="tabBtnHighlights">🖍️ Highlights (<span id="highlightCount">0</span>)</button>
+        <button class="drawer-tab active" id="tabBtnToc">Mục lục</button>
+        <button class="drawer-tab" id="tabBtnBookmarks">Dấu trang (<span id="bookmarkCount">0</span>)</button>
+        <button class="drawer-tab" id="tabBtnHighlights">Highlight (<span id="highlightCount">0</span>)</button>
       </div>
-      <button class="btn btn-icon btn-xs" id="closeDrawerBtn" title="Đóng ngăn bên">✕</button>
+      <button class="apple-btn-icon" id="closeDrawerBtn" title="Đóng mục lục">✕</button>
     </div>
-    <div class="drawer-body">
-      <!-- Tab 1: Mục lục -->
-      <div class="drawer-tab-content active" id="drawerTabToc">
-        <div class="drawer-list" id="tocList">
+
+    <div class="drawer-content">
+      <!-- Tab 1: Mục lục thực tế từ sách -->
+      <div class="drawer-pane" id="drawerTabToc">
+        <div id="tocList" class="toc-list">
           <div class="drawer-empty-hint">Chưa có mục lục cho tài liệu này.</div>
         </div>
       </div>
-      <!-- Tab 2: Dấu trang -->
-      <div class="drawer-tab-content" id="drawerTabBookmarks" hidden>
-        <div class="drawer-list" id="bookmarksList">
-          <div class="drawer-empty-hint">Chưa có dấu trang nào. Bấm 🔖 ở góc trên trang sách hoặc nhấn phím B để ghim.</div>
+
+      <!-- Tab 2: Danh sách Dấu trang -->
+      <div class="drawer-pane" id="drawerTabBookmarks" hidden>
+        <div id="bookmarksList" class="bookmarks-list">
+          <div class="drawer-empty-hint">Chưa có dấu trang nào.</div>
         </div>
       </div>
-      <!-- Tab 3: Highlights -->
-      <div class="drawer-tab-content" id="drawerTabHighlights" hidden>
-        <div class="drawer-list" id="highlightsList">
-          <div class="drawer-empty-hint">Chưa có highlight nào. Bôi đen văn bản trong sách để tô màu.</div>
+
+      <!-- Tab 3: Danh sách Highlight -->
+      <div class="drawer-pane" id="drawerTabHighlights" hidden>
+        <div id="highlightsList" class="highlights-list">
+          <div class="drawer-empty-hint">Chưa có đoạn văn nào được highlight.</div>
         </div>
       </div>
     </div>
   </aside>
   <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
 
-  <!-- MODAL TRA TỪ ĐIỂN TIẾNG VIỆT -->
-  <div class="modal-backdrop" id="dictModal" hidden>
-    <div class="modal-card dict-modal-card">
+  <!-- ==================== MODALS ==================== -->
+  <div class="modal-backdrop" id="settingsModal" hidden>
+    <div class="modal-card">
       <div class="modal-header">
-        <h3>📖 Tra Cứu Từ Điển Tiếng Việt</h3>
-        <button class="btn btn-icon btn-xs" id="closeDictBtn">✕</button>
+        <h3>Cài đặt Giọng đọc & Kết nối</h3>
+        <button class="apple-btn-icon" id="closeSettingsBtn">✕</button>
       </div>
       <div class="modal-body">
-        <div class="dict-search-row">
-          <input type="text" id="dictSearchInput" class="text-input" placeholder="Nhập từ cần tra (Ví dụ: tri thức, hạnh phúc, sách...)" />
-          <button class="btn btn-primary" id="dictSearchBtn">🔍 Tra cứu</button>
-        </div>
-        <div class="dict-results" id="dictResults">
-          <div class="dict-empty-hint">Chọn hoặc nhập một từ tiếng Việt để xem định nghĩa chi tiết.</div>
-        </div>
+        <label for="fptApiKeyInput"><strong>FPT.AI API Key:</strong></label>
+        <input type="text" id="fptApiKeyInput" class="apple-input" placeholder="Nhập API Key FPT.AI..." />
+        
+        <label for="proxyInput" style="margin-top: 14px; display:block;"><strong>HTTP Proxy:</strong></label>
+        <input type="text" id="proxyInput" class="apple-input" placeholder="http://10.10.101.208:3128" />
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-outline" id="closeDictFooterBtn">Đóng</button>
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+        <button class="apple-capsule-btn" id="saveSettingsBtn">Lưu Cài Đặt</button>
+        <button class="apple-btn-icon" id="cancelSettingsBtn" style="border-radius:12px; width:auto; padding:0 14px;">Đóng</button>
       </div>
     </div>
   </div>
 
-  <!-- MODAL BẢNG PHÍM TẮT -->
   <div class="modal-backdrop" id="shortcutsModal" hidden>
-    <div class="modal-card shortcuts-modal-card">
+    <div class="modal-card">
       <div class="modal-header">
-        <h3>⌨️ Bảng Phím Tắt E-Reader</h3>
-        <button class="btn btn-icon btn-xs" id="closeShortcutsBtn">✕</button>
+        <h3>Phím Tắt Điều Khiển</h3>
+        <button class="apple-btn-icon" id="closeShortcutsBtn">✕</button>
       </div>
-      <div class="modal-body">
-        <div class="shortcuts-grid">
-          <div class="shortcut-item"><kbd>Space</kbd> <span>Đọc / Tạm dừng câu</span></div>
-          <div class="shortcut-item"><kbd>◀ / ▶</kbd> <span>Trang trước / Trang sau</span></div>
-          <div class="shortcut-item"><kbd>B</kbd> <span>Ghim / Bỏ ghim Dấu trang (Bookmark)</span></div>
-          <div class="shortcut-item"><kbd>M</kbd> <span>Mở / Đóng Mục lục & Dấu trang (Drawer)</span></div>
-          <div class="shortcut-item"><kbd>F</kbd> <span>Bật / Tắt chế độ đọc tập trung (Zen Mode)</span></div>
-          <div class="shortcut-item"><kbd>?</kbd> <span>Mở bảng hướng dẫn phím tắt</span></div>
-          <div class="shortcut-item"><kbd>Esc</kbd> <span>Đóng tất cả cửa sổ popover / modal</span></div>
-        </div>
+      <div style="display:grid; gap:8px;">
+        <div style="display:flex; justify-content:space-between;"><kbd>Space</kbd> <span>Đọc / Tạm dừng</span></div>
+        <div style="display:flex; justify-content:space-between;"><kbd>J / K</kbd> <span>Chương trước / Chương sau</span></div>
+        <div style="display:flex; justify-content:space-between;"><kbd>◀ / ▶</kbd> <span>Lật trang trước / sau</span></div>
+        <div style="display:flex; justify-content:space-between;"><kbd>M</kbd> <span>Mục lục</span></div>
+        <div style="display:flex; justify-content:space-between;"><kbd>F</kbd> <span>Toàn màn hình</span></div>
+        <div style="display:flex; justify-content:space-between;"><kbd>Esc</kbd> <span>Đóng cửa sổ / Về Home</span></div>
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-primary btn-sm" id="closeShortcutsFooterBtn">Đã hiểu</button>
+      <div style="display:flex; justify-content:flex-end; margin-top:16px;">
+        <button class="apple-capsule-btn" id="closeShortcutsFooterBtn">Đã hiểu</button>
       </div>
     </div>
   </div>
 
-  <!-- Audio element ẩn phục vụ phát giọng đọc -->
-  <audio id="ttsAudio" preload="auto"></audio>
+  <div id="dictModal" hidden><div id="closeDictBtn"></div><div id="closeDictFooterBtn"></div><input id="dictSearchInput"/><button id="dictSearchBtn"></button><div id="dictResults"></div></div>
+  <button id="pasteTextDemoBtn" hidden></button>
 
-  <script src="/app.js"></script>
+  <audio id="ttsAudio" preload="auto"></audio>
+  <script src="/app.js?v=apple3.4"></script>
 </body>
 </html>

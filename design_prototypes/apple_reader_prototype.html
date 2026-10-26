@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="sepia">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Apple Minimalist Reader — Steve Jobs Philosophy Prototype</title>
+  
+  <!-- Typography chuẩn Apple Books: Merriweather, Literata, Inter, Playfair Display -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;1,7..72,400&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ==========================================================================
+       APPLE MINIMALIST DESIGN SYSTEM (STEVE JOBS PHILOSOPHY)
+       "Simplicity is the ultimate sophistication"
+       ========================================================================== */
+    :root {
+      /* Theme: Sepia (Giấy Ngà Ấm Áp - Default Apple Books) */
+      --bg-primary: #F7F3E9;
+      --bg-surface: rgba(247, 243, 233, 0.82);
+      --bg-capsule: rgba(255, 252, 246, 0.85);
+      --text-primary: #2C2621;
+      --text-secondary: #7A7265;
+      --text-tertiary: #A89F91;
+      --accent: #B25900;
+      --accent-soft: rgba(178, 89, 0, 0.12);
+      --highlight-bg: #FFE8A3;
+      --highlight-border: #F0CE68;
+      --border-subtle: rgba(44, 38, 33, 0.08);
+      --shadow-capsule: 0 16px 40px -8px rgba(92, 64, 33, 0.18), 0 4px 12px rgba(0, 0, 0, 0.05);
+      --shadow-popover: 0 20px 48px -10px rgba(0, 0, 0, 0.15), 0 0 1px rgba(0,0,0,0.2);
+      
+      --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", sans-serif;
+      --font-book: "Newsreader", "Merriweather", "Georgia", serif;
+      --font-size-base: 19px;
+      --line-height-base: 1.85;
+      --book-width: 680px;
+    }
+
+    /* Theme 2: Chalk White (Trắng Phấn Tinh Khôi) */
+    html[data-theme="white"] {
+      --bg-primary: #FFFFFF;
+      --bg-surface: rgba(255, 255, 255, 0.85);
+      --bg-capsule: rgba(255, 255, 255, 0.9);
+      --text-primary: #1C1C1E;
+      --text-secondary: #636366;
+      --text-tertiary: #8E8E93;
+      --accent: #0071E3;
+      --accent-soft: rgba(0, 113, 227, 0.1);
+      --highlight-bg: #E3F2FD;
+      --highlight-border: #90CAF9;
+      --border-subtle: rgba(0, 0, 0, 0.06);
+      --shadow-capsule: 0 16px 40px -8px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.04);
+      --shadow-popover: 0 20px 48px -10px rgba(0, 0, 0, 0.12);
+    }
+
+    /* Theme 3: Titanium Slate (Xám Titan Dịu Mắt) */
+    html[data-theme="slate"] {
+      --bg-primary: #25282A;
+      --bg-surface: rgba(37, 40, 42, 0.85);
+      --bg-capsule: rgba(45, 48, 51, 0.88);
+      --text-primary: #E5E5E7;
+      --text-secondary: #98989D;
+      --text-tertiary: #636366;
+      --accent: #E08A3E;
+      --accent-soft: rgba(224, 138, 62, 0.15);
+      --highlight-bg: rgba(224, 138, 62, 0.28);
+      --highlight-border: rgba(224, 138, 62, 0.5);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --shadow-capsule: 0 16px 40px -8px rgba(0, 0, 0, 0.5);
+      --shadow-popover: 0 20px 48px -10px rgba(0, 0, 0, 0.6);
+    }
+
+    /* Theme 4: Midnight OLED (Đen Tuyền Tuyệt Đối) */
+    html[data-theme="midnight"] {
+      --bg-primary: #000000;
+      --bg-surface: rgba(18, 18, 18, 0.85);
+      --bg-capsule: rgba(28, 28, 30, 0.88);
+      --text-primary: #D1D1D6;
+      --text-secondary: #8E8E93;
+      --text-tertiary: #48484A;
+      --accent: #E0A96D;
+      --accent-soft: rgba(224, 169, 109, 0.15);
+      --highlight-bg: rgba(224, 169, 109, 0.24);
+      --highlight-border: rgba(224, 169, 109, 0.45);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --shadow-capsule: 0 16px 40px -8px rgba(0, 0, 0, 0.8);
+      --shadow-popover: 0 20px 48px -10px rgba(0, 0, 0, 0.8);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-ui);
+      transition: background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), color 0.4s ease;
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ==========================================================================
+       HEADER: FROSTED MINIMAL BAR (Chỉ 48px, tự mờ khi đọc)
+       ========================================================================== */
+    .apple-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 52px;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-surface);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border-bottom: 1px solid var(--border-subtle);
+      z-index: 100;
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
+    }
+
+    .apple-header.hidden-zen {
+      transform: translateY(-100%);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .header-left, .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .header-book-title {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--text-primary);
+      max-width: 320px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .header-page-subtitle {
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-weight: 400;
+      margin-top: 1px;
+    }
+
+    /* Icon Buttons (Apple Style: Tròn hoặc vuông mờ, tương tác êm ái) */
+    .apple-btn-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--text-primary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.2s ease;
+    }
+
+    .apple-btn-icon:hover {
+      background: var(--border-subtle);
+      transform: scale(1.05);
+    }
+
+    .apple-btn-icon:active {
+      transform: scale(0.95);
+    }
+
+    .btn-aa {
+      font-family: var(--font-book);
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    /* ==========================================================================
+       MAIN READING CANVAS (Trang Sách Trọng Tâm)
+       ========================================================================== */
+    .reading-viewport {
+      flex: 1;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      padding: 90px 24px 160px; /* Chừa không gian trên dưới */
+    }
+
+    .book-container {
+      width: 100%;
+      max-width: var(--book-width);
+      font-family: var(--font-book);
+      font-size: var(--font-size-base);
+      line-height: var(--line-height-base);
+      color: var(--text-primary);
+      letter-spacing: 0.005em;
+      transition: max-width 0.3s ease, font-size 0.2s ease;
+    }
+
+    .book-chapter-header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .book-chapter-num {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .book-chapter-title {
+      font-size: 32px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.3;
+      margin-bottom: 16px;
+    }
+
+    .book-divider {
+      width: 48px;
+      height: 2px;
+      background: var(--accent);
+      margin: 0 auto;
+      opacity: 0.6;
+      border-radius: 2px;
+    }
+
+    .book-paragraph {
+      margin-bottom: 24px;
+      text-align: justify;
+      text-justify: inter-word;
+      text-indent: 1.8em;
+    }
+
+    /* Câu văn tương tác (Sentence Spans) */
+    .sentence-span {
+      display: inline;
+      padding: 2px 2px;
+      margin: 0 1px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+    }
+
+    .sentence-span:hover {
+      background-color: var(--accent-soft);
+    }
+
+    /* Câu đang đọc (Active Highlight - Apple Books Style) */
+    .sentence-span.active {
+      background-color: var(--highlight-bg);
+      box-shadow: 0 0 0 2px var(--highlight-border);
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    /* Dim các câu khác khi đang đọc để tập trung tối đa */
+    .reading-mode-focus .sentence-span:not(.active) {
+      opacity: 0.7;
+    }
+
+    /* ==========================================================================
+       THE FLOATING CAPSULE PLAYER (VIÊN THUỐC ÂM THANH NỔI KIỂU APPLE)
+       ========================================================================== */
+    .floating-capsule {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      height: 60px;
+      background: var(--bg-capsule);
+      backdrop-filter: blur(28px) saturate(190%);
+      -webkit-backdrop-filter: blur(28px) saturate(190%);
+      border: 1px solid var(--border-subtle);
+      border-radius: 9999px;
+      box-shadow: var(--shadow-capsule);
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      gap: 12px;
+      z-index: 100;
+      user-select: none;
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .floating-capsule:hover {
+      box-shadow: 0 20px 48px -6px rgba(0,0,0,0.22);
+      transform: translateX(-50%) translateY(-2px);
+    }
+
+    /* Nút Play/Pause chính giữa tròn nổi bật */
+    .capsule-play-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #FFFFFF;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 17px;
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+    }
+
+    .capsule-play-btn:hover {
+      transform: scale(1.08);
+    }
+
+    .capsule-play-btn:active {
+      transform: scale(0.94);
+    }
+
+    .capsule-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 15px;
+      transition: background 0.15s ease, transform 0.15s ease;
+    }
+
+    .capsule-btn:hover {
+      background: var(--border-subtle);
+    }
+
+    .capsule-btn:active {
+      transform: scale(0.92);
+    }
+
+    /* Voice & Speed Pill bên trong Capsule */
+    .capsule-pill {
+      height: 32px;
+      padding: 0 12px;
+      border-radius: 16px;
+      background: var(--border-subtle);
+      border: none;
+      color: var(--text-primary);
+      font-family: var(--font-ui);
+      font-size: 12.5px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .capsule-pill:hover {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    /* Waveform Audio Indicator (Sóng âm nhỏ sinh động) */
+    .waveform-bars {
+      display: flex;
+      align-items: center;
+      gap: 2.5px;
+      height: 16px;
+      padding: 0 4px;
+    }
+
+    .waveform-bar {
+      width: 2.5px;
+      height: 6px;
+      background: var(--accent);
+      border-radius: 2px;
+      transition: height 0.2s ease;
+    }
+
+    .playing .waveform-bar:nth-child(1) { animation: wave 0.8s ease-in-out infinite alternate; }
+    .playing .waveform-bar:nth-child(2) { animation: wave 0.6s ease-in-out 0.2s infinite alternate; }
+    .playing .waveform-bar:nth-child(3) { animation: wave 0.9s ease-in-out 0.4s infinite alternate; }
+
+    @keyframes wave {
+      0% { height: 4px; }
+      100% { height: 16px; }
+    }
+
+    /* ==========================================================================
+       POPOVERS (BẢNG CÀI ĐẶT [Aa] & [⋯] CHUẨN APPLE BOOKS)
+       ========================================================================== */
+    .apple-popover {
+      position: fixed;
+      background: var(--bg-capsule);
+      backdrop-filter: blur(32px) saturate(200%);
+      -webkit-backdrop-filter: blur(32px) saturate(200%);
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      box-shadow: var(--shadow-popover);
+      padding: 20px;
+      z-index: 150;
+      width: 320px;
+      transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .apple-popover.hidden {
+      opacity: 0;
+      transform: translateY(-8px) scale(0.96);
+      pointer-events: none;
+    }
+
+    .popover-header {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 12px;
+    }
+
+    /* 4 Theme Circles kiểu Apple Books */
+    .theme-selector {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .theme-circle {
+      height: 42px;
+      border-radius: 10px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .theme-circle.white { background: #FFFFFF; color: #1C1C1E; border-color: rgba(0,0,0,0.1); }
+    .theme-circle.sepia { background: #F7F3E9; color: #2C2621; border-color: rgba(0,0,0,0.1); }
+    .theme-circle.slate { background: #25282A; color: #E5E5E7; }
+    .theme-circle.midnight { background: #000000; color: #FFFFFF; }
+
+    .theme-circle.active {
+      border-color: var(--accent);
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    /* Size Stepper */
+    .size-stepper {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--border-subtle);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 20px;
+    }
+
+    .stepper-btn {
+      width: 44px;
+      height: 36px;
+      border: none;
+      background: transparent;
+      color: var(--text-primary);
+      font-family: var(--font-book);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: background 0.15s ease;
+    }
+
+    .stepper-btn:hover {
+      background: var(--bg-primary);
+    }
+
+    .stepper-label {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* Font List */
+    .font-option {
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 14.5px;
+      transition: background 0.15s ease;
+    }
+
+    .font-option:hover {
+      background: var(--border-subtle);
+    }
+
+    .font-option.active {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    /* ==========================================================================
+       SIDEBAR DRAWER (MỤC LỤC & DẤU TRANG TRƯỢT TRÁI)
+       ========================================================================== */
+    .drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .drawer-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .apple-drawer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 340px;
+      background: var(--bg-capsule);
+      backdrop-filter: blur(30px);
+      border-right: 1px solid var(--border-subtle);
+      z-index: 201;
+      transform: translateX(-100%);
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+    }
+
+    .apple-drawer.open {
+      transform: translateX(0);
+    }
+
+    .drawer-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .toc-item {
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-primary);
+      transition: background 0.15s ease;
+    }
+
+    .toc-item:hover {
+      background: var(--border-subtle);
+    }
+
+    .toc-item.active {
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    /* Banner Chào Khách Tinh Tế (Steve Jobs Welcome) */
+    .banner-quote {
+      text-align: center;
+      font-style: italic;
+      color: var(--text-secondary);
+      font-size: 13.5px;
+      margin-bottom: 36px;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== HEADER (FROSTED GLASS) ==================== -->
+  <header class="apple-header" id="header">
+    <div class="header-left">
+      <button class="apple-btn-icon" id="openDrawerBtn" title="Mục lục & Dấu trang (Phím M)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="15" y2="18"></line></svg>
+      </button>
+      <button class="apple-btn-icon" id="openPdfBtn" title="Mở file PDF từ máy">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+      </button>
+    </div>
+
+    <div class="header-center" id="pageJumpBtn" title="Bấm để chuyển trang">
+      <div class="header-book-title">Hà Nội Ba Mươi Sáu Phố Phường — Thạch Lam</div>
+      <div class="header-page-subtitle">Trang 15 / 120 (Chương II)</div>
+    </div>
+
+    <div class="header-right">
+      <button class="apple-btn-icon btn-aa" id="readingSettingsBtn" title="Tùy chỉnh đọc sách (Aa)">
+        Aa
+      </button>
+      <button class="apple-btn-icon" id="moreOptionsBtn" title="Tùy chọn khác">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ==================== READING CANVAS ==================== -->
+  <main class="reading-viewport">
+    <article class="book-container" id="bookCanvas">
+      <div class="banner-quote">
+        "Simplicity is about subtracting the obvious and adding the meaningful."
+      </div>
+
+      <div class="book-chapter-header">
+        <div class="book-chapter-num">Chương II</div>
+        <h1 class="book-chapter-title">Quà Hà Nội & Hương Vị Cốm Mới</h1>
+        <div class="book-divider"></div>
+      </div>
+
+      <p class="book-paragraph">
+        <span class="sentence-span active" data-index="0">Cốm là thức quà riêng biệt của đất nước, là thức dâng của những cánh đồng lúa bát ngát xanh, mang trong hương vị tất cả cái mộc mạc, giản dị và thanh khiết của đồng quê nội cỏ An Nam.</span>
+        <span class="sentence-span" data-index="1">Ai đã nghĩ đầu tiên dùng cốm để làm quà sêu tết, không một thứ quà nào cao quý và trang trọng hơn.</span>
+        <span class="sentence-span" data-index="2">Màu xanh tươi của cốm như ngọc thạch quý, đượm màu đỏ thắm của sợi rơm rạ khô vàng buộc chéo.</span>
+      </p>
+
+      <p class="book-paragraph">
+        <span class="sentence-span" data-index="3">Cốm không phải là thức quà của người vội vã; ăn cốm phải nhè nhẹ từng chút ít, thong thả và ngẫm nghĩ.</span>
+        <span class="sentence-span" data-index="4">Lúc bấy giờ ta mới thấy thu lại cả trong hương vị ấy cái mùi thơm phức của lúa mới, của hoa cỏ dại ven bờ.</span>
+        <span class="sentence-span" data-index="5">Trong vị ngọt của sữa đòng đòng phảng phất một chút thảo mộc êm đềm, thanh nhã như giọt sương mai đọng trên lá sen ngát hương.</span>
+      </p>
+
+      <p class="book-paragraph">
+        <span class="sentence-span" data-index="6">Mỗi sớm mùa thu se lạnh, tiếng rao của các cô gái làng Vòng gánh cốm trên vai ngân dài trong ngõ hẻm phố cổ.</span>
+        <span class="sentence-span" data-index="7">Một làn khói mỏng từ ấm trà mạn vừa sôi, một đĩa cốm xanh bọc trong lá sen tươi ngát, làm sáng bừng cả một góc hiên nhà tĩnh lặng.</span>
+      </p>
+    </article>
+  </main>
+
+  <!-- ==================== THE FLOATING CAPSULE PLAYER ==================== -->
+  <div class="floating-capsule" id="capsulePlayer">
+    <!-- Prev Sentence -->
+    <button class="capsule-btn" id="prevSentBtn" title="Câu trước (Phím J)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
+    </button>
+
+    <!-- Main Play/Pause Button -->
+    <button class="capsule-play-btn" id="playToggleBtn" title="Đọc / Dừng (Phím Space)">
+      <svg id="playIcon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+    </button>
+
+    <!-- Next Sentence -->
+    <button class="capsule-btn" id="nextSentBtn" title="Câu tiếp theo (Phím K)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+    </button>
+
+    <div style="width: 1px; height: 20px; background: var(--border-subtle);"></div>
+
+    <!-- Voice Selection Pill -->
+    <button class="capsule-pill" id="voicePillBtn" title="Chọn giọng đọc AI">
+      <span>🎙️ Tuấn Ngọc (Kokoro AI)</span>
+    </button>
+
+    <!-- Speed Toggle Pill -->
+    <button class="capsule-pill" id="speedPillBtn" title="Đổi tốc độ đọc">
+      <span id="speedLabel">1.0x</span>
+    </button>
+
+    <!-- Waveform Visualizer -->
+    <div class="waveform-bars playing" id="waveform">
+      <div class="waveform-bar"></div>
+      <div class="waveform-bar"></div>
+      <div class="waveform-bar"></div>
+    </div>
+  </div>
+
+  <!-- ==================== READING SETTINGS POPOVER [Aa] ==================== -->
+  <div class="apple-popover hidden" id="readingPopover" style="top: 60px; right: 24px;">
+    <div class="popover-header">Chủ đề trang sách</div>
+    <div class="theme-selector">
+      <div class="theme-circle sepia active" data-theme-val="sepia" title="Giấy ngà">Sepia</div>
+      <div class="theme-circle white" data-theme-val="white" title="Trắng phấn">White</div>
+      <div class="theme-circle slate" data-theme-val="slate" title="Xám titan">Slate</div>
+      <div class="theme-circle midnight" data-theme-val="midnight" title="Đen tuyền">OLED</div>
+    </div>
+
+    <div class="popover-header">Cỡ chữ</div>
+    <div class="size-stepper">
+      <button class="stepper-btn" id="decFontBtn">A-</button>
+      <span class="stepper-label" id="fontSizeLabel">19px</span>
+      <button class="stepper-btn" id="incFontBtn">A+</button>
+    </div>
+
+    <div class="popover-header">Kiểu phông</div>
+    <div class="font-list">
+      <div class="font-option active" data-font="Newsreader">
+        <span style="font-family: 'Newsreader', serif;">Cổ điển (Newsreader)</span>
+        <span>✓</span>
+      </div>
+      <div class="font-option" data-font="Merriweather">
+        <span style="font-family: 'Merriweather', serif;">Ấm áp (Merriweather)</span>
+      </div>
+      <div class="font-option" data-font="Literata">
+        <span style="font-family: 'Literata', serif;">E-Reader (Literata)</span>
+      </div>
+      <div class="font-option" data-font="Inter">
+        <span style="font-family: 'Inter', sans-serif;">Không chân (San Francisco / Inter)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SIDEBAR DRAWER (MỤC LỤC & ĐÁNH DẤU) ==================== -->
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+  <aside class="apple-drawer" id="sidebarDrawer">
+    <div class="drawer-title">
+      <span>Mục lục</span>
+      <button class="apple-btn-icon" id="closeDrawerBtn">✕</button>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <div class="toc-item"><span>Lời Tựa Của Tác Giả</span><span style="color: var(--text-tertiary);">Trang 5</span></div>
+      <div class="toc-item"><span>Chương I: Phố Cổ & Dấu Xưa</span><span style="color: var(--text-tertiary);">Trang 8</span></div>
+      <div class="toc-item active"><span>Chương II: Quà Hà Nội & Cốm Mới</span><span style="color: var(--accent);">Trang 15</span></div>
+      <div class="toc-item"><span>Chương III: Những Gánh Rong Đêm</span><span style="color: var(--text-tertiary);">Trang 28</span></div>
+      <div class="toc-item"><span>Chương IV: Hương Hoa Sữa</span><span style="color: var(--text-tertiary);">Trang 42</span></div>
+      <div class="toc-item"><span>Chương V: Mùa Đông Bến Sông Hồng</span><span style="color: var(--text-tertiary);">Trang 65</span></div>
+    </div>
+  </aside>
+
+  <!-- ==================== TƯƠNG TÁC JS MẪU CHO PROTOTYPE ==================== -->
+  <script>
+    // Quản lý trạng thái đọc
+    let currentIdx = 0;
+    let isPlaying = true;
+    let currentSpeed = 1.0;
+    let currentFontSize = 19;
+    const speeds = [0.8, 1.0, 1.25, 1.5, 2.0];
+    const sentences = document.querySelectorAll(".sentence-span");
+    const playBtn = document.getElementById("playToggleBtn");
+    const playIcon = document.getElementById("playIcon");
+    const waveform = document.getElementById("waveform");
+    const readingSettingsBtn = document.getElementById("readingSettingsBtn");
+    const readingPopover = document.getElementById("readingPopover");
+    const openDrawerBtn = document.getElementById("openDrawerBtn");
+    const closeDrawerBtn = document.getElementById("closeDrawerBtn");
+    const sidebarDrawer = document.getElementById("sidebarDrawer");
+    const drawerBackdrop = document.getElementById("drawerBackdrop");
+    const speedPillBtn = document.getElementById("speedPillBtn");
+    const speedLabel = document.getElementById("speedLabel");
+
+    function setActiveSentence(idx) {
+      if (idx < 0 || idx >= sentences.length) return;
+      sentences.forEach((s) => s.classList.remove("active"));
+      currentIdx = idx;
+      sentences[currentIdx].classList.add("active");
+      sentences[currentIdx].scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    // Click vào từng câu văn để chuyển đọc câu đó
+    sentences.forEach((s, idx) => {
+      s.addEventListener("click", () => {
+        setActiveSentence(idx);
+      });
+    });
+
+    // Play / Pause Toggle
+    playBtn.addEventListener("click", () => {
+      isPlaying = !isPlaying;
+      if (isPlaying) {
+        playIcon.innerHTML = `<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>`;
+        waveform.classList.add("playing");
+      } else {
+        playIcon.innerHTML = `<polygon points="5 3 19 12 5 21 5 3"></polygon>`;
+        waveform.classList.remove("playing");
+      }
+    });
+
+    // Next / Prev sentence
+    document.getElementById("nextSentBtn").addEventListener("click", () => {
+      setActiveSentence((currentIdx + 1) % sentences.length);
+    });
+    document.getElementById("prevSentBtn").addEventListener("click", () => {
+      setActiveSentence(currentIdx > 0 ? currentIdx - 1 : 0);
+    });
+
+    // Phím tắt Space & J/K
+    window.addEventListener("keydown", (e) => {
+      if (e.code === "Space") {
+        e.preventDefault();
+        playBtn.click();
+      } else if (e.key === "j" || e.key === "J") {
+        document.getElementById("prevSentBtn").click();
+      } else if (e.key === "k" || e.key === "K") {
+        document.getElementById("nextSentBtn").click();
+      }
+    });
+
+    // Đổi tốc độ nhanh
+    speedPillBtn.addEventListener("click", () => {
+      let nextSpeedIdx = (speeds.indexOf(currentSpeed) + 1) % speeds.length;
+      currentSpeed = speeds[nextSpeedIdx];
+      speedLabel.textContent = currentSpeed + "x";
+    });
+
+    // Popover Aa
+    readingSettingsBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      readingPopover.classList.toggle("hidden");
+    });
+    window.addEventListener("click", (e) => {
+      if (!readingPopover.contains(e.target) && e.target !== readingSettingsBtn) {
+        readingPopover.classList.add("hidden");
+      }
+    });
+
+    // Chọn Theme
+    document.querySelectorAll(".theme-circle").forEach((tc) => {
+      tc.addEventListener("click", () => {
+        document.querySelectorAll(".theme-circle").forEach((c) => c.classList.remove("active"));
+        tc.classList.add("active");
+        document.documentElement.setAttribute("data-theme", tc.dataset.themeVal);
+      });
+    });
+
+    // Cỡ chữ Stepper
+    document.getElementById("decFontBtn").addEventListener("click", () => {
+      if (currentFontSize > 15) {
+        currentFontSize -= 1;
+        document.documentElement.style.setProperty("--font-size-base", currentFontSize + "px");
+        document.getElementById("fontSizeLabel").textContent = currentFontSize + "px";
+      }
+    });
+    document.getElementById("incFontBtn").addEventListener("click", () => {
+      if (currentFontSize < 28) {
+        currentFontSize += 1;
+        document.documentElement.style.setProperty("--font-size-base", currentFontSize + "px");
+        document.getElementById("fontSizeLabel").textContent = currentFontSize + "px";
+      }
+    });
+
+    // Chọn Phông Chữ
+    document.querySelectorAll(".font-option").forEach((fo) => {
+      fo.addEventListener("click", () => {
+        document.querySelectorAll(".font-option").forEach((o) => {
+          o.classList.remove("active");
+          const check = o.querySelector("span:last-child");
+          if (check && check.textContent === "✓") check.remove();
+        });
+        fo.classList.add("active");
+        const span = document.createElement("span");
+        span.textContent = "✓";
+        fo.appendChild(span);
+        document.documentElement.style.setProperty("--font-book", fo.dataset.font + ", serif");
+      });
+    });
+
+    // Drawer Mục Lục
+    openDrawerBtn.addEventListener("click", () => {
+      sidebarDrawer.classList.add("open");
+      drawerBackdrop.classList.add("open");
+    });
+    const closeDrawer = () => {
+      sidebarDrawer.classList.remove("open");
+      drawerBackdrop.classList.remove("open");
+    };
+    closeDrawerBtn.addEventListener("click", closeDrawer);
+    drawerBackdrop.addEventListener("click", closeDrawer);
+  </script>
+</body>
+</html>

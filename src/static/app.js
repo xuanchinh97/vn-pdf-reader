@@ -41,11 +41,22 @@ const state = {
 
 // DOM Elements
 const els = {
+  homeScreen: document.getElementById("homeScreen"),
+  readerScreen: document.getElementById("readerScreen"),
+  capsulePlayer: document.getElementById("capsulePlayer"),
+  backToHomeBtn: document.getElementById("backToHomeBtn"),
+  sampleBookCard: document.getElementById("sampleBookCard"),
+  themeBtn: document.getElementById("themeBtn"),
+  homeSettingsBtn: document.getElementById("homeSettingsBtn"),
+  recentSection: document.getElementById("recentSection"),
+  recentBooksGrid: document.getElementById("recentBooksGrid"),
   pdfFileInput: document.getElementById("pdfFileInput"),
   prevPageBtn: document.getElementById("prevPageBtn"),
   nextPageBtn: document.getElementById("nextPageBtn"),
   pageInput: document.getElementById("pageInput"),
   totalPagesLabel: document.getElementById("totalPagesLabel"),
+  prevChapterBtn: document.getElementById("prevChapterBtn"),
+  nextChapterBtn: document.getElementById("nextChapterBtn"),
   prevSentenceBtn: document.getElementById("prevSentenceBtn"),
   playPauseBtn: document.getElementById("playPauseBtn"),
   stopBtn: document.getElementById("stopBtn"),
@@ -64,6 +75,9 @@ const els = {
   downloadMp3Btn: document.getElementById("downloadMp3Btn"),
   readingSettingsBtn: document.getElementById("readingSettingsBtn"),
   readingSettingsPopover: document.getElementById("readingSettingsPopover"),
+  moreOptionsBtn: document.getElementById("moreOptionsBtn"),
+  moreOptionsPopover: document.getElementById("moreOptionsPopover"),
+  waveformBars: document.getElementById("waveformBars"),
   drawerToggleBtn: document.getElementById("drawerToggleBtn"),
   tocDrawer: document.getElementById("tocDrawer"),
   closeDrawerBtn: document.getElementById("closeDrawerBtn"),
@@ -104,6 +118,9 @@ const els = {
   themeToggleBtn: document.getElementById("themeToggleBtn"),
   settingsBtn: document.getElementById("settingsBtn"),
   docTitleLabel: document.getElementById("docTitleLabel"),
+  chapterHeader: document.getElementById("chapterHeader"),
+  chapterNum: document.getElementById("chapterNum"),
+  chapterTitle: document.getElementById("chapterTitle"),
   statusBadge: document.getElementById("statusBadge"),
   statusReasonLabel: document.getElementById("statusReasonLabel"),
   autoNextPageCheckbox: document.getElementById("autoNextPageCheckbox"),
@@ -111,7 +128,8 @@ const els = {
   encodingModeSelect: document.getElementById("encodingModeSelect"),
   ocrPageBtn: document.getElementById("ocrPageBtn"),
   editModeBtn: document.getElementById("editModeBtn"),
-  dropZone: document.getElementById("dropZone"),
+  homeDropZone: document.getElementById("homeDropZone"),
+  dropZone: document.getElementById("dropZone") || document.getElementById("homeDropZone"),
   emptyState: document.getElementById("emptyState"),
   splitContainer: document.getElementById("splitContainer"),
   pdfPane: document.getElementById("pdfPane"),
@@ -166,11 +184,154 @@ async function initApp() {
   loadReadingPreferences();
   applyReadingPreferences();
   await loadVoices();
+
+  // Nạp 8 câu mẫu Thạch Lam ban đầu nếu chưa mở PDF để UI luôn sống động chuẩn Prototype
+  const initialItems = document.querySelectorAll("#sentencesContainer .sentence-item");
+  if (initialItems.length > 0 && state.sentences.length === 0) {
+    state.sentences = Array.from(initialItems).map((el) => el.textContent.trim());
+    state.cleanText = state.sentences.join(" ");
+    state.currentSentenceIndex = 0;
+    if (els.playPauseBtn) els.playPauseBtn.disabled = false;
+    if (els.prevSentenceBtn) els.prevSentenceBtn.disabled = false;
+    if (els.nextSentenceBtn) els.nextSentenceBtn.disabled = false;
+    if (els.skipBackBtn) els.skipBackBtn.disabled = false;
+    if (els.skipForwardBtn) els.skipForwardBtn.disabled = false;
+
+    initialItems.forEach((item) => {
+      item.addEventListener("click", () => {
+        const idx = parseInt(item.getAttribute("data-index"), 10);
+        playFromSentence(idx);
+      });
+    });
+  }
+
   bindEvents();
   setupAudioScrubber();
   setupSelectionListener();
   setupMediaSession();
   updateThemeButton();
+
+  // Khởi động ở màn hình Home chuẩn Thư Viện Apple
+  showScreen("home");
+}
+
+function showScreen(screenName) {
+  if (screenName === "home") {
+    if (els.homeScreen) els.homeScreen.hidden = false;
+    if (els.readerScreen) els.readerScreen.hidden = true;
+    if (els.capsulePlayer) els.capsulePlayer.hidden = true;
+    renderRecentBooks();
+  } else {
+    if (els.homeScreen) els.homeScreen.hidden = true;
+    if (els.readerScreen) els.readerScreen.hidden = false;
+    if (els.capsulePlayer) els.capsulePlayer.hidden = false;
+  }
+}
+
+function saveRecentBook(docId, title, totalPages, currentPage = 1) {
+  try {
+    let recents = JSON.parse(localStorage.getItem("vn_recent_books") || "[]");
+    const existing = recents.find((b) => b.id === docId || b.title === title);
+    recents = recents.filter((b) => b.id !== docId && b.title !== title);
+    recents.unshift({
+      id: docId,
+      title: title,
+      totalPages: totalPages || existing?.totalPages || 1,
+      currentPage: currentPage || existing?.currentPage || 1,
+      timestamp: Date.now(),
+    });
+    localStorage.setItem("vn_recent_books", JSON.stringify(recents.slice(0, 8)));
+  } catch (_) {}
+}
+
+function renderRecentBooks() {
+  if (!els.recentBooksGrid) return;
+  let recents = [];
+  try {
+    recents = JSON.parse(localStorage.getItem("vn_recent_books") || "[]");
+  } catch (_) {}
+
+  // Chỉ hiển thị khu vực "Đang đọc dở" nếu người dùng thực sự có sách đã nạp/đang đọc
+  if (recents.length === 0) {
+    if (els.recentSection) els.recentSection.hidden = true;
+    els.recentBooksGrid.innerHTML = "";
+    return;
+  }
+
+  if (els.recentSection) els.recentSection.hidden = false;
+
+  const coverGradients = [
+    "linear-gradient(135deg, #1C3B5E 0%, #0D1C2E 100%)",
+    "linear-gradient(135deg, #2D4A3E 0%, #15261F 100%)",
+    "linear-gradient(135deg, #5E2638 0%, #2E131C 100%)",
+    "linear-gradient(135deg, #6B4226 0%, #361F0F 100%)",
+    "linear-gradient(135deg, #4A3E2D 0%, #261F15 100%)",
+  ];
+
+  let html = "";
+  recents.forEach((book, i) => {
+    const bg = coverGradients[i % coverGradients.length];
+    const cur = book.currentPage || 1;
+    const total = book.totalPages || 1;
+    const pct = Math.min(100, Math.round((cur / total) * 100));
+    html += `
+      <article class="book-card recent-book-item" data-doc-id="${book.id}">
+        <div class="book-cover" style="background: ${bg};">
+          <div class="cover-title">${escapeHtml(book.title)}</div>
+          <div class="cover-author">PDF</div>
+        </div>
+        <div class="book-info">
+          <div>
+            <h4 class="book-card-title">${escapeHtml(book.title)}</h4>
+            <p class="book-card-meta">${total} trang</p>
+          </div>
+          <div class="book-card-progress">
+            <div class="progress-track">
+              <div class="progress-fill" style="width: ${pct}%;"></div>
+            </div>
+            <div class="progress-label">
+              <span>Trang ${cur} / ${total}</span>
+              <span>${pct}%</span>
+            </div>
+          </div>
+        </div>
+      </article>
+    `;
+  });
+
+  els.recentBooksGrid.innerHTML = html;
+
+  // Re-bind click event cho từng thẻ sách đang đọc dở
+  document.querySelectorAll(".recent-book-item").forEach((card) => {
+    card.addEventListener("click", async () => {
+      const docId = card.getAttribute("data-doc-id");
+      const book = recents.find((b) => b.id === docId);
+      if (book) {
+        state.docId = book.id;
+        state.filename = book.title;
+        state.totalPages = book.totalPages;
+        state.currentPage = book.currentPage || 1;
+        els.docTitleLabel.textContent = book.title;
+        els.totalPagesLabel.textContent = book.totalPages;
+        els.pageInput.max = book.totalPages;
+        els.pageInput.value = state.currentPage;
+        
+        // Tải lại TOC và Annotations của cuốn sách này
+        try {
+          const tocRes = await fetch(`/api/doc/${book.id}/toc`);
+          if (tocRes.ok) {
+            const tocData = await tocRes.json();
+            state.toc = tocData.toc || [];
+            renderTocList();
+          }
+        } catch (_) {}
+        await loadAnnotations();
+
+        showScreen("reader");
+        await goToPage(state.currentPage, false);
+      }
+    });
+  });
 }
 
 async function loadVoices() {
@@ -216,6 +377,10 @@ function applyReadingPreferences() {
 
   const currentTheme = state.themes[state.themeIndex] || "sepia";
   root.setAttribute("data-theme", currentTheme);
+
+  document.querySelectorAll(".theme-chip").forEach((chip) => {
+    chip.classList.toggle("active", chip.getAttribute("data-theme-name") === currentTheme);
+  });
 
   if (els.fontSizePopoverLabel) {
     els.fontSizePopoverLabel.textContent = `${state.fontSizePx}px`;
@@ -281,6 +446,22 @@ function updateThemeButton() {
 }
 
 function bindEvents() {
+  // Nút quay lại màn hình Home (Thư viện)
+  els.backToHomeBtn?.addEventListener("click", () => {
+    stopReading();
+    showScreen("home");
+  });
+
+  // Nút đổi theme trên thanh Home topbar
+  els.themeBtn?.addEventListener("click", () => {
+    state.themeIndex = (state.themeIndex + 1) % state.themes.length;
+    applyReadingPreferences();
+    updateThemeButton();
+  });
+
+  // Nút cài đặt trên Home
+  els.homeSettingsBtn?.addEventListener("click", openSettingsModal);
+
   // 1. Chọn file PDF
   els.pdfFileInput.addEventListener("change", (e) => {
     const file = e.target.files?.[0];
@@ -340,13 +521,17 @@ function bindEvents() {
   els.playPauseBtn.addEventListener("click", togglePlayPause);
   els.stopBtn.addEventListener("click", stopReading);
 
-  els.prevSentenceBtn.addEventListener("click", () => {
+  // Chuyển chương trước / chương sau
+  els.prevChapterBtn?.addEventListener("click", goToPrevChapter);
+  els.nextChapterBtn?.addEventListener("click", goToNextChapter);
+
+  els.prevSentenceBtn?.addEventListener("click", () => {
     if (state.sentences.length === 0) return;
     const prevIdx = Math.max(0, state.currentSentenceIndex - 1);
     playFromSentence(prevIdx);
   });
 
-  els.nextSentenceBtn.addEventListener("click", () => {
+  els.nextSentenceBtn?.addEventListener("click", () => {
     if (state.sentences.length === 0) return;
     const nextIdx = Math.min(state.sentences.length - 1, state.currentSentenceIndex + 1);
     playFromSentence(nextIdx);
@@ -395,15 +580,84 @@ function bindEvents() {
   els.ttsAudio.addEventListener("play", () => {
     els.ttsAudio.defaultPlaybackRate = state.speed;
     els.ttsAudio.playbackRate = state.speed;
+    els.waveformBars?.classList.add("playing");
   });
 
-  // 4. Menu Aa (Kindle / Kobo Popover)
+  els.ttsAudio.addEventListener("pause", () => {
+    els.waveformBars?.classList.remove("playing");
+  });
+
+  els.ttsAudio.addEventListener("ended", () => {
+    els.waveformBars?.classList.remove("playing");
+  });
+
+  // 4. Menu Aa (Apple Books Popover)
   els.readingSettingsBtn?.addEventListener("click", (e) => {
     e.stopPropagation();
+    if (els.moreOptionsPopover) els.moreOptionsPopover.hidden = true;
     if (els.readingSettingsPopover) {
       els.readingSettingsPopover.hidden = !els.readingSettingsPopover.hidden;
     }
   });
+
+  // 4b. Menu [⋯] More Options Popover
+  els.moreOptionsBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (els.readingSettingsPopover) els.readingSettingsPopover.hidden = true;
+    if (els.moreOptionsPopover) {
+      els.moreOptionsPopover.hidden = !els.moreOptionsPopover.hidden;
+    }
+  });
+
+  // Chọn Theme theo 4 vòng tròn màu kiểu Apple Books
+  document.querySelectorAll(".theme-circle, .theme-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll(".theme-circle, .theme-chip").forEach((c) => c.classList.remove("active"));
+      chip.classList.add("active");
+      const themeVal = chip.getAttribute("data-theme-val") || chip.getAttribute("data-theme-name") || "sepia";
+      const mapped = themeVal === "white" ? "light" : (themeVal === "midnight" ? "dark" : (themeVal === "slate" ? "eink" : themeVal));
+      const idx = state.themes.indexOf(mapped);
+      if (idx !== -1) {
+        state.themeIndex = idx;
+      }
+      document.documentElement.setAttribute("data-theme", themeVal);
+      applyReadingPreferences();
+      updateThemeButton();
+    });
+  });
+
+  // Chọn phông chữ kiểu danh sách Apple Books
+  document.querySelectorAll(".font-option, .chip[data-font]").forEach((opt) => {
+    opt.addEventListener("click", () => {
+      document.querySelectorAll(".font-option, .chip[data-font]").forEach((o) => {
+        o.classList.remove("active");
+        const check = o.querySelector(".check-mark");
+        if (check) check.remove();
+      });
+      opt.classList.add("active");
+      const span = document.createElement("span");
+      span.className = "check-mark";
+      span.textContent = "✓";
+      opt.appendChild(span);
+      state.readingFont = opt.getAttribute("data-font");
+      applyReadingPreferences();
+    });
+  });
+
+  // Bấm vào Speed Pill để đổi nhanh tốc độ đọc (0.8x -> 1.0x -> 1.2x -> 1.5x -> 2.0x)
+  const speedPillBtn = document.getElementById("speedPillBtn");
+  if (speedPillBtn) {
+    speedPillBtn.addEventListener("click", () => {
+      const speeds = [0.8, 1.0, 1.25, 1.5, 2.0];
+      const cur = parseFloat(state.speed) || 1.0;
+      let nextIdx = (speeds.indexOf(cur) + 1) % speeds.length;
+      if (nextIdx < 0) nextIdx = 0;
+      state.speed = speeds[nextIdx];
+      if (els.speedValLabel) els.speedValLabel.textContent = `${state.speed}x`;
+      els.ttsAudio.defaultPlaybackRate = state.speed;
+      els.ttsAudio.playbackRate = state.speed;
+    });
+  }
 
   document.addEventListener("click", (e) => {
     if (
@@ -413,6 +667,14 @@ function bindEvents() {
       e.target !== els.readingSettingsBtn
     ) {
       els.readingSettingsPopover.hidden = true;
+    }
+    if (
+      els.moreOptionsPopover &&
+      !els.moreOptionsPopover.hidden &&
+      !els.moreOptionsPopover.contains(e.target) &&
+      e.target !== els.moreOptionsBtn
+    ) {
+      els.moreOptionsPopover.hidden = true;
     }
     if (
       els.sleepTimerPopover &&
@@ -543,16 +805,25 @@ function bindEvents() {
   els.zoomInBtn.addEventListener("click", () => updateZoom(15));
   els.zoomOutBtn.addEventListener("click", () => updateZoom(-15));
 
-  els.togglePdfPaneBtn.addEventListener("click", () => {
-    els.pdfPane.hidden = true;
-    els.splitContainer.classList.add("single-pane");
-    els.showPdfPaneBtn.hidden = false;
+  els.togglePdfPaneBtn?.addEventListener("click", () => {
+    const isHidden = els.pdfPane.hidden;
+    els.pdfPane.hidden = !isHidden;
+    const txt = document.getElementById("togglePdfText");
+    if (txt) {
+      txt.textContent = els.pdfPane.hidden ? "Hiện trang PDF gốc" : "Ẩn trang PDF gốc";
+    }
+    if (els.pdfPane.hidden) {
+      els.splitContainer.classList.add("single-pane");
+    } else {
+      els.splitContainer.classList.remove("single-pane");
+    }
   });
 
-  els.showPdfPaneBtn.addEventListener("click", () => {
+  els.showPdfPaneBtn?.addEventListener("click", () => {
     els.pdfPane.hidden = false;
     els.splitContainer.classList.remove("single-pane");
-    els.showPdfPaneBtn.hidden = true;
+    const txt = document.getElementById("togglePdfText");
+    if (txt) txt.textContent = "Ẩn trang PDF gốc";
   });
 
   els.copyCleanTextBtn.addEventListener("click", async () => {
@@ -574,6 +845,7 @@ function bindEvents() {
   els.tabBtnBookmarks?.addEventListener("click", () => switchDrawerTab("bookmarks"));
   els.tabBtnHighlights?.addEventListener("click", () => switchDrawerTab("highlights"));
   els.bookmarkRibbonBtn?.addEventListener("click", toggleBookmarkCurrentPage);
+  document.getElementById("headerBookmarkBtn")?.addEventListener("click", toggleBookmarkCurrentPage);
 
   // 12. Modal Phím tắt
   els.shortcutsBtn?.addEventListener("click", openShortcutsModal);
@@ -643,6 +915,12 @@ function bindEvents() {
     if (e.code === "Space" && state.sentences.length > 0) {
       e.preventDefault();
       togglePlayPause();
+    } else if (e.key === "j" || e.key === "J") {
+      e.preventDefault();
+      goToPrevChapter();
+    } else if (e.key === "k" || e.key === "K") {
+      e.preventDefault();
+      goToNextChapter();
     } else if (e.code === "ArrowLeft" && state.docId && state.currentPage > 1) {
       e.preventDefault();
       goToPage(state.currentPage - 1, false);
@@ -717,6 +995,9 @@ async function handlePdfUpload(file) {
     renderTocList();
     await loadAnnotations();
 
+    saveRecentBook(info.doc_id, info.filename, info.page_count);
+    showScreen("reader");
+
     // Cập nhật UI
     els.emptyState.hidden = true;
     els.splitContainer.hidden = false;
@@ -739,11 +1020,56 @@ async function handlePdfUpload(file) {
   }
 }
 
+async function goToPrevChapter() {
+  if (!state.docId) return;
+
+  // 1. Nếu có mục lục hợp lệ
+  if (state.toc && state.toc.length > 0) {
+    const prevChapters = state.toc
+      .filter((item) => Number(item.page) < state.currentPage)
+      .sort((a, b) => Number(b.page) - Number(a.page));
+
+    if (prevChapters.length > 0) {
+      await goToPage(Number(prevChapters[0].page), false);
+      return;
+    }
+  }
+
+  // 2. Nếu không có chương nào trước đó hoặc tài liệu không có mục lục:
+  // Lùi về trang trước (như hành vi đọc sách tiêu chuẩn)
+  if (state.currentPage > 1) {
+    await goToPage(state.currentPage - 1, false);
+  }
+}
+
+async function goToNextChapter() {
+  if (!state.docId) return;
+
+  // 1. Nếu có mục lục hợp lệ
+  if (state.toc && state.toc.length > 0) {
+    const nextChapters = state.toc
+      .filter((item) => Number(item.page) > state.currentPage)
+      .sort((a, b) => Number(a.page) - Number(b.page));
+
+    if (nextChapters.length > 0) {
+      await goToPage(Number(nextChapters[0].page), false);
+      return;
+    }
+  }
+
+  // 2. Nếu không còn chương nào tiếp theo hoặc tài liệu không có mục lục:
+  // Chuyển sang trang tiếp theo (tiến từng trang một, không bao giờ nhảy vụt về cuối sách)
+  if (state.currentPage < state.totalPages) {
+    await goToPage(state.currentPage + 1, false);
+  }
+}
+
 async function goToPage(pageNumber, autoPlay = false) {
   if (!state.docId) return;
   stopReading();
 
   state.currentPage = pageNumber;
+  saveRecentBook(state.docId, state.filename, state.totalPages, pageNumber);
   els.pageInput.value = pageNumber;
   els.prevPageBtn.disabled = pageNumber <= 1;
   els.nextPageBtn.disabled = pageNumber >= state.totalPages;
@@ -764,6 +1090,7 @@ async function goToPage(pageNumber, autoPlay = false) {
     const data = await res.json();
     applyPageData(data);
     updateBookmarkRibbonState();
+    updateHighlightActiveTocItem();
     renderHighlightsOnPage();
 
     // Tự động quét OCR nếu trang bị lỗi font hoặc là ảnh scan
@@ -785,6 +1112,9 @@ function applyPageData(data) {
   state.cleanText = data.text || "";
   state.sentences = data.sentences || [];
   state.currentSentenceIndex = -1;
+
+  // Cập nhật tiêu đề chương nếu trang này trùng với một mục trong Mục lục (TOC)
+  updateChapterHeaderForCurrentPage();
 
   els.statusBadge.hidden = false;
   els.statusReasonLabel.textContent = data.reason || "";
@@ -1026,17 +1356,34 @@ async function processRawTextFromClient(rawText, customReason, badgeType = "unic
 // ============================================================================
 // 4. BỘ PHÁT GIỌNG ĐỌC AI & TÔ SÁNG TỪNG CÂU (WHISPERSYNC STYLE)
 // ============================================================================
+function setPlayButtonVisual(stateName) {
+  const icon = document.getElementById("playIcon");
+  if (!icon) return;
+  if (stateName === "playing") {
+    icon.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
+    if (els.playPauseBtn) els.playPauseBtn.title = "Tạm dừng (Phím Space)";
+    els.waveformBars?.classList.add("playing");
+  } else if (stateName === "loading") {
+    icon.innerHTML = '<circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="14 8"></circle>';
+    if (els.playPauseBtn) els.playPauseBtn.title = "Đang tải âm thanh...";
+  } else {
+    icon.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
+    if (els.playPauseBtn) els.playPauseBtn.title = "Đọc ngay (Phím Space)";
+    els.waveformBars?.classList.remove("playing");
+  }
+}
+
 function togglePlayPause() {
   if (state.sentences.length === 0) return;
 
   if (state.isPlaying && !state.isPaused) {
     state.isPaused = true;
     els.ttsAudio.pause();
-    els.playPauseBtn.textContent = "▶ Đọc tiếp";
+    setPlayButtonVisual("paused");
   } else if (state.isPlaying && state.isPaused) {
     state.isPaused = false;
     els.ttsAudio.play();
-    els.playPauseBtn.textContent = "⏸ Tạm dừng";
+    setPlayButtonVisual("playing");
   } else {
     const startIdx = state.currentSentenceIndex >= 0 ? state.currentSentenceIndex : 0;
     playFromSentence(startIdx);
@@ -1049,7 +1396,7 @@ function stopReading() {
   state.isPaused = false;
   els.ttsAudio.pause();
   els.ttsAudio.currentTime = 0;
-  els.playPauseBtn.textContent = "▶ Đọc ngay";
+  setPlayButtonVisual("stopped");
   highlightSentence(-1);
 }
 
@@ -1107,7 +1454,7 @@ async function playFromSentence(index) {
   // Dừng ngay audio hiện tại để ngắt giọng cũ ngay tức khắc
   els.ttsAudio.pause();
   els.ttsAudio.currentTime = 0;
-  els.playPauseBtn.textContent = "⏳ Đang đổi giọng...";
+  setPlayButtonVisual("loading");
   highlightSentence(index);
 
   try {
@@ -1117,7 +1464,7 @@ async function playFromSentence(index) {
     els.ttsAudio.src = audioUrl;
     els.ttsAudio.defaultPlaybackRate = state.speed;
     els.ttsAudio.playbackRate = state.speed;
-    els.playPauseBtn.textContent = "⏸ Tạm dừng";
+    setPlayButtonVisual("playing");
     updateMediaSession(index);
 
     els.ttsAudio.onended = () => {
@@ -1158,7 +1505,7 @@ function speakWithBrowserFallback(text, index, sessionId) {
   const utter = new SpeechSynthesisUtterance(text);
   utter.lang = "vi-VN";
   utter.rate = state.speed;
-  els.playPauseBtn.textContent = "⏸ Tạm dừng";
+  setPlayButtonVisual("playing");
 
   utter.onend = () => {
     if (sessionId !== state.playSessionId) return;
@@ -1539,6 +1886,11 @@ function updateBookmarkRibbonState() {
       ? "Đã ghim trang này (Bấm để bỏ ghim - Phím B)"
       : "Ghim dấu trang này (Phím B)";
   }
+  const hBtn = document.getElementById("headerBookmarkBtn");
+  if (hBtn) {
+    hBtn.classList.toggle("active", isBookmarked);
+    hBtn.style.color = isBookmarked ? "var(--accent)" : "";
+  }
 }
 
 function updateBookmarkCount() {
@@ -1553,6 +1905,39 @@ function updateHighlightCount() {
   }
 }
 
+function updateChapterHeaderForCurrentPage() {
+  if (!els.chapterHeader) return;
+  
+  // Tìm xem trang hiện tại có ứng với mục nào trong TOC không
+  const currentChapter = (state.toc || []).find((item) => item.page === state.currentPage);
+  
+  if (currentChapter && currentChapter.title) {
+    els.chapterHeader.hidden = false;
+    const parts = currentChapter.title.split(/[:\-–—]\s*/);
+    if (parts.length > 1) {
+      if (els.chapterNum) {
+        els.chapterNum.textContent = parts[0].trim();
+        els.chapterNum.hidden = false;
+      }
+      if (els.chapterTitle) els.chapterTitle.textContent = parts.slice(1).join(" - ").trim();
+    } else {
+      if (els.chapterNum) els.chapterNum.hidden = true;
+      if (els.chapterTitle) els.chapterTitle.textContent = currentChapter.title.trim();
+    }
+  } else {
+    // Nếu trang không phải là đầu chương, ẩn header giả định
+    els.chapterHeader.hidden = true;
+  }
+}
+
+function updateHighlightActiveTocItem() {
+  if (!els.tocList) return;
+  els.tocList.querySelectorAll(".drawer-item").forEach((el) => {
+    const page = parseInt(el.getAttribute("data-page"), 10);
+    el.classList.toggle("active", page === state.currentPage);
+  });
+}
+
 function renderTocList() {
   if (!els.tocList) return;
   if (!state.toc || state.toc.length === 0) {
@@ -1562,7 +1947,7 @@ function renderTocList() {
   els.tocList.innerHTML = state.toc
     .map(
       (item) => `
-      <div class="drawer-item level-${item.level || 1}" data-page="${item.page}">
+      <div class="drawer-item level-${item.level || 1} ${item.page === state.currentPage ? 'active' : ''}" data-page="${item.page}">
         <span class="drawer-item-title">${escapeHtml(item.title)}</span>
         <span class="drawer-item-page">Trang ${item.page}</span>
       </div>
