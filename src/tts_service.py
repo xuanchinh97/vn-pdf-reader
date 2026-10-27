@@ -525,10 +525,20 @@ class TTSService:
         buf = io.BytesIO()
         try:
             sf.write(buf, audio, SAMPLE_RATE, format="MP3")
+            raw_mp3 = buf.getvalue()
+            # Loại bỏ Xing/Info VBR header frame (192 bytes đầu) của libsndfile để khi ghép nối nhiều trang
+            # thành Sách Nói (Audiobook), trình phát nhạc nhận diện đúng tổng thời lượng của toàn bộ các trang
+            if len(raw_mp3) > 256 and (b"Xing" in raw_mp3[:220] or b"Info" in raw_mp3[:220]):
+                next_frame = raw_mp3.find(b"\xff\xf3", 4)
+                if next_frame == -1:
+                    next_frame = raw_mp3.find(b"\xff\xfb", 4)
+                if 0 < next_frame <= 512:
+                    raw_mp3 = raw_mp3[next_frame:]
+            return raw_mp3
         except Exception:
             buf = io.BytesIO()
             sf.write(buf, audio, SAMPLE_RATE, format="WAV")
-        return buf.getvalue()
+            return buf.getvalue()
 
     def _synthesize_fpt(self, text: str, voice_name: str, api_key: str) -> bytes:
         """Gọi FPT.AI API v5 để sinh giọng đọc chất lượng cao."""
