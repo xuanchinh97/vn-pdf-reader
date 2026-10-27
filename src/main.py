@@ -28,6 +28,17 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def disable_static_cache(request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if path == "/" or path.endswith((".html", ".js", ".css")):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
+
 class CleanTextRequest(BaseModel):
     text: str
     force_mode: str = "unicode"
