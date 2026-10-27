@@ -4,6 +4,39 @@ Toàn bộ các thay đổi, tính năng mới và cải tiến của dự án *
 
 ---
 
+## [1.5.0] - 2026-10-27
+
+### Added
+- **Mục Lục Chuẩn Trình Duyệt PDF (Chrome PDF Viewer Sidebar):**
+  - Bổ sung thanh điều hướng dọc (`.pdf-sidebar-rail`) chuyển đổi linh hoạt giữa 2 chế độ:
+    - **Hình thu nhỏ trang (Page Thumbnails):** Render ảnh thu nhỏ thực tế của từng trang PDF (`/api/doc/{doc_id}/page/{p}/image?dpi=60` với `loading="lazy"`), viền xanh `#8AB4F8` đánh dấu trang đang đọc và tự động cuộn tới trang hiện hành khi mở Drawer.
+    - **Đề mục tài liệu (Document Outline Tree):** Cây mục lục phân cấp hỗ trợ đóng/mở nhánh con (`▸`) và nhảy trang tức thì.
+  - Mở rộng bộ quét `extract_toc` trong `src/pdf_service.py` để nhận diện đề mục đánh số phân cấp (`1.1`, `1.2`...) và tiêu đề chương in hoa đầu trang.
+- **Tối Ưu Hóa Thanh Điều Khiển Âm Thanh Nổi (Floating Capsule Player) & Header:**
+  - **Nút Play/Pause tích hợp Sóng Âm (`.capsule-play-waveform`):** Thay biểu tượng tam giác truyền thống bằng 4 thanh sóng âm động ngay trong nút tròn trung tâm và loại bỏ cụm sóng âm thừa ở cuối thanh điều khiển.
+  - **Popover Chọn Giọng Đọc (`#voicePopover`):** Thiết kế đồng bộ dạng kính mờ rộng `450px`, căn lề trái (`text-align: left`) thẳng hàng, chống rớt dòng và bỏ biểu tượng micro bị lặp đôi trên nút `#voicePill`.
+  - **Popover Tốc Độ Đọc (`#speedPopover`):** Kết hợp danh sách mức tốc độ dựng sẵn (`0.75x` – `2.0x`) và thanh trượt tùy chỉnh mượt mà (`0.5x` – `2.5x`, bước `0.05x`).
+  - **Trạng thái Hẹn Giờ Tắt (`#sleepTimerBtn`):** Tự động chuyển biểu tượng từ mặt trăng `🌙` sang đồng hồ cát đếm ngược `⏳` kèm hiệu ứng nhịp thở khi đang hẹn giờ, và quay lại `🌙` khi hủy hẹn giờ.
+- **Tối Ưu Giao Diện Di Động (Mobile Responsive):**
+  - Bổ sung hệ thống `@media (max-width: 768px)` và `@media (max-width: 380px)`.
+  - Tinh gọn Header trên Mobile (nút Back chỉ hiển thị icon `<`, ẩn nhãn `"Trang chủ"` để nhường không gian cho tiêu đề chương).
+  - Thu gọn kích thước nút và khoảng cách trong `floating-capsule` để hiển thị trọn vẹn trên màn hình `375px` mà không bị tràn lề; các Popover và Drawer tự động co giãn vừa khít màn hình di động.
+
+### Changed
+- **Chế Độ Đọc Tập Trung 1 Cột (Single-Pane Clean Reader):** Loại bỏ khung hiển thị ảnh PDF gốc song song trên màn hình chính, chỉ hiển thị trang sách văn bản sạch để tối ưu không gian đọc.
+- **Giọng Đọc Mặc Định:** Chuyển giọng mặc định sang **Thành Đạt (`kokoro-thanh_dat`)** trên toàn bộ hệ thống (Frontend & Backend).
+- **Điều Hướng Header:** Đổi nhãn nút quay lại từ `< Thư viện` thành `< Trang chủ` và lược bỏ nút Bookmark thừa trên thanh Header.
+
+### Fixed
+- **Khắc phục lỗi mất/dính đoạn văn và đè nội dung OCR khi lật trang nhanh:**
+  - Giảm ngưỡng tách đoạn dọc giữa các khối văn bản PDF trong `src/pdf_service.py` từ `18.0pt` xuống `4.0pt` để bảo toàn cấu trúc đoạn văn.
+  - Thu hẹp vùng lọc header/footer (`4%` mép trên / `96%` mép dưới) chỉ lọc khi thực sự là số trang đứng lẻ hoặc watermark, tránh cắt nhầm dòng văn bản đầu/cuối trang.
+  - Bảo vệ số thứ tự đầu dòng (`1.`, `2.`...) trong `split_into_sentences` (`src/vn_text_processor.py`) để không tách rời số thứ tự thành câu riêng.
+  - Bổ sung `state.ocrSessionId` trong `src/static/app.js` để hủy kết quả Tesseract OCR chạy ngầm của trang cũ khi người dùng đã chuyển sang trang mới.
+  - Căn chỉnh lại khoảng đệm `.reader-viewport`, đưa dải ruy-băng đánh dấu trang (`#bookmarkRibbonBtn`) ra mép phải trang sách và tự động cuộn lên đầu trang khi chuyển trang.
+
+---
+
 ## [1.4.0] - 2026-10-26
 
 ### Added

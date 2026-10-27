@@ -69,7 +69,7 @@
       <!-- RECENT BOOKS / SÁCH GẦN ĐÂY -->
       <section class="recent-section" id="recentSection" hidden>
         <div class="section-header">
-          <h3 class="section-title">Đang đọc dở</h3>
+          <h3 class="section-title">Tiếp tục đọc</h3>
         </div>
 
         <div class="books-grid" id="recentBooksGrid"></div>
@@ -88,9 +88,9 @@
     <!-- HEADER ĐỌC SÁCH KÍNH MỜ -->
     <header class="reader-topbar" id="header">
       <div class="topbar-left">
-        <button class="back-home-btn" id="backToHomeBtn" title="Quay lại Thư viện (Home)">
+        <button class="back-home-btn" id="backToHomeBtn" title="Quay lại Trang chủ">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-          <span>Thư viện</span>
+          <span>Trang chủ</span>
         </button>
         <button class="apple-btn-icon" id="drawerToggleBtn" title="Mục lục & Dấu trang (Phím M)">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="15" y2="18"></line></svg>
@@ -132,7 +132,9 @@
           </div>
 
           <div class="book-page-canvas" id="bookPageCanvas">
-            <button class="bookmark-ribbon-btn" id="bookmarkRibbonBtn" title="Ghim dấu trang" style="display:none;"></button>
+            <button class="bookmark-ribbon-btn" id="bookmarkRibbonBtn" title="Ghim / Bỏ dấu trang trang này (Phím B)">
+              <svg viewBox="0 0 24 32"><path d="M0 0h24v32l-12-8-12 8z"></path></svg>
+            </button>
             
             <div class="sentences-container book-flow" id="sentencesContainer">
               <p class="book-paragraph">
@@ -158,7 +160,12 @@
           <div id="audioScrubberBar" hidden><span id="audioCurrentTime"></span><input id="audioScrubber" type="range"/><span id="audioDuration"></span></div>
           <div id="ocrProgressBox" hidden><span id="ocrProgressText"></span><strong id="ocrProgressPercent"></strong><div id="ocrProgressBar"></div></div>
           <div id="editorBox" hidden><textarea id="manualTextArea"></textarea><button id="applyManualTextBtn"></button><button id="cancelManualTextBtn"></button></div>
-          <div id="floatingSelectionBar" hidden><button id="floatLookupBtn"></button><button id="floatSpeakBtn"></button><button id="floatCopyBtn"></button></div>
+          <div id="floatingSelectionBar" hidden>
+            <button id="floatHighlightBtn" class="float-btn-highlight"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg> <span>Tô sáng</span></button>
+            <button id="floatLookupBtn">📖 <span>Tra từ</span></button>
+            <button id="floatSpeakBtn">🎙️ <span>Đọc câu</span></button>
+            <button id="floatCopyBtn">📋 <span>Sao chép</span></button>
+          </div>
           <footer id="bookFooterBar" hidden><span id="bookFooterTitle"></span><span id="bookEstTime"></span><div id="bookProgressFill"></div><span id="bookPageIndicator"></span><span id="bookPercentBadge"></span></footer>
           <button id="exitZenBtn" hidden></button>
         </article>
@@ -172,7 +179,12 @@
       </button>
 
       <button class="capsule-play-btn" id="playPauseBtn" title="Đọc / Tạm dừng (Phím Space)">
-        <svg id="playIcon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        <div class="waveform-bars capsule-play-waveform" id="waveformBars">
+          <div class="waveform-bar"></div>
+          <div class="waveform-bar"></div>
+          <div class="waveform-bar"></div>
+          <div class="waveform-bar"></div>
+        </div>
       </button>
 
       <button class="capsule-btn" id="nextChapterBtn" title="Chương sau (Phím K)">
@@ -181,25 +193,21 @@
 
       <div class="capsule-divider"></div>
 
-      <div class="capsule-pill" id="voicePill">
-        <span>🎙️</span>
-        <select id="voiceSelect" title="Chọn giọng đọc"></select>
-      </div>
+      <button class="capsule-pill" id="voicePill" title="Chọn giọng đọc AI">
+        <span class="pill-mic-icon">🎙️</span>
+        <span class="pill-voice-name" id="voiceCurrentLabel">Thành Đạt (Nam Truyền Cảm)</span>
+        <svg class="pill-caret" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        <select id="voiceSelect" hidden></select>
+      </button>
 
-      <button class="capsule-pill" id="speedPillBtn" title="Đổi tốc độ đọc">
+      <button class="capsule-pill" id="speedPillBtn" title="Tùy chỉnh tốc độ đọc">
         <span id="speedValLabel">1.0x</span>
         <button id="speedDecBtn" hidden></button>
         <button id="speedIncBtn" hidden></button>
         <select id="speedSelect" hidden></select>
       </button>
 
-      <button class="capsule-btn" id="sleepTimerBtn" title="Hẹn giờ ngủ">🌙</button>
-
-      <div class="waveform-bars" id="waveformBars">
-        <div class="waveform-bar"></div>
-        <div class="waveform-bar"></div>
-        <div class="waveform-bar"></div>
-      </div>
+      <button class="capsule-btn" id="sleepTimerBtn" title="Hẹn giờ ngủ"><span id="sleepTimerIcon">🌙</span></button>
 
       <button id="prevSentenceBtn" hidden></button>
       <button id="nextSentenceBtn" hidden></button>
@@ -301,6 +309,36 @@
     </div>
   </div>
 
+  <!-- ==================== POPOVER CHỌN GIỌNG ĐỌC AI ==================== -->
+  <div class="apple-popover voice-popover" id="voicePopover" hidden>
+    <div class="popover-title">🎙️ Chọn giọng đọc AI</div>
+    <div class="chip-grid voice-list-grid" id="voicePopoverList"></div>
+  </div>
+
+  <!-- ==================== POPOVER TỐC ĐỘ ĐỌC ==================== -->
+  <div class="apple-popover speed-popover" id="speedPopover" hidden>
+    <div class="popover-title">⚡ Tốc độ đọc</div>
+    <div class="speed-custom-box">
+      <div class="speed-custom-header">
+        <span>Tùy chỉnh linh hoạt</span>
+        <strong id="speedRangeValLabel">1.0x</strong>
+      </div>
+      <div class="speed-range-row">
+        <span class="speed-bound">0.5x</span>
+        <input type="range" id="speedRangeInput" min="0.5" max="2.5" step="0.05" value="1.0" />
+        <span class="speed-bound">2.5x</span>
+      </div>
+    </div>
+    <div class="chip-grid speed-preset-grid" id="speedPresetGrid">
+      <button class="chip" data-speed="0.75"><span>0.75x — Chậm rãi</span></button>
+      <button class="chip active" data-speed="1"><span>1.0x — Chuẩn tự nhiên</span><span class="check-mark">✓</span></button>
+      <button class="chip" data-speed="1.25"><span>1.25x — Hơi nhanh</span></button>
+      <button class="chip" data-speed="1.5"><span>1.5x — Nhanh</span></button>
+      <button class="chip" data-speed="1.75"><span>1.75x — Rất nhanh</span></button>
+      <button class="chip" data-speed="2"><span>2.0x — Siêu tốc</span></button>
+    </div>
+  </div>
+
   <!-- ==================== POPOVER HẸN GIỜ NGỦ ==================== -->
   <div class="apple-popover sleep-popover" id="sleepTimerPopover" hidden>
     <div class="popover-title">🌙 Hẹn giờ tắt đọc sách</div>
@@ -337,6 +375,12 @@
 
       <!-- Tab 2: Danh sách Dấu trang -->
       <div class="drawer-pane" id="drawerTabBookmarks" hidden>
+        <div class="drawer-add-action-bar">
+          <button class="drawer-action-btn" id="drawerAddBookmarkActionBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+            <span>Ghim dấu trang cho trang này</span>
+          </button>
+        </div>
         <div id="bookmarksList" class="bookmarks-list">
           <div class="drawer-empty-hint">Chưa có dấu trang nào.</div>
         </div>

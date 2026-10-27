@@ -430,6 +430,9 @@ def split_into_sentences(clean_text: str, max_len: int = 260) -> List[str]:
     for abbr in abbrevs:
         protected = protected.replace(abbr, abbr[:-1] + "<DOT>")
 
+    # Bảo vệ số thứ tự đầu dòng (VD: "1. ", "2. ", "10. ") không bị tách rời thành câu chỉ có "2."
+    protected = re.sub(r"(^|\n)(\s*\d{1,3})\.(?=\s+)", r"\1\2<DOT>", protected)
+
     raw_paragraphs = [p.strip() for p in protected.split("\n") if p.strip()]
     sentences: List[str] = []
 

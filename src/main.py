@@ -39,7 +39,7 @@ class GeminiOCRRequest(BaseModel):
 
 class TTSRequest(BaseModel):
     text: str
-    voice: str = "vi-VN-HoaiMyNeural"
+    voice: str = "kokoro-thanh_dat"
     speed: float = 1.0
 
 
@@ -109,7 +109,7 @@ async def get_page_text(
 async def get_page_image(
     doc_id: str,
     page_number: int,
-    dpi: int = Query(170, ge=72, le=300),
+    dpi: int = Query(170, ge=36, le=300),
     enhance: bool = Query(False),
 ):
     try:
@@ -166,6 +166,17 @@ async def get_doc_toc(doc_id: str):
         raise HTTPException(status_code=404, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Lỗi trích xuất mục lục: {exc}")
+
+
+@app.get("/api/doc/{doc_id}/pages")
+async def get_doc_pages_overview(doc_id: str):
+    try:
+        pages = pdf_service.get_pages_overview(doc_id)
+        return {"doc_id": doc_id, "pages": pages, "total": len(pages)}
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Lỗi đọc danh sách trang: {exc}")
 
 
 @app.get("/api/doc/{doc_id}/annotations")

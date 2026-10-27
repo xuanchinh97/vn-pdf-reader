@@ -56,15 +56,15 @@ def speed_to_edge_rate(speed: float) -> str:
 AVAILABLE_VOICES: List[Dict[str, str]] = [
     # 1. Nhóm giọng đọc AI Offline Kokoro (Chất lượng cao, Tự nhiên, Trầm ấm, Không lo mạng/proxy)
     {
-        "id": "kokoro-tuan_ngoc",
-        "name": "Tuấn Ngọc (Nam Trầm Ấm - Kokoro AI ⭐ Đề xuất)",
+        "id": "kokoro-thanh_dat",
+        "name": "Thành Đạt (Nam Truyền Cảm - Kokoro AI ⭐ Đề xuất)",
         "provider": "kokoro",
         "lang": "vi",
         "gender": "Male",
     },
     {
-        "id": "kokoro-thanh_dat",
-        "name": "Thành Đạt (Nam Truyền Cảm - Kokoro AI ⭐)",
+        "id": "kokoro-tuan_ngoc",
+        "name": "Tuấn Ngọc (Nam Trầm Ấm - Kokoro AI ⭐)",
         "provider": "kokoro",
         "lang": "vi",
         "gender": "Male",

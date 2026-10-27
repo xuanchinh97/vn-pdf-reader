@@ -25,7 +25,11 @@
   --shadow-popover: 0 20px 48px -10px rgba(0, 0, 0, 0.15), 0 0 1px rgba(0,0,0,0.2);
   
   --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", sans-serif;
-  --font-book: "Newsreader", "Merriweather", "Georgia", serif;
+  --font-newsreader: "Newsreader", "Georgia", serif;
+  --font-merriweather: "Merriweather", "Georgia", serif;
+  --font-literata: "Literata", "Georgia", serif;
+  --font-inter: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", sans-serif;
+  --font-book: var(--font-newsreader);
   --font-size-base: 19px;
   --line-height-base: 1.85;
   --book-width: 680px;
@@ -595,7 +599,19 @@ body {
   width: 100%;
   display: flex;
   justify-content: center;
-  padding: 80px 24px 160px;
+  padding: 96px 24px 200px;
+}
+
+.book-page-canvas {
+  position: relative;
+  padding-top: 12px;
+}
+
+.book-heading {
+  font-weight: 600;
+  margin: 24px 0 16px;
+  line-height: 1.45;
+  text-indent: 0;
 }
 
 .book-container {
@@ -786,6 +802,32 @@ body {
   color: var(--accent);
 }
 
+.pill-mic-icon {
+  font-size: 13px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.pill-voice-name {
+  max-width: 175px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.pill-caret {
+  opacity: 0.7;
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+
+.capsule-btn.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: 0 0 0 1.5px var(--accent-soft);
+}
+
 .capsule-pill select {
   background: transparent;
   border: none;
@@ -806,29 +848,47 @@ body {
 .waveform-bars {
   display: flex;
   align-items: center;
-  gap: 2.5px;
-  height: 16px;
-  padding: 0 4px;
+  justify-content: center;
+  gap: 3px;
+  height: 18px;
+  padding: 0;
 }
 
 .waveform-bar {
-  width: 2.5px;
-  height: 5px;
-  background: var(--accent);
-  border-radius: 2px;
-  transition: height 0.2s ease;
+  width: 2.8px;
+  border-radius: 3px;
+  background: currentColor;
+  transition: height 0.2s ease, opacity 0.2s ease;
+}
+
+/* Chiều cao sóng âm tĩnh khi đang dừng (tạo hình nhịp sóng đẹp mắt) */
+.capsule-play-waveform .waveform-bar:nth-child(1) { height: 7px; }
+.capsule-play-waveform .waveform-bar:nth-child(2) { height: 15px; }
+.capsule-play-waveform .waveform-bar:nth-child(3) { height: 11px; }
+.capsule-play-waveform .waveform-bar:nth-child(4) { height: 6px; }
+
+.capsule-play-waveform.loading .waveform-bar {
+  animation: wavePulse 0.6s ease-in-out infinite alternate;
+  opacity: 0.75;
 }
 
 .playing .waveform-bar:nth-child(1),
-.waveform-bars.playing .waveform-bar:nth-child(1) { animation: wave 0.8s ease-in-out infinite alternate; }
+.waveform-bars.playing .waveform-bar:nth-child(1) { animation: wave 0.55s ease-in-out infinite alternate; }
 .playing .waveform-bar:nth-child(2),
-.waveform-bars.playing .waveform-bar:nth-child(2) { animation: wave 0.6s ease-in-out 0.2s infinite alternate; }
+.waveform-bars.playing .waveform-bar:nth-child(2) { animation: wave 0.45s ease-in-out 0.15s infinite alternate; }
 .playing .waveform-bar:nth-child(3),
-.waveform-bars.playing .waveform-bar:nth-child(3) { animation: wave 0.9s ease-in-out 0.4s infinite alternate; }
+.waveform-bars.playing .waveform-bar:nth-child(3) { animation: wave 0.65s ease-in-out 0.3s infinite alternate; }
+.playing .waveform-bar:nth-child(4),
+.waveform-bars.playing .waveform-bar:nth-child(4) { animation: wave 0.5s ease-in-out 0.2s infinite alternate; }
 
 @keyframes wave {
-  0% { height: 4px; }
-  100% { height: 16px; }
+  0% { height: 5px; }
+  100% { height: 18px; }
+}
+
+@keyframes wavePulse {
+  0% { transform: scaleY(0.6); }
+  100% { transform: scaleY(1.1); }
 }
 
 /* ==========================================================================
@@ -855,6 +915,79 @@ body {
 .reading-popover { top: 60px; right: 24px; }
 .more-popover { top: 60px; right: 24px; width: 300px; }
 .sleep-popover { bottom: 96px; left: 50%; transform: translateX(-50%); width: 280px; }
+.voice-popover { bottom: 96px; left: 50%; transform: translateX(-50%); width: 450px; max-width: calc(100vw - 32px); max-height: 440px; display: flex; flex-direction: column; }
+.speed-popover { bottom: 96px; left: 50%; transform: translateX(-50%); width: 320px; }
+
+.voice-list-grid {
+  overflow-y: auto;
+  max-height: 350px;
+  padding-right: 4px;
+}
+
+.voice-list-grid .chip {
+  text-align: left;
+  justify-content: space-between;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.voice-list-grid .chip span:first-child {
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.speed-custom-box {
+  background: var(--border-subtle);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.speed-custom-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.speed-custom-header strong {
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.speed-range-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.speed-bound {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+#speedRangeInput {
+  flex: 1;
+  accent-color: var(--accent);
+  cursor: pointer;
+  height: 5px;
+}
+
+.sleep-countdown {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 
 .popover-header, .popover-title {
   font-size: 12px;
@@ -936,6 +1069,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  text-align: left;
   font-size: 14px;
   border: none;
   background: transparent;
@@ -1200,12 +1334,657 @@ body {
   font-weight: 600;
 }
 
-/* RESPONSIVE */
+/* BOOKMARK RIBBON (DẢI RUY BĂNG DẤU TRANG APPLE BOOKS) */
+.bookmark-ribbon-btn {
+  position: absolute;
+  top: -12px;
+  right: -44px;
+  width: 32px;
+  height: 48px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0;
+}
+
+.bookmark-ribbon-btn:hover {
+  transform: translateY(2px);
+  color: #EE0033;
+}
+
+.bookmark-ribbon-btn.active {
+  color: #EE0033;
+  transform: translateY(4px);
+  filter: drop-shadow(0 2px 8px rgba(238, 0, 51, 0.4));
+}
+
+.bookmark-ribbon-btn svg {
+  width: 26px;
+  height: 38px;
+  fill: currentColor;
+}
+
+/* FLOATING SELECTION BAR (THANH CÔNG CỤ BÔI ĐEN NỔI) */
+#floatingSelectionBar[hidden] {
+  display: none !important;
+}
+
+#floatingSelectionBar {
+  position: fixed;
+  transform: translate(-50%, -120%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: var(--bg-capsule);
+  backdrop-filter: blur(25px) saturate(180%);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+  border: 1px solid var(--border-card);
+  border-radius: 30px;
+  box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0,0,0,0.08);
+  z-index: 9999;
+  animation: floatPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes floatPop {
+  from { opacity: 0; transform: translate(-50%, -100%) scale(0.9); }
+  to { opacity: 1; transform: translate(-50%, -120%) scale(1); }
+}
+
+#floatingSelectionBar button {
+  background: transparent;
+  border: none;
+  border-radius: 20px;
+  padding: 6px 12px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+#floatingSelectionBar button:hover {
+  background: var(--border-subtle);
+  transform: scale(1.04);
+}
+
+#floatingSelectionBar .float-btn-highlight {
+  color: #D97706;
+  font-weight: 600;
+}
+
+#floatingSelectionBar .float-btn-highlight:hover {
+  background: rgba(245, 158, 11, 0.15);
+}
+
+/* HIGHLIGHT TRÊN VĂN BẢN TRANG SÁCH */
+.sentence-item.highlighted,
+mark.book-highlight {
+  background: #FFE8A3 !important;
+  color: #1D1D1F !important;
+  border-radius: 3px;
+  padding: 1px 4px;
+  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.2);
+  transition: background-color 0.2s ease;
+}
+
+html[data-theme="midnight"] .sentence-item.highlighted,
+html[data-theme="dark"] .sentence-item.highlighted {
+  background: #926A00 !important;
+  color: #FFFFFF !important;
+}
+
+/* NÚT THÊM DẤU TRANG TRONG DRAWER */
+.drawer-add-action-bar {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: center;
+}
+
+.drawer-action-btn {
+  width: 100%;
+  padding: 10px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 12px;
+  font-family: var(--font-ui);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.drawer-action-btn:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ẨN HOÀN TOÀN CỘT ẢNH PDF GỐC - CHỈ HIỂN THỊ CHỮ DẠNG SÁCH IN SINGLE-PANE */
+#pdfPane {
+  display: none !important;
+}
+
+#splitContainer {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
+#readerPane.book-container {
+  margin: 0 auto !important;
+  width: 100% !important;
+  max-width: var(--book-width, 680px) !important;
+}
+
+/* GIAO DIỆN MỤC LỤC CHUẨN CHROME PDF VIEWER (PAGE THUMBNAILS + DOCUMENT OUTLINE TREE) */
+.drawer-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding-right: 0;
+}
+
+.drawer-pane {
+  flex: 1;
+  overflow-y: auto;
+  height: 100%;
+}
+
+#drawerTabToc {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.toc-list {
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.pdf-viewer-sidebar {
+  display: flex;
+  flex: 1;
+  height: 100%;
+  background: #28292C;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Cột Icon Rail bên trái chuẩn Chrome PDF Viewer */
+.pdf-sidebar-rail {
+  width: 48px;
+  background: #202124;
+  border-right: 1px solid rgba(255, 255, 255, 0.09);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.pdf-rail-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #9AA0A6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.pdf-rail-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #E8EAED;
+}
+
+.pdf-rail-btn.active {
+  background: rgba(138, 180, 248, 0.18);
+  color: #8AB4F8;
+}
+
+/* Khung cuộn bên phải */
+.pdf-sidebar-viewport {
+  flex: 1;
+  height: 100%;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* Chế độ 1: Hình thu nhỏ trang (Page Thumbnails) */
+.pdf-thumbnails-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 16px 32px;
+  gap: 22px;
+}
+
+.pdf-thumbnails-view[hidden],
+.pdf-outline-view[hidden] {
+  display: none !important;
+}
+
+.pdf-thumb-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  width: 100%;
+  max-width: 176px;
+  user-select: none;
+}
+
+.pdf-thumb-frame {
+  width: 148px;
+  aspect-ratio: 1 / 1.414;
+  background: #FFFFFF;
+  border-radius: 2px;
+  padding: 0;
+  border: 4px solid transparent;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.pdf-thumb-item:hover .pdf-thumb-frame {
+  border-color: rgba(138, 180, 248, 0.55);
+  transform: translateY(-1px);
+}
+
+.pdf-thumb-item.active .pdf-thumb-frame {
+  border-color: #8AB4F8;
+  box-shadow: 0 0 0 2px rgba(138, 180, 248, 0.35), 0 6px 16px rgba(0, 0, 0, 0.55);
+}
+
+.pdf-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #FFFFFF;
+  display: block;
+}
+
+/* Trang mẫu giả lập cho sách Demo */
+.pdf-thumb-mock-sheet {
+  width: 100%;
+  height: 100%;
+  background: #FCFBF7;
+  color: #222;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-family: "Newsreader", Georgia, serif;
+  text-align: left;
+  overflow: hidden;
+}
+
+.mock-sheet-chapter {
+  font-size: 7.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #8B5E3C;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid #E5DEC9;
+  padding-bottom: 3px;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mock-sheet-lines {
+  font-size: 6.5px;
+  line-height: 1.45;
+  color: #3D3935;
+  display: -webkit-box;
+  -webkit-line-clamp: 14;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pdf-thumb-page-num {
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #E8EAED;
+  text-align: center;
+}
+
+.pdf-thumb-item.active .pdf-thumb-page-num {
+  color: #8AB4F8;
+  font-weight: 700;
+}
+
+/* Chế độ 2: Cây mục lục / Đề mục tài liệu (Document Outline Tree) */
+.pdf-outline-view {
+  padding: 12px 8px 24px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pdf-outline-node {
+  display: flex;
+  flex-direction: column;
+}
+
+.pdf-outline-row {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 5px 10px 5px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #E8EAED;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.35;
+  transition: background 0.15s ease, color 0.15s ease;
+  user-select: none;
+}
+
+.pdf-outline-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.pdf-outline-row.active {
+  background: rgba(138, 180, 248, 0.2);
+  color: #8AB4F8;
+  font-weight: 600;
+}
+
+.pdf-outline-caret {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #9AA0A6;
+  font-size: 12px;
+  flex-shrink: 0;
+  transition: transform 0.18s ease;
+  border-radius: 4px;
+}
+
+.pdf-outline-caret:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #FFFFFF;
+}
+
+.pdf-outline-caret.expanded {
+  transform: rotate(90deg);
+}
+
+.pdf-outline-caret.empty {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.pdf-outline-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 8px;
+}
+
+.pdf-outline-page {
+  font-size: 11.5px;
+  color: #9AA0A6;
+  flex-shrink: 0;
+}
+
+.pdf-outline-row.active .pdf-outline-page {
+  color: #8AB4F8;
+}
+
+.pdf-outline-children {
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pdf-outline-children[hidden] {
+  display: none !important;
+}
+
+.pdf-outline-empty {
+  color: #9AA0A6;
+  font-size: 13px;
+  text-align: center;
+  padding: 40px 16px;
+  line-height: 1.6;
+}
+
+/* RESPONSIVE CHO MOBILE & MÀN HÌNH NHỎ */
 @media (max-width: 768px) {
-  .hero-title { font-size: 32px; }
-  .home-container { padding: 32px 16px 80px; gap: 36px; }
-  .upload-hero-card { padding: 32px 20px; }
-  .floating-capsule { bottom: 20px; height: 54px; padding: 0 10px; gap: 6px; }
-  .capsule-play-btn { width: 38px; height: 38px; }
-  .reader-book-title { max-width: 160px; }
+  /* 1. Home Screen */
+  .home-topbar {
+    height: 54px;
+    padding: 0 16px;
+  }
+  .brand-name { font-size: 15.5px; }
+  .hero-title { font-size: 28px; line-height: 1.25; }
+  .hero-subtitle { font-size: 14.5px; }
+  .home-container { padding: 28px 16px 80px; gap: 32px; }
+  .upload-hero-card { padding: 28px 18px; border-radius: 22px; }
+  .upload-title { font-size: 18px; }
+  .upload-desc { font-size: 13.5px; margin-bottom: 18px; }
+  .apple-capsule-btn { padding: 10px 22px; font-size: 14px; }
+  .books-grid { grid-template-columns: 1fr; gap: 14px; }
+
+  /* 2. Reader Topbar (Header đọc sách trên Mobile) */
+  .reader-topbar {
+    height: 50px;
+    padding: 0 10px;
+    gap: 6px;
+  }
+
+  .topbar-left,
+  .topbar-right-reader {
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  /* Nút Back trên Mobile: chỉ hiện icon (<), ẩn chữ "Trang chủ" */
+  .back-home-btn {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 50%;
+    justify-content: center;
+  }
+
+  .back-home-btn span {
+    display: none !important;
+  }
+
+  .apple-btn-icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .reader-center {
+    flex: 1;
+    min-width: 0;
+    padding: 0 4px;
+  }
+
+  .reader-book-title {
+    max-width: 100%;
+    width: 100%;
+    text-align: center;
+    font-size: 13px;
+  }
+
+  .reader-page-subtitle {
+    font-size: 11px;
+    gap: 3px;
+  }
+
+  .reader-page-subtitle input {
+    width: 30px;
+    font-size: 11px;
+  }
+
+  /* 3. Không gian đọc sách & Dải ruy-băng Bookmark trên Mobile */
+  .reader-viewport {
+    padding: 74px 16px 150px;
+  }
+
+  .book-chapter-header {
+    margin-bottom: 24px;
+  }
+
+  .book-chapter-title {
+    font-size: 22px;
+  }
+
+  .bookmark-ribbon-btn {
+    top: -16px;
+    right: 0;
+    width: 26px;
+    height: 38px;
+  }
+
+  .bookmark-ribbon-btn svg {
+    width: 22px;
+    height: 32px;
+  }
+
+  /* 4. Thanh Floating Capsule Player (Footer Action trên Mobile) */
+  .floating-capsule {
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: calc(100vw - 16px);
+    height: 52px;
+    padding: 0 8px;
+    gap: 4px;
+    justify-content: center;
+  }
+
+  .floating-capsule:hover {
+    transform: translateX(-50%);
+  }
+
+  .capsule-play-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .capsule-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .capsule-divider {
+    height: 18px;
+    margin: 0 1px;
+  }
+
+  .capsule-pill {
+    height: 32px;
+    padding: 0 9px;
+    font-size: 12px;
+    gap: 4px;
+  }
+
+  #voicePill {
+    max-width: 138px;
+    min-width: 0;
+  }
+
+  .pill-voice-name {
+    max-width: 86px;
+  }
+
+  /* 5. Popovers & Sidebar Drawer trên Mobile */
+  .reading-popover,
+  .more-popover {
+    top: 56px;
+    right: 10px;
+    left: 10px;
+    width: auto;
+    max-width: calc(100vw - 20px);
+    padding: 16px;
+  }
+
+  .voice-popover,
+  .speed-popover,
+  .sleep-popover {
+    bottom: 74px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100vw - 20px);
+    max-width: 380px;
+    padding: 16px;
+  }
+
+  .voice-list-grid .chip {
+    font-size: 13px;
+    padding: 9px 10px;
+  }
+
+  .apple-drawer {
+    width: min(330px, 88vw);
+    padding: 14px;
+  }
+
+  .pdf-sidebar-rail {
+    width: 42px;
+  }
+
+  .pdf-thumb-frame {
+    width: 128px;
+  }
+}
+
+@media (max-width: 380px) {
+  #voicePill {
+    max-width: 112px;
+  }
+  .pill-voice-name {
+    max-width: 62px;
+  }
+  .floating-capsule {
+    padding: 0 6px;
+    gap: 2px;
+  }
 }

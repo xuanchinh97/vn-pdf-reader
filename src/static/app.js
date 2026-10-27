@@ -3,29 +3,45 @@
 // Frontend Application Logic
 // ============================================================================
 
+const DEFAULT_MOCK_TOC = [
+  { level: 1, title: "Lời giới thiệu: Hà Nội trong ký ức", page: 1 },
+  { level: 1, title: "Chương I: Phố cổ Hà Nội và nếp sống xưa", page: 3 },
+  { level: 2, title: "1.1 Những mái ngói thâm nâu", page: 5 },
+  { level: 2, title: "1.2 Phố Hàng Đào, Hàng Ngang ngày hội", page: 10 },
+  { level: 1, title: "Chương II: Quà Hà Nội & Hương Vị Cốm Mới", page: 15 },
+  { level: 2, title: "2.1 Thức quà của đồng lúa làng Vòng", page: 16 },
+  { level: 2, title: "2.2 Hồng cốm tốt đôi mùa thu", page: 22 },
+  { level: 1, title: "Chương III: Bún chả và phở gánh rong đêm", page: 32 },
+  { level: 2, title: "3.1 Hương phở bò gánh bên bờ hồ", page: 35 },
+  { level: 2, title: "3.2 Khói chả quạt than hoa ngõ nhỏ", page: 44 },
+  { level: 1, title: "Chương IV: Thạch chè và những thức quà mùa hạ", page: 56 },
+  { level: 1, title: "Chương V: Tiếng rao đêm trên ngõ vắng", page: 88 },
+];
+
 const state = {
-  docId: null,
-  filename: "",
-  totalPages: 0,
-  currentPage: 1,
+  docId: "demo_hanoi",
+  filename: "Hà Nội Ba Mươi Sáu Phố Phường — Thạch Lam",
+  totalPages: 120,
+  currentPage: 15,
   sentences: [],
   cleanText: "",
   currentSentenceIndex: -1,
   isPlaying: false,
   isPaused: false,
   zoomPercent: 100,
-  fontSizePx: 18,
-  readingFont: "merriweather", // merriweather | literata | inter | georgia
-  lineHeight: "1.8",          // 1.5 | 1.8 | 2.1
-  pageWidth: "720px",         // 720px | 880px | 100%
+  fontSizePx: 19,
+  readingFont: "newsreader", // newsreader | merriweather | literata | inter
+  lineHeight: "1.85",        // 1.5 | 1.85 | 2.1
+  pageWidth: "680px",        // 680px | 880px | 100%
   isJustified: true,
   hasIndent: true,
-  isBookFlow: true,           // true: book paragraphs, false: list mode
+  isBookFlow: true,          // true: book paragraphs, false: list mode
   isZenMode: false,
-  themeIndex: 0,              // 0: sepia, 1: dark, 2: eink, 3: light
+  themeIndex: 0,             // 0: sepia, 1: dark, 2: eink, 3: light
   themes: ["sepia", "dark", "eink", "light"],
   speed: 1.0,
-  toc: [],
+  toc: DEFAULT_MOCK_TOC,
+  pagesOverview: [],
   bookmarks: [],
   highlights: [],
   sleepTimerMode: 0,
@@ -36,6 +52,7 @@ const state = {
   audioBlobCache: new Map(),  // key: `${voice}|${text}` -> blobUrl
   ocrWorker: null,
   isOcrRunning: false,
+  ocrSessionId: 0,
   playSessionId: 0,
 };
 
@@ -66,10 +83,20 @@ const els = {
   speedDecBtn: document.getElementById("speedDecBtn"),
   speedIncBtn: document.getElementById("speedIncBtn"),
   speedValLabel: document.getElementById("speedValLabel"),
+  speedPillBtn: document.getElementById("speedPillBtn"),
+  speedPopover: document.getElementById("speedPopover"),
+  speedRangeInput: document.getElementById("speedRangeInput"),
+  speedRangeValLabel: document.getElementById("speedRangeValLabel"),
+  speedPresetGrid: document.getElementById("speedPresetGrid"),
   sleepTimerBtn: document.getElementById("sleepTimerBtn"),
+  sleepTimerIcon: document.getElementById("sleepTimerIcon"),
   sleepTimerPopover: document.getElementById("sleepTimerPopover"),
   sleepCountdownLabel: document.getElementById("sleepCountdownLabel"),
   sleepTimeRemaining: document.getElementById("sleepTimeRemaining"),
+  voicePill: document.getElementById("voicePill"),
+  voiceCurrentLabel: document.getElementById("voiceCurrentLabel"),
+  voicePopover: document.getElementById("voicePopover"),
+  voicePopoverList: document.getElementById("voicePopoverList"),
   voiceSelect: document.getElementById("voiceSelect"),
   speedSelect: document.getElementById("speedSelect"),
   downloadMp3Btn: document.getElementById("downloadMp3Btn"),
@@ -94,11 +121,15 @@ const els = {
   bookmarkCount: document.getElementById("bookmarkCount"),
   highlightCount: document.getElementById("highlightCount"),
   bookmarkRibbonBtn: document.getElementById("bookmarkRibbonBtn"),
+  headerBookmarkBtn: document.getElementById("headerBookmarkBtn"),
+  headerBookmarkIcon: document.getElementById("headerBookmarkIcon"),
+  drawerAddBookmarkActionBtn: document.getElementById("drawerAddBookmarkActionBtn"),
   audioScrubberBar: document.getElementById("audioScrubberBar"),
   audioScrubber: document.getElementById("audioScrubber"),
   audioCurrentTime: document.getElementById("audioCurrentTime"),
   audioDuration: document.getElementById("audioDuration"),
   floatingSelectionBar: document.getElementById("floatingSelectionBar"),
+  floatHighlightBtn: document.getElementById("floatHighlightBtn"),
   floatLookupBtn: document.getElementById("floatLookupBtn"),
   floatSpeakBtn: document.getElementById("floatSpeakBtn"),
   floatCopyBtn: document.getElementById("floatCopyBtn"),
@@ -211,22 +242,49 @@ async function initApp() {
   setupMediaSession();
   updateThemeButton();
 
+  // Khởi tạo Mục lục, Dấu trang & Điểm nhấn ban đầu
+  renderTocList();
+  await loadAnnotations();
+  updateBookmarkRibbonState();
+
   // Khởi động ở màn hình Home chuẩn Thư Viện Apple
   showScreen("home");
 }
 
 function showScreen(screenName) {
   if (screenName === "home") {
-    if (els.homeScreen) els.homeScreen.hidden = false;
-    if (els.readerScreen) els.readerScreen.hidden = true;
-    if (els.capsulePlayer) els.capsulePlayer.hidden = true;
+    if (els.homeScreen) {
+      els.homeScreen.removeAttribute("hidden");
+      els.homeScreen.hidden = false;
+    }
+    if (els.readerScreen) {
+      els.readerScreen.setAttribute("hidden", "");
+      els.readerScreen.hidden = true;
+    }
+    if (els.capsulePlayer) {
+      els.capsulePlayer.setAttribute("hidden", "");
+      els.capsulePlayer.hidden = true;
+    }
     renderRecentBooks();
   } else {
-    if (els.homeScreen) els.homeScreen.hidden = true;
-    if (els.readerScreen) els.readerScreen.hidden = false;
-    if (els.capsulePlayer) els.capsulePlayer.hidden = false;
+    if (els.homeScreen) {
+      els.homeScreen.setAttribute("hidden", "");
+      els.homeScreen.hidden = true;
+    }
+    if (els.readerScreen) {
+      els.readerScreen.removeAttribute("hidden");
+      els.readerScreen.hidden = false;
+    }
+    if (els.capsulePlayer) {
+      els.capsulePlayer.removeAttribute("hidden");
+      els.capsulePlayer.hidden = false;
+    }
   }
 }
+
+window.showScreen = showScreen;
+window.openDrawer = openDrawer;
+window.closeDrawer = closeDrawer;
 
 function saveRecentBook(docId, title, totalPages, currentPage = 1) {
   try {
@@ -316,16 +374,29 @@ function renderRecentBooks() {
         els.pageInput.max = book.totalPages;
         els.pageInput.value = state.currentPage;
         
-        // Tải lại TOC và Annotations của cuốn sách này
+        // Tải lại TOC, Pages Overview và Annotations của cuốn sách này
         try {
-          const tocRes = await fetch(`/api/doc/${book.id}/toc`);
+          const [tocRes, pagesRes] = await Promise.all([
+            fetch(`/api/doc/${book.id}/toc`),
+            fetch(`/api/doc/${book.id}/pages`),
+          ]);
           if (tocRes.ok) {
             const tocData = await tocRes.json();
             state.toc = tocData.toc || [];
-            renderTocList();
           }
+          if (pagesRes.ok) {
+            const pagesData = await pagesRes.json();
+            state.pagesOverview = pagesData.pages || [];
+          }
+          renderTocList();
         } catch (_) {}
         await loadAnnotations();
+
+        // Đảm bảo ẩn PDF Pane và chỉ hiện Single-pane Reader
+        els.emptyState.hidden = true;
+        els.splitContainer.hidden = false;
+        els.pdfPane.hidden = true;
+        els.splitContainer.classList.add("single-pane");
 
         showScreen("reader");
         await goToPage(state.currentPage, false);
@@ -340,12 +411,64 @@ async function loadVoices() {
     if (!res.ok) return;
     const data = await res.json();
     if (data.voices && data.voices.length > 0) {
-      els.voiceSelect.innerHTML = data.voices
-        .map((v) => `<option value="${v.id}">🎙️ ${v.name}</option>`)
-        .join("");
+      // Đưa giọng Thành Đạt lên đầu danh sách và làm giọng mặc định
+      const voices = [...data.voices].sort((a, b) => {
+        if (a.id === "kokoro-thanh_dat") return -1;
+        if (b.id === "kokoro-thanh_dat") return 1;
+        return 0;
+      });
+      state.voicesList = voices;
+      const defaultVoice = voices.find((v) => v.id === "kokoro-thanh_dat") || voices[0];
+      const curVoiceId = els.voiceSelect?.value || defaultVoice.id;
+      if (els.voiceSelect) {
+        els.voiceSelect.innerHTML = voices
+          .map((v) => `<option value="${v.id}" ${v.id === curVoiceId ? "selected" : ""}>${escapeHtml(v.name)}</option>`)
+          .join("");
+      }
+      renderVoicePopoverList(curVoiceId);
     }
   } catch (err) {
     console.warn("Không tải được danh sách giọng đọc, giữ mặc định:", err);
+  }
+}
+
+function formatShortVoiceLabel(name) {
+  if (!name) return "Giọng AI";
+  return name.replace(/\s*-\s*(Kokoro AI|Microsoft Edge|FPT\.AI).*$/i, ")").replace(/\(\)/g, "").trim();
+}
+
+function renderVoicePopoverList(selectedId) {
+  const voices = state.voicesList || [];
+  if (!voices.length) return;
+  const activeVoice = voices.find((v) => v.id === selectedId) || voices[0];
+  if (els.voiceCurrentLabel && activeVoice) {
+    els.voiceCurrentLabel.textContent = formatShortVoiceLabel(activeVoice.name);
+  }
+  if (!els.voicePopoverList) return;
+  els.voicePopoverList.innerHTML = voices
+    .map((v) => {
+      const isAct = v.id === activeVoice.id;
+      return `
+        <button class="chip ${isAct ? "active" : ""}" data-voice-id="${escapeHtml(v.id)}">
+          <span>🎙️ ${escapeHtml(v.name)}</span>
+          ${isAct ? '<span class="check-mark">✓</span>' : ""}
+        </button>
+      `;
+    })
+    .join("");
+}
+
+function selectVoiceById(voiceId) {
+  if (!voiceId) return;
+  if (els.voiceSelect) {
+    els.voiceSelect.value = voiceId;
+  }
+  renderVoicePopoverList(voiceId);
+  if (els.voicePopover) els.voicePopover.hidden = true;
+  if (state.isPlaying) {
+    els.ttsAudio.pause();
+    state.playSessionId++;
+    playFromSentence(Math.max(0, state.currentSentenceIndex));
   }
 }
 
@@ -368,15 +491,53 @@ function loadReadingPreferences() {
 
 function applyReadingPreferences() {
   const root = document.documentElement;
-  root.style.setProperty("--font-reading", `var(--font-${state.readingFont})`);
+  const fontMap = {
+    newsreader: '"Newsreader", "Georgia", serif',
+    merriweather: '"Merriweather", "Georgia", serif',
+    literata: '"Literata", "Georgia", serif',
+    inter: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", sans-serif',
+  };
+  const selectedFont = fontMap[state.readingFont] || fontMap.newsreader;
+
+  // Set CSS variables trên :root cho toàn hệ thống
+  root.style.setProperty("--font-book", selectedFont);
+  root.style.setProperty("--font-reading", selectedFont);
+  root.style.setProperty("--font-size-base", `${state.fontSizePx}px`);
   root.style.setProperty("--font-size", `${state.fontSizePx}px`);
-  root.style.setProperty("--line-height", state.lineHeight);
-  root.style.setProperty("--reading-max-width", state.pageWidth);
-  root.style.setProperty("--para-indent", state.hasIndent ? "1.6em" : "0");
+  root.style.setProperty("--line-height-base", state.lineHeight || "1.85");
+  root.style.setProperty("--line-height", state.lineHeight || "1.85");
+  root.style.setProperty("--book-width", state.pageWidth || "680px");
+  root.style.setProperty("--para-indent", state.hasIndent ? "1.8em" : "0");
   root.style.setProperty("--text-align", state.isJustified ? "justify" : "left");
+
+  // Áp dụng trực tiếp inline style lên canvas trang sách để cập nhật tức thì
+  const bookContainer = document.querySelector(".book-container");
+  if (bookContainer) {
+    bookContainer.style.fontFamily = selectedFont;
+    bookContainer.style.fontSize = `${state.fontSizePx}px`;
+    bookContainer.style.lineHeight = state.lineHeight || "1.85";
+    bookContainer.style.maxWidth = state.pageWidth || "680px";
+  }
+  document.querySelectorAll(".book-paragraph").forEach((p) => {
+    p.style.fontFamily = selectedFont;
+    p.style.fontSize = `${state.fontSizePx}px`;
+    p.style.lineHeight = state.lineHeight || "1.85";
+    p.style.textAlign = state.isJustified ? "justify" : "left";
+    p.style.textIndent = state.hasIndent ? "1.8em" : "0";
+  });
 
   const currentTheme = state.themes[state.themeIndex] || "sepia";
   root.setAttribute("data-theme", currentTheme);
+
+  // Đồng bộ theme circle trong Aa popover
+  document.querySelectorAll(".theme-circle").forEach((tc) => {
+    const val = tc.getAttribute("data-theme-val");
+    const isAct = (val === currentTheme) || 
+                  (val === "white" && currentTheme === "light") ||
+                  (val === "midnight" && currentTheme === "dark") ||
+                  (val === "slate" && currentTheme === "eink");
+    tc.classList.toggle("active", isAct);
+  });
 
   document.querySelectorAll(".theme-chip").forEach((chip) => {
     chip.classList.toggle("active", chip.getAttribute("data-theme-name") === currentTheme);
@@ -388,6 +549,24 @@ function applyReadingPreferences() {
   if (els.justifyToggle) els.justifyToggle.checked = state.isJustified;
   if (els.indentToggle) els.indentToggle.checked = state.hasIndent;
   if (els.bookFlowToggle) els.bookFlowToggle.checked = state.isBookFlow;
+
+  // Cập nhật checkmark cho font options trong Aa popover
+  document.querySelectorAll(".font-option").forEach((fo) => {
+    const fKey = fo.getAttribute("data-font");
+    const isAct = fKey === state.readingFont;
+    fo.classList.toggle("active", isAct);
+    let check = fo.querySelector(".check-mark");
+    if (isAct) {
+      if (!check) {
+        check = document.createElement("span");
+        check.className = "check-mark";
+        check.textContent = "✓";
+        fo.appendChild(check);
+      }
+    } else {
+      if (check) check.remove();
+    }
+  });
 
   // Cập nhật trạng thái active của các chip trong menu Aa
   updateChipActiveState(els.fontFamilyChips, "data-font", state.readingFont);
@@ -548,6 +727,8 @@ function bindEvents() {
   // Hẹn giờ tắt đọc sách (Sleep Timer)
   els.sleepTimerBtn?.addEventListener("click", (e) => {
     e.stopPropagation();
+    if (els.voicePopover) els.voicePopover.hidden = true;
+    if (els.speedPopover) els.speedPopover.hidden = true;
     if (els.sleepTimerPopover) {
       els.sleepTimerPopover.hidden = !els.sleepTimerPopover.hidden;
     }
@@ -560,8 +741,26 @@ function bindEvents() {
     setSleepTimer(sleepVal);
   });
 
+  // Chọn giọng đọc qua Popover kiểu Apple Books
+  els.voicePill?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (els.sleepTimerPopover) els.sleepTimerPopover.hidden = true;
+    if (els.speedPopover) els.speedPopover.hidden = true;
+    if (els.voicePopover) {
+      els.voicePopover.hidden = !els.voicePopover.hidden;
+    }
+  });
+
+  els.voicePopoverList?.addEventListener("click", (e) => {
+    const chip = e.target.closest(".chip[data-voice-id]");
+    if (!chip) return;
+    const voiceId = chip.getAttribute("data-voice-id");
+    selectVoiceById(voiceId);
+  });
+
   // Khi đổi giọng: DỪNG NGAY LẬP TỨC giọng cũ (0ms latency)
-  els.voiceSelect.addEventListener("change", () => {
+  els.voiceSelect?.addEventListener("change", () => {
+    renderVoicePopoverList(els.voiceSelect.value);
     if (state.isPlaying) {
       els.ttsAudio.pause();
       state.playSessionId++;
@@ -569,12 +768,9 @@ function bindEvents() {
     }
   });
 
-  els.speedSelect.addEventListener("change", () => {
+  els.speedSelect?.addEventListener("change", () => {
     const speed = parseFloat(els.speedSelect.value || "1.0");
-    state.speed = speed;
-    if (els.speedValLabel) els.speedValLabel.textContent = `${speed.toFixed(1)}x`;
-    els.ttsAudio.defaultPlaybackRate = speed;
-    els.ttsAudio.playbackRate = speed;
+    setReadingSpeed(speed);
   });
 
   els.ttsAudio.addEventListener("play", () => {
@@ -644,20 +840,27 @@ function bindEvents() {
     });
   });
 
-  // Bấm vào Speed Pill để đổi nhanh tốc độ đọc (0.8x -> 1.0x -> 1.2x -> 1.5x -> 2.0x)
-  const speedPillBtn = document.getElementById("speedPillBtn");
-  if (speedPillBtn) {
-    speedPillBtn.addEventListener("click", () => {
-      const speeds = [0.8, 1.0, 1.25, 1.5, 2.0];
-      const cur = parseFloat(state.speed) || 1.0;
-      let nextIdx = (speeds.indexOf(cur) + 1) % speeds.length;
-      if (nextIdx < 0) nextIdx = 0;
-      state.speed = speeds[nextIdx];
-      if (els.speedValLabel) els.speedValLabel.textContent = `${state.speed}x`;
-      els.ttsAudio.defaultPlaybackRate = state.speed;
-      els.ttsAudio.playbackRate = state.speed;
-    });
-  }
+  // Bấm vào Speed Pill để mở Popover chọn mức tốc độ hoặc kéo thanh trượt custom
+  els.speedPillBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (els.voicePopover) els.voicePopover.hidden = true;
+    if (els.sleepTimerPopover) els.sleepTimerPopover.hidden = true;
+    if (els.speedPopover) {
+      els.speedPopover.hidden = !els.speedPopover.hidden;
+    }
+  });
+
+  els.speedRangeInput?.addEventListener("input", () => {
+    const val = parseFloat(els.speedRangeInput.value || "1.0");
+    setReadingSpeed(val);
+  });
+
+  els.speedPresetGrid?.addEventListener("click", (e) => {
+    const chip = e.target.closest(".chip[data-speed]");
+    if (!chip) return;
+    const val = parseFloat(chip.getAttribute("data-speed") || "1.0");
+    setReadingSpeed(val);
+  });
 
   document.addEventListener("click", (e) => {
     if (
@@ -680,9 +883,25 @@ function bindEvents() {
       els.sleepTimerPopover &&
       !els.sleepTimerPopover.hidden &&
       !els.sleepTimerPopover.contains(e.target) &&
-      e.target !== els.sleepTimerBtn
+      !els.sleepTimerBtn?.contains(e.target)
     ) {
       els.sleepTimerPopover.hidden = true;
+    }
+    if (
+      els.voicePopover &&
+      !els.voicePopover.hidden &&
+      !els.voicePopover.contains(e.target) &&
+      !els.voicePill?.contains(e.target)
+    ) {
+      els.voicePopover.hidden = true;
+    }
+    if (
+      els.speedPopover &&
+      !els.speedPopover.hidden &&
+      !els.speedPopover.contains(e.target) &&
+      !els.speedPillBtn?.contains(e.target)
+    ) {
+      els.speedPopover.hidden = true;
     }
   });
 
@@ -845,7 +1064,8 @@ function bindEvents() {
   els.tabBtnBookmarks?.addEventListener("click", () => switchDrawerTab("bookmarks"));
   els.tabBtnHighlights?.addEventListener("click", () => switchDrawerTab("highlights"));
   els.bookmarkRibbonBtn?.addEventListener("click", toggleBookmarkCurrentPage);
-  document.getElementById("headerBookmarkBtn")?.addEventListener("click", toggleBookmarkCurrentPage);
+  els.headerBookmarkBtn?.addEventListener("click", toggleBookmarkCurrentPage);
+  els.drawerAddBookmarkActionBtn?.addEventListener("click", toggleBookmarkCurrentPage);
 
   // 12. Modal Phím tắt
   els.shortcutsBtn?.addEventListener("click", openShortcutsModal);
@@ -867,6 +1087,11 @@ function bindEvents() {
   });
 
   // 14. Floating Selection Action Bar
+  els.floatHighlightBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    applyHighlight("yellow");
+  });
+
   els.floatingSelectionBar?.querySelectorAll(".hl-color-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -947,6 +1172,12 @@ function bindEvents() {
       if (els.sleepTimerPopover && !els.sleepTimerPopover.hidden) {
         els.sleepTimerPopover.hidden = true;
       }
+      if (els.voicePopover && !els.voicePopover.hidden) {
+        els.voicePopover.hidden = true;
+      }
+      if (els.speedPopover && !els.speedPopover.hidden) {
+        els.speedPopover.hidden = true;
+      }
       if (els.floatingSelectionBar && !els.floatingSelectionBar.hidden) {
         els.floatingSelectionBar.hidden = true;
       }
@@ -992,17 +1223,27 @@ async function handlePdfUpload(file) {
     state.totalPages = info.page_count;
     state.currentPage = 1;
     state.toc = info.toc || [];
+
+    // Tải danh sách overview tất cả các trang
+    try {
+      const pagesRes = await fetch(`/api/doc/${info.doc_id}/pages`);
+      if (pagesRes.ok) {
+        const pagesData = await pagesRes.json();
+        state.pagesOverview = pagesData.pages || [];
+      }
+    } catch (_) {}
+
     renderTocList();
     await loadAnnotations();
 
     saveRecentBook(info.doc_id, info.filename, info.page_count);
     showScreen("reader");
 
-    // Cập nhật UI
+    // Cập nhật UI: Đọc sách Single-pane tối giản kiểu Apple Books (chỉ hiện chữ, ẩn file PDF gốc)
     els.emptyState.hidden = true;
     els.splitContainer.hidden = false;
-    els.pdfPane.hidden = false;
-    els.splitContainer.classList.remove("single-pane");
+    els.pdfPane.hidden = true;
+    els.splitContainer.classList.add("single-pane");
     els.showPdfPaneBtn.hidden = true;
 
     els.docTitleLabel.textContent = info.filename;
@@ -1021,7 +1262,7 @@ async function handlePdfUpload(file) {
 }
 
 async function goToPrevChapter() {
-  if (!state.docId) return;
+  if (!state.docId) state.docId = "demo_hanoi";
 
   // 1. Nếu có mục lục hợp lệ
   if (state.toc && state.toc.length > 0) {
@@ -1043,7 +1284,7 @@ async function goToPrevChapter() {
 }
 
 async function goToNextChapter() {
-  if (!state.docId) return;
+  if (!state.docId) state.docId = "demo_hanoi";
 
   // 1. Nếu có mục lục hợp lệ
   if (state.toc && state.toc.length > 0) {
@@ -1065,10 +1306,15 @@ async function goToNextChapter() {
 }
 
 async function goToPage(pageNumber, autoPlay = false) {
-  if (!state.docId) return;
+  if (!state.docId) state.docId = "demo_hanoi";
   stopReading();
 
   state.currentPage = pageNumber;
+  state.ocrSessionId = (state.ocrSessionId || 0) + 1;
+  state.isOcrRunning = false;
+  if (els.ocrProgressBox) els.ocrProgressBox.hidden = true;
+  if (els.ocrPageBtn) els.ocrPageBtn.disabled = false;
+  window.scrollTo({ top: 0, behavior: "smooth" });
   saveRecentBook(state.docId, state.filename, state.totalPages, pageNumber);
   els.pageInput.value = pageNumber;
   els.prevPageBtn.disabled = pageNumber <= 1;
@@ -1078,6 +1324,17 @@ async function goToPage(pageNumber, autoPlay = false) {
 
   // Cập nhật trạng thái ribbon bookmark cho trang hiện tại
   updateBookmarkRibbonState();
+  updateHighlightActiveTocItem();
+  renderHighlightsOnPage();
+
+  if (state.docId === "demo_hanoi") {
+    // Sách demo prototype: cập nhật tiêu đề chương theo trang
+    const ch = (state.toc || []).find((item) => item.page === pageNumber);
+    if (ch && els.chapterTitle) {
+      els.chapterTitle.textContent = ch.title;
+    }
+    return;
+  }
 
   // Hiển thị ảnh trang PDF gốc
   els.pdfPageImage.src = `/api/doc/${state.docId}/page/${pageNumber}/image?dpi=170`;
@@ -1173,8 +1430,14 @@ function renderSentences() {
     els.sentencesContainer.innerHTML = paragraphs
       .map((para) => {
         const fullText = para.map((item) => item.text).join(" ").trim();
-        // Nhận diện tiêu đề sách (dưới 65 ký tự và không kết thúc bằng dấu chấm)
-        const isHeading = para.length === 1 && fullText.length < 65 && !fullText.endsWith(".");
+        // Nhận diện tiêu đề chương/mục thực sự (không coi câu hội thoại ngắn như "Anh ấy nói:" là heading)
+        const isHeading =
+          para.length === 1 &&
+          fullText.length < 65 &&
+          !fullText.endsWith(".") &&
+          !fullText.endsWith(":") &&
+          !fullText.endsWith("?") &&
+          !fullText.endsWith("!");
         const tagClass = isHeading ? "book-heading" : "book-paragraph";
 
         const spans = para
@@ -1291,6 +1554,9 @@ function updateBookFooter() {
 // ============================================================================
 async function runBrowserVietnameseOcr(autoPlayAfter = false) {
   if (!state.docId || state.isOcrRunning) return;
+  const targetDocId = state.docId;
+  const targetPage = state.currentPage;
+  const myOcrSession = ++state.ocrSessionId;
   state.isOcrRunning = true;
   els.ocrPageBtn.disabled = true;
   els.ocrProgressBox.hidden = false;
@@ -1299,11 +1565,12 @@ async function runBrowserVietnameseOcr(autoPlayAfter = false) {
   els.ocrProgressBar.style.width = "0%";
 
   try {
-    const imageUrl = `/api/doc/${state.docId}/page/${state.currentPage}/image?dpi=220&enhance=true`;
+    const imageUrl = `/api/doc/${targetDocId}/page/${targetPage}/image?dpi=220&enhance=true`;
 
     if (!state.ocrWorker) {
       state.ocrWorker = await Tesseract.createWorker("vie", 1, {
         logger: (m) => {
+          if (myOcrSession !== state.ocrSessionId) return;
           if (m.status === "recognizing text" && typeof m.progress === "number") {
             const pct = Math.round(m.progress * 100);
             els.ocrProgressText.textContent = "Đang quét mặt chữ Tiếng Việt trên trang PDF...";
@@ -1320,22 +1587,35 @@ async function runBrowserVietnameseOcr(autoPlayAfter = false) {
       data: { text },
     } = await state.ocrWorker.recognize(imageUrl);
 
+    // Nếu người dùng đã chuyển sang trang khác hoặc tài liệu khác trong lúc chờ OCR, HỦY kết quả cũ!
+    if (
+      myOcrSession !== state.ocrSessionId ||
+      state.docId !== targetDocId ||
+      state.currentPage !== targetPage
+    ) {
+      return;
+    }
+
     await processRawTextFromClient(
       text,
       "Đã quét OCR Tiếng Việt từ ảnh trang PDF và nối câu hoàn chỉnh.",
       "ocr_vi"
     );
 
-    if (autoPlayAfter && state.sentences.length > 0) {
+    if (autoPlayAfter && state.sentences.length > 0 && myOcrSession === state.ocrSessionId) {
       playFromSentence(0);
     }
   } catch (err) {
-    console.error("OCR Error:", err);
-    alert(`Lỗi khi quét OCR: ${err.message}`);
+    if (myOcrSession === state.ocrSessionId) {
+      console.error("OCR Error:", err);
+      alert(`Lỗi khi quét OCR: ${err.message}`);
+    }
   } finally {
-    state.isOcrRunning = false;
-    els.ocrPageBtn.disabled = false;
-    els.ocrProgressBox.hidden = true;
+    if (myOcrSession === state.ocrSessionId) {
+      state.isOcrRunning = false;
+      els.ocrPageBtn.disabled = false;
+      els.ocrProgressBox.hidden = true;
+    }
   }
 }
 
@@ -1357,19 +1637,17 @@ async function processRawTextFromClient(rawText, customReason, badgeType = "unic
 // 4. BỘ PHÁT GIỌNG ĐỌC AI & TÔ SÁNG TỪNG CÂU (WHISPERSYNC STYLE)
 // ============================================================================
 function setPlayButtonVisual(stateName) {
-  const icon = document.getElementById("playIcon");
-  if (!icon) return;
   if (stateName === "playing") {
-    icon.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
     if (els.playPauseBtn) els.playPauseBtn.title = "Tạm dừng (Phím Space)";
+    els.waveformBars?.classList.remove("loading");
     els.waveformBars?.classList.add("playing");
   } else if (stateName === "loading") {
-    icon.innerHTML = '<circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="14 8"></circle>';
     if (els.playPauseBtn) els.playPauseBtn.title = "Đang tải âm thanh...";
-  } else {
-    icon.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
-    if (els.playPauseBtn) els.playPauseBtn.title = "Đọc ngay (Phím Space)";
     els.waveformBars?.classList.remove("playing");
+    els.waveformBars?.classList.add("loading");
+  } else {
+    if (els.playPauseBtn) els.playPauseBtn.title = "Đọc ngay (Phím Space)";
+    els.waveformBars?.classList.remove("playing", "loading");
   }
 }
 
@@ -1677,14 +1955,52 @@ function seekAudioRelative(delta) {
   }
 }
 
-function updateSpeed(delta) {
-  state.speed = Math.max(0.5, Math.min(3.0, +(state.speed + delta).toFixed(1)));
-  if (els.speedValLabel) els.speedValLabel.textContent = `${state.speed.toFixed(1)}x`;
-  if (els.speedSelect) els.speedSelect.value = state.speed.toString();
+function formatSpeedLabel(val) {
+  const num = Number(val);
+  if (Number.isInteger(num)) return `${num.toFixed(1)}x`;
+  return `${parseFloat(num.toFixed(2))}x`;
+}
+
+function setReadingSpeed(val) {
+  const clamped = Math.max(0.5, Math.min(2.5, +(parseFloat(val) || 1.0).toFixed(2)));
+  state.speed = clamped;
+  const formatted = formatSpeedLabel(clamped);
+  if (els.speedValLabel) els.speedValLabel.textContent = formatted;
+  if (els.speedRangeValLabel) els.speedRangeValLabel.textContent = formatted;
+  if (els.speedRangeInput) els.speedRangeInput.value = String(clamped);
+  if (els.speedSelect) els.speedSelect.value = String(clamped);
   if (els.ttsAudio) {
-    els.ttsAudio.defaultPlaybackRate = state.speed;
-    els.ttsAudio.playbackRate = state.speed;
+    els.ttsAudio.defaultPlaybackRate = clamped;
+    els.ttsAudio.playbackRate = clamped;
   }
+
+  // Cập nhật trạng thái active trên các preset chips
+  els.speedPresetGrid?.querySelectorAll(".chip[data-speed]").forEach((chip) => {
+    const presetVal = parseFloat(chip.getAttribute("data-speed") || "0");
+    const isAct = Math.abs(presetVal - clamped) < 0.01;
+    chip.classList.toggle("active", isAct);
+    let check = chip.querySelector(".check-mark");
+    if (isAct) {
+      if (!check) {
+        check = document.createElement("span");
+        check.className = "check-mark";
+        check.textContent = "✓";
+        chip.appendChild(check);
+      }
+    } else if (check) {
+      check.remove();
+    }
+  });
+}
+
+function updateSpeed(delta) {
+  setReadingSpeed(state.speed + delta);
+}
+
+function updateSleepButtonIcon(isActive) {
+  const iconEl = els.sleepTimerIcon || els.sleepTimerBtn;
+  if (!iconEl) return;
+  iconEl.textContent = isActive ? "⏳" : "🌙";
 }
 
 function setSleepTimer(val) {
@@ -1701,10 +2017,12 @@ function setSleepTimer(val) {
       els.sleepTimerBtn.classList.remove("active");
       els.sleepTimerBtn.title = "Hẹn giờ ngủ (Sleep Timer)";
     }
+    updateSleepButtonIcon(false);
     return;
   }
 
   if (els.sleepTimerBtn) els.sleepTimerBtn.classList.add("active");
+  updateSleepButtonIcon(true);
 
   if (val === "page") {
     if (els.sleepCountdownLabel) {
@@ -1750,6 +2068,8 @@ function cancelSleepTimer() {
   state.sleepTimerEndTimestamp = null;
   state.sleepStopOnPageEnd = false;
   if (els.ttsAudio) els.ttsAudio.volume = 1.0;
+  if (els.sleepTimerBtn) els.sleepTimerBtn.classList.remove("active");
+  updateSleepButtonIcon(false);
 }
 
 function formatTime(sec) {
@@ -1823,52 +2143,72 @@ function updateMediaSession(index) {
 }
 
 async function loadAnnotations() {
-  if (!state.docId) return;
+  if (!state.docId) state.docId = "demo_hanoi";
   try {
-    const res = await fetch(`/api/doc/${state.docId}/annotations`);
-    if (res.ok) {
-      const data = await res.json();
+    // Ưu tiên đọc từ localStorage cho tốc độ tức thì
+    const local = localStorage.getItem(`vn_annotations_${state.docId}`);
+    if (local) {
+      const data = JSON.parse(local);
       state.bookmarks = data.bookmarks || [];
       state.highlights = data.highlights || [];
-      updateBookmarkCount();
-      updateHighlightCount();
-      renderBookmarksList();
-      renderHighlightsList();
-      updateBookmarkRibbonState();
-      renderHighlightsOnPage();
     }
+    if (state.docId !== "demo_hanoi") {
+      const res = await fetch(`/api/doc/${state.docId}/annotations`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.bookmarks && data.bookmarks.length > 0) state.bookmarks = data.bookmarks;
+        if (data.highlights && data.highlights.length > 0) state.highlights = data.highlights;
+      }
+    }
+    updateBookmarkCount();
+    updateHighlightCount();
+    renderBookmarksList();
+    renderHighlightsList();
+    updateBookmarkRibbonState();
+    renderHighlightsOnPage();
   } catch (err) {
     console.warn("Lỗi tải annotations:", err);
   }
 }
 
 async function saveAnnotations() {
-  if (!state.docId) return;
+  if (!state.docId) state.docId = "demo_hanoi";
   try {
-    await fetch(`/api/doc/${state.docId}/annotations`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    localStorage.setItem(
+      `vn_annotations_${state.docId}`,
+      JSON.stringify({
         bookmarks: state.bookmarks,
         highlights: state.highlights,
-      }),
-    });
+      })
+    );
+    if (state.docId !== "demo_hanoi") {
+      await fetch(`/api/doc/${state.docId}/annotations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookmarks: state.bookmarks,
+          highlights: state.highlights,
+        }),
+      });
+    }
   } catch (err) {
     console.warn("Lỗi lưu annotations:", err);
   }
 }
 
 function toggleBookmarkCurrentPage() {
-  if (!state.docId) return;
+  if (!state.docId) state.docId = "demo_hanoi";
   const existingIdx = state.bookmarks.findIndex((b) => b.page === state.currentPage);
   if (existingIdx >= 0) {
     state.bookmarks.splice(existingIdx, 1);
   } else {
-    const preview = state.sentences[0] ? state.sentences[0].slice(0, 45) + "..." : "Trang " + state.currentPage;
+    const preview = state.sentences[0] 
+      ? (state.sentences[0].slice(0, 45) + "...") 
+      : (document.querySelector(".sentence-item")?.textContent.slice(0, 45) + "..." || `Trang ${state.currentPage}`);
     state.bookmarks.push({
       id: "bm_" + Date.now(),
       page: state.currentPage,
-      title: `Trang ${state.currentPage} - ${preview}`,
+      title: `Trang ${state.currentPage} • ${preview}`,
       created_at: Date.now(),
     });
   }
@@ -1932,36 +2272,219 @@ function updateChapterHeaderForCurrentPage() {
 
 function updateHighlightActiveTocItem() {
   if (!els.tocList) return;
-  els.tocList.querySelectorAll(".drawer-item").forEach((el) => {
+  els.tocList.querySelectorAll(".pdf-thumb-item, .pdf-outline-row").forEach((el) => {
     const page = parseInt(el.getAttribute("data-page"), 10);
-    el.classList.toggle("active", page === state.currentPage);
+    const isCur = page === state.currentPage;
+    el.classList.toggle("active", isCur);
   });
+
+  // Tự động cuộn tới thumbnail hoặc outline đang active
+  const activeThumb = els.tocList.querySelector(".pdf-thumb-item.active");
+  if (activeThumb && !activeThumb.closest("[hidden]")) {
+    activeThumb.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+}
+
+function buildOutlineTree(flatToc) {
+  const root = [];
+  const stack = [];
+  (flatToc || []).forEach((item, idx) => {
+    const node = {
+      id: `outline_${idx}`,
+      level: item.level || 1,
+      title: item.title || `Mục ${idx + 1}`,
+      page: item.page || 1,
+      children: [],
+    };
+    while (stack.length > 0 && stack[stack.length - 1].level >= node.level) {
+      stack.pop();
+    }
+    if (stack.length === 0) {
+      root.push(node);
+    } else {
+      stack[stack.length - 1].children.push(node);
+    }
+    stack.push(node);
+  });
+  return root;
+}
+
+function renderOutlineNodesHtml(nodes) {
+  if (!nodes || nodes.length === 0) return "";
+  return nodes
+    .map((node) => {
+      const hasChildren = node.children && node.children.length > 0;
+      const isCur = node.page === state.currentPage;
+      return `
+        <div class="pdf-outline-node" data-node-id="${node.id}">
+          <div class="pdf-outline-row ${isCur ? "active" : ""}" data-page="${node.page}">
+            <span class="pdf-outline-caret ${hasChildren ? "expanded" : "empty"}" data-toggle-node="${node.id}">▸</span>
+            <span class="pdf-outline-title" title="${escapeHtml(node.title)}">${escapeHtml(node.title)}</span>
+            <span class="pdf-outline-page">${node.page}</span>
+          </div>
+          ${
+            hasChildren
+              ? `<div class="pdf-outline-children" id="children_${node.id}">
+                  ${renderOutlineNodesHtml(node.children)}
+                </div>`
+              : ""
+          }
+        </div>
+      `;
+    })
+    .join("");
 }
 
 function renderTocList() {
   if (!els.tocList) return;
-  if (!state.toc || state.toc.length === 0) {
-    els.tocList.innerHTML = `<div class="drawer-empty-hint">Chưa có mục lục cho tài liệu này.</div>`;
-    return;
-  }
-  els.tocList.innerHTML = state.toc
-    .map(
-      (item) => `
-      <div class="drawer-item level-${item.level || 1} ${item.page === state.currentPage ? 'active' : ''}" data-page="${item.page}">
-        <span class="drawer-item-title">${escapeHtml(item.title)}</span>
-        <span class="drawer-item-page">Trang ${item.page}</span>
-      </div>
-    `
-    )
-    .join("");
+  const total = state.totalPages || (state.pagesOverview ? state.pagesOverview.length : 120) || 1;
+  const currentMode = state.tocViewMode || "thumbnails"; // "thumbnails" | "outline"
+  const isDemo = !state.docId || state.docId === "demo_hanoi";
 
-  els.tocList.querySelectorAll(".drawer-item").forEach((el) => {
+  // Bản đồ chương từ state.toc cho trang sách mẫu
+  const chapterMap = {};
+  (state.toc || []).forEach((c) => {
+    if (c.page && !chapterMap[c.page]) chapterMap[c.page] = c.title;
+  });
+
+  // 1. Tạo HTML danh sách Hình thu nhỏ của từng trang (Page Thumbnails giống Chrome PDF Viewer)
+  const thumbsList = [];
+  for (let p = 1; p <= total; p++) {
+    const isCur = p === state.currentPage;
+    let thumbInner = "";
+    if (!isDemo) {
+      thumbInner = `<img class="pdf-thumb-img" src="/api/doc/${encodeURIComponent(state.docId)}/page/${p}/image?dpi=60" loading="lazy" alt="Trang ${p}" />`;
+    } else {
+      const ch = chapterMap[p] || `Hà Nội 36 Phố Phường`;
+      const sampleBody =
+        p === 15
+          ? "Cốm là thức quà riêng biệt của đất nước, là thức dâng của những cánh đồng lúa bát ngát xanh, mang trong hương vị tất cả cái mộc mạc, giản dị và thanh khiết..."
+          : `Nội dung trang ${p} — Văn chương Thạch Lam nhẹ nhàng, tinh tế khắc họa vẻ đẹp phố cổ Hà Nội xưa với những thức quà bình dị...`;
+      thumbInner = `
+        <div class="pdf-thumb-mock-sheet">
+          <div class="mock-sheet-chapter">${escapeHtml(ch)}</div>
+          <div class="mock-sheet-lines">${escapeHtml(sampleBody)}</div>
+        </div>
+      `;
+    }
+
+    thumbsList.push(`
+      <div class="pdf-thumb-item drawer-item ${isCur ? "active" : ""}" data-page="${p}" title="Chuyển đến Trang ${p}">
+        <div class="pdf-thumb-frame">
+          ${thumbInner}
+        </div>
+        <div class="pdf-thumb-page-num">${p}</div>
+      </div>
+    `);
+  }
+
+  // 2. Tạo HTML Cây mục lục (Document Outline Tree giống Chrome PDF Viewer)
+  const treeNodes = buildOutlineTree(state.toc || []);
+  const outlineHtml =
+    treeNodes.length > 0
+      ? renderOutlineNodesHtml(treeNodes)
+      : `<div class="pdf-outline-empty">Tài liệu này không có đề mục chương.<br/>Sử dụng chế độ Hình thu nhỏ trang ở thanh bên trái để duyệt nhanh các trang.</div>`;
+
+  els.tocList.innerHTML = `
+    <div class="pdf-viewer-sidebar">
+      <div class="pdf-sidebar-rail">
+        <button class="pdf-rail-btn ${currentMode === "thumbnails" ? "active" : ""}" id="btnPdfViewThumbnails" title="Hình thu nhỏ của trang (Page Thumbnails)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="9" rx="1"></rect>
+            <rect x="14" y="3" width="7" height="9" rx="1"></rect>
+            <rect x="3" y="15" width="7" height="6" rx="1"></rect>
+            <rect x="14" y="15" width="7" height="6" rx="1"></rect>
+          </svg>
+        </button>
+        <button class="pdf-rail-btn ${currentMode === "outline" ? "active" : ""}" id="btnPdfViewOutline" title="Đề mục tài liệu (Document Outline)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"></line>
+            <line x1="8" y1="12" x2="21" y2="12"></line>
+            <line x1="8" y1="18" x2="21" y2="18"></line>
+            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="pdf-sidebar-viewport">
+        <div class="pdf-thumbnails-view" id="pdfThumbnailsView" ${currentMode === "thumbnails" ? "" : "hidden"}>
+          ${thumbsList.join("")}
+        </div>
+        <div class="pdf-outline-view" id="pdfOutlineView" ${currentMode === "outline" ? "" : "hidden"}>
+          ${outlineHtml}
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Sự kiện chuyển đổi giữa Hình thu nhỏ trang và Đề mục tài liệu trên thanh Icon Rail
+  const btnThumbs = els.tocList.querySelector("#btnPdfViewThumbnails");
+  const btnOutline = els.tocList.querySelector("#btnPdfViewOutline");
+  const thumbsView = els.tocList.querySelector("#pdfThumbnailsView");
+  const outlineView = els.tocList.querySelector("#pdfOutlineView");
+
+  btnThumbs?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    state.tocViewMode = "thumbnails";
+    btnThumbs.classList.add("active");
+    btnOutline?.classList.remove("active");
+    if (thumbsView) thumbsView.hidden = false;
+    if (outlineView) outlineView.hidden = true;
+    const curThumb = thumbsView?.querySelector(".pdf-thumb-item.active");
+    if (curThumb) curThumb.scrollIntoView({ block: "nearest" });
+  });
+
+  btnOutline?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    state.tocViewMode = "outline";
+    btnOutline.classList.add("active");
+    btnThumbs?.classList.remove("active");
+    if (outlineView) outlineView.hidden = false;
+    if (thumbsView) thumbsView.hidden = true;
+    const curRow = outlineView?.querySelector(".pdf-outline-row.active");
+    if (curRow) curRow.scrollIntoView({ block: "nearest" });
+  });
+
+  // Sự kiện click vào hình thu nhỏ trang để chuyển trang
+  els.tocList.querySelectorAll(".pdf-thumb-item").forEach((el) => {
     el.addEventListener("click", () => {
       const page = parseInt(el.getAttribute("data-page"), 10);
       goToPage(page, false);
       closeDrawer();
     });
   });
+
+  // Sự kiện đóng/mở mũi tên nhánh con và click vào đề mục trong Outline Tree
+  els.tocList.querySelectorAll(".pdf-outline-caret[data-toggle-node]").forEach((caret) => {
+    caret.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const nodeId = caret.getAttribute("data-toggle-node");
+      const childrenContainer = els.tocList.querySelector(`#children_${nodeId}`);
+      if (!childrenContainer) return;
+      const isHidden = childrenContainer.hidden;
+      childrenContainer.hidden = !isHidden;
+      caret.classList.toggle("expanded", isHidden);
+    });
+  });
+
+  els.tocList.querySelectorAll(".pdf-outline-row").forEach((row) => {
+    row.addEventListener("click", (e) => {
+      if (e.target.closest(".pdf-outline-caret:not(.empty)")) return;
+      const page = parseInt(row.getAttribute("data-page"), 10);
+      goToPage(page, false);
+      closeDrawer();
+    });
+  });
+
+  // Tự động cuộn đến trang đang đọc
+  setTimeout(() => {
+    const activeSelector =
+      currentMode === "thumbnails" ? ".pdf-thumb-item.active" : ".pdf-outline-row.active";
+    const curEl = els.tocList.querySelector(activeSelector);
+    if (curEl) curEl.scrollIntoView({ block: "nearest" });
+  }, 60);
 }
 
 function renderBookmarksList() {
@@ -2108,19 +2631,32 @@ function renderHighlightsOnPage() {
   });
 }
 
-function applyHighlight(color) {
-  if (!currentSelectedText || !state.docId) return;
+function applyHighlight(color = "yellow") {
+  if (!currentSelectedText) return;
+  if (!state.docId) state.docId = "demo_hanoi";
+
+  // Thêm highlight vào state
   state.highlights.push({
     id: "hl_" + Date.now(),
     page: state.currentPage,
     text: currentSelectedText,
-    color: color || "yellow",
+    color: color,
     created_at: Date.now(),
   });
+
+  // Tô màu ngay lập tức lên đoạn văn đang hiển thị trên DOM
+  document.querySelectorAll(".sentence-item").forEach((s) => {
+    if (s.textContent.includes(currentSelectedText)) {
+      s.classList.add("highlighted");
+      s.style.backgroundColor = "#FFE8A3";
+    }
+  });
+
   saveAnnotations();
   updateHighlightCount();
   renderHighlightsList();
-  renderSentences(); // Tái tạo DOM sạch và tô đầy đủ các highlights
+  renderHighlightsOnPage();
+
   if (els.floatingSelectionBar) els.floatingSelectionBar.hidden = true;
   window.getSelection()?.removeAllRanges();
 }
@@ -2158,15 +2694,23 @@ function setupSelectionListener() {
 
 function openDrawer(tabName = "toc") {
   if (els.tocDrawer) {
+    els.tocDrawer.removeAttribute("hidden");
     els.tocDrawer.hidden = false;
+    els.drawerBackdrop.removeAttribute("hidden");
     els.drawerBackdrop.hidden = false;
     switchDrawerTab(tabName);
+    setTimeout(() => {
+      const curEl = els.tocList?.querySelector(".pdf-thumb-item.active, .pdf-outline-row.active");
+      if (curEl) curEl.scrollIntoView({ block: "center" });
+    }, 50);
   }
 }
 
 function closeDrawer() {
   if (els.tocDrawer) {
+    els.tocDrawer.setAttribute("hidden", "");
     els.tocDrawer.hidden = true;
+    els.drawerBackdrop.setAttribute("hidden", "");
     els.drawerBackdrop.hidden = true;
   }
 }
@@ -2188,7 +2732,15 @@ function switchDrawerTab(tabName) {
   tabs.forEach((t) => {
     const active = t.name === tabName;
     t.btn?.classList.toggle("active", active);
-    if (t.pane) t.pane.hidden = !active;
+    if (t.pane) {
+      if (active) {
+        t.pane.removeAttribute("hidden");
+        t.pane.hidden = false;
+      } else {
+        t.pane.setAttribute("hidden", "");
+        t.pane.hidden = true;
+      }
+    }
   });
 }
 

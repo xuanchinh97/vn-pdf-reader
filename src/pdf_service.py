@@ -99,10 +99,16 @@ class PDFService:
                 if toc:
                     return toc
 
-            # Tầng 2: Heuristic regex quét các tiêu đề chương/phần/bài
+            # Tầng 2: Heuristic regex quét các tiêu đề chương/phần/bài & mục con (1.1, 1.2...)
             chapter_pattern = re.compile(
-                r'^\s*(Chương\s+[0-9IVXLCDMivxlcdm]+|Phần\s+[0-9IVXLCDMivxlcdm]+|Bài\s+[0-9IVXLCDMivxlcdm0-9]+|Hồi\s+[0-9IVXLCDMivxlcdm0-9]+|Mục\s+[0-9IVXLCDMivxlcdm0-9]+|Quyển\s+[0-9IVXLCDMivxlcdm0-9]+|Chapter\s+[0-9IVXLCDMivxlcdm]+|Part\s+[0-9IVXLCDMivxlcdm]+|Lời nói đầu|Lời mở đầu|Mở đầu|Kết luận|Lời bạt|Phụ lục(?:\s+[0-9IVXLCDMivxlcdm]+)?)(?:\s*[:.\-–—]\s*(.*)|\s+(.*))?$',
+                r'^\s*(Chương\s+[0-9IVXLCDMivxlcdm]+|Phần\s+[0-9IVXLCDMivxlcdm]+|Bài\s+[0-9IVXLCDMivxlcdm0-9]+|Hồi\s+[0-9IVXLCDMivxlcdm0-9]+|Mục\s+[0-9IVXLCDMivxlcdm0-9]+|Quyển\s+[0-9IVXLCDMivxlcdm0-9]+|Chapter\s+[0-9IVXLCDMivxlcdm]+|Part\s+[0-9IVXLCDMivxlcdm]+|Giới thiệu|Lời nói đầu|Lời mở đầu|Mở đầu|Kết luận|Lời bạt|Tài liệu tham khảo|Phụ lục(?:\s+[0-9IVXLCDMivxlcdm]+)?)(?:\s*[:.\-–—]\s*(.*)|\s+(.*))?$',
                 re.IGNORECASE
+            )
+            sub_section_pattern = re.compile(
+                r'^\s*(\d+\.\d+(?:\.\d+)?)\s+([A-ZÀÁẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬĐÈÉẺẼẸÊẾỀỂỄỆÌÍỈĨỊÒÓỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÙÚỦŨỤƯỨỪỬỮỰỲÝỶỸỴ][^\n]{2,90})$'
+            )
+            numbered_caps_pattern = re.compile(
+                r'^\s*(\d{1,2})\s+([A-ZÀÁẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬĐÈÉẺẼẸÊẾỀỂỄỆÌÍỈĨỊÒÓỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÙÚỦŨỤƯỨỪỬỮỰỲÝỶỸỴ0-9\s,\-–—:?!”“\'’]{6,90})$'
             )
             toc = []
             for page_idx in range(len(doc)):
@@ -128,7 +134,6 @@ class PDFService:
                     m = chapter_pattern.match(line)
                     if m:
                         clean_line = line.strip(" :.-–—")
-                        # Kiểm tra xem có phải dòng mục lục in có số trang ở cuối (... 15)
                         p_match = re.search(r'[\.\-–—\s]{2,}\s*(\d+)\s*$', clean_line)
                         target_pno = pno
                         if p_match:
@@ -140,7 +145,6 @@ class PDFService:
                             except Exception:
                                 pass
 
-                        # Nếu dòng chỉ có "Chương 1" mà chưa có tên chương, và dòng sau là tiêu đề ngắn
                         if not m.group(2) and not m.group(3) and not p_match and i + 1 < len(lines):
                             next_line = lines[i + 1]
                             if (
@@ -156,7 +160,77 @@ class PDFService:
                                 "title": clean_line,
                                 "page": target_pno,
                             })
-            return toc
+                        continue
+
+                    # Kiểm tra mục con dạng 1.1, 1.2, 1.2.1
+                    sm = sub_section_pattern.match(line)
+                    if sm:
+                        sec_num = sm.group(1)
+                        sec_title = sm.group(2).strip(" :.-–—")
+                        lvl = min(3, sec_num.count(".") + 1)
+                        full_sub = f"{sec_num} {sec_title}"
+                        if not any(item["page"] == pno and item["title"].lower() == full_sub.lower() for item in toc):
+                            toc.append({
+                                "level": lvl,
+                                "title": full_sub,
+                                "page": pno,
+                            })
+                        continue
+
+                    # Kiểm tra tiêu đề chương dạng số đứng đầu trang + chữ IN HOA (VD: "9 GIÀU CÓ THỰC SỰ...")
+                    if i <= 2:
+                        nm = numbered_caps_pattern.match(line)
+                        if nm and line == line.upper():
+                            full_cap = f"Chương {nm.group(1)}: {nm.group(2).title()}"
+                            if not any(item["page"] == pno for item in toc):
+                                toc.append({
+                                    "level": 1,
+                                    "title": full_cap,
+                                    "page": pno,
+                                })
+            if toc:
+                return toc
+
+            # Tầng 3: Nếu PDF không có chương mục rõ ràng, trả về danh sách rỗng để Outline báo "Tài liệu không có đề mục chương"
+            # trong khi tab Hình thu nhỏ trang (Page Thumbnails) vẫn hiển thị đầy đủ hình ảnh từ trang 1 đến N.
+            return []
+
+    def get_pages_overview(self, doc_id: str) -> List[Dict[str, Any]]:
+        """
+        Lấy danh sách tất cả các trang PDF (từ 1 đến N) kèm trích đoạn và tiêu đề chương (nếu có)
+        để người dùng dễ dàng nhìn tổng quan và chuyển trang nhanh chóng như một trình đọc PDF tiêu chuẩn.
+        """
+        pdf_path = self._get_pdf_path(doc_id)
+        toc = self.extract_toc(doc_id)
+        chapter_map = {}
+        for item in toc:
+            p = item.get("page", 1)
+            if p not in chapter_map:
+                chapter_map[p] = item.get("title", "")
+
+        pages = []
+        with fitz.open(pdf_path) as doc:
+            for page_idx in range(len(doc)):
+                pno = page_idx + 1
+                page = doc[page_idx]
+                raw = page.get_text("text").strip()
+                preview = ""
+                if raw:
+                    lines = [re.sub(r'[\s\xa0]+', ' ', l).strip() for l in raw.split("\n") if l.strip()]
+                    if lines:
+                        preview = " ".join(lines[:2])
+                        if len(preview) > 90:
+                            preview = preview[:87] + "..."
+                if not preview:
+                    preview = "Trang PDF (Ảnh scan / Không có văn bản thô)"
+
+                ch_title = chapter_map.get(pno, "")
+                pages.append({
+                    "page": pno,
+                    "preview": preview,
+                    "chapter": ch_title,
+                })
+        return pages
 
     def get_annotations(self, doc_id: str) -> Dict[str, Any]:
         """Lấy danh sách bookmarks và highlights đã lưu của tài liệu."""
@@ -212,14 +286,13 @@ class PDFService:
                 if not stripped_block:
                     continue
 
-                # Bỏ qua số trang hoặc dòng chú thích ngắn nằm sát mép trên (< 6%) hoặc mép dưới (> 93%)
+                # Bỏ qua số trang hoặc dòng chú thích ngắn nằm sát mép trên (< 4%) hoặc mép dưới (> 96%)
                 # hoặc các dòng lặp lại như header ebook / nguồn truyện vnthuquan
-                if (y1 < page_height * 0.06 or y0 > page_height * 0.93) and (
-                    len(stripped_block) < 80
-                    or "vnthuquan" in stripped_block.lower()
-                    or "tạo ebook" in stripped_block.lower()
-                    or "nguồn truyện" in stripped_block.lower()
-                ):
+                is_page_num_only = bool(re.match(r"^\s*(?:[-–—]?\s*\d{1,4}\s*[-–—]?|(?:trang|page)\s+\d{1,4})\s*$", stripped_block, re.IGNORECASE))
+                is_ebook_watermark = any(w in stripped_block.lower() for w in ("vnthuquan", "tạo ebook", "nguồn truyện"))
+                if (y1 < page_height * 0.04 or y0 > page_height * 0.96) and (is_page_num_only or is_ebook_watermark):
+                    continue
+                if is_ebook_watermark and len(stripped_block) < 120:
                     continue
 
                 valid_blocks.append(b)
@@ -233,9 +306,8 @@ class PDFService:
                         prev_y1 = valid_blocks[i - 1][3]
                         curr_y0 = b[1]
                         gap = curr_y0 - prev_y1
-                        # Nếu khoảng cách dòng lớn (> 18pt), xem như đoạn văn mới (\n\n)
-                        # Nếu khoảng cách dòng bình thường (<= 18pt), xem như ngắt dòng trong cùng đoạn văn (\n)
-                        if gap > 18.0:
+                        # Mỗi text block riêng biệt trong PDF (cách nhau > 4pt) là một đoạn văn độc lập (\n\n)
+                        if gap > 4.0:
                             raw_parts.append("\n\n")
                         else:
                             raw_parts.append("\n")
