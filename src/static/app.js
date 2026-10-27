@@ -100,6 +100,12 @@ const els = {
   voiceSelect: document.getElementById("voiceSelect"),
   speedSelect: document.getElementById("speedSelect"),
   downloadMp3Btn: document.getElementById("downloadMp3Btn"),
+  bookExportBar: document.getElementById("bookExportBar"),
+  bookExportStatusText: document.getElementById("bookExportStatusText"),
+  bookExportPercent: document.getElementById("bookExportPercent"),
+  bookExportProgressFill: document.getElementById("bookExportProgressFill"),
+  bookExportSavePartialBtn: document.getElementById("bookExportSavePartialBtn"),
+  bookExportCancelBtn: document.getElementById("bookExportCancelBtn"),
   readingSettingsBtn: document.getElementById("readingSettingsBtn"),
   readingSettingsPopover: document.getElementById("readingSettingsPopover"),
   moreOptionsBtn: document.getElementById("moreOptionsBtn"),
@@ -1412,7 +1418,7 @@ function renderSentences() {
   els.stopBtn.disabled = !hasSentences;
   els.prevSentenceBtn.disabled = !hasSentences;
   els.nextSentenceBtn.disabled = !hasSentences;
-  els.downloadMp3Btn.disabled = !hasSentences;
+  els.downloadMp3Btn.disabled = !(state.docId || hasSentences);
   if (els.skipBackBtn) els.skipBackBtn.disabled = !hasSentences;
   if (els.skipForwardBtn) els.skipForwardBtn.disabled = !hasSentences;
 
@@ -1857,42 +1863,173 @@ async function saveSettings() {
   }
 }
 
+let bookExportAbortController = null;
+let bookExportSavePartialRequested = false;
+
+function triggerAudioFileDownload(buffers, fileName) {
+  if (!buffers || buffers.length === 0) return;
+  const mergedBlob = new Blob(buffers, { type: "audio/mpeg" });
+  const url = URL.createObjectURL(mergedBlob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
 async function downloadFullPageMp3() {
-  if (!state.cleanText) return;
-  const oldLabel = els.downloadMp3Btn.textContent;
+  if (!state.docId && !state.cleanText) return;
+  if (bookExportAbortController) {
+    // Nếu đang xuất thì không khởi chạy chồng
+    return;
+  }
+
+  // Đóng menu ⋯ để màn hình đọc sách thoáng đãng
+  if (els.moreOptionsPopover) els.moreOptionsPopover.hidden = true;
+
+  const voice = els.voiceSelect?.value || "kokoro-thanh_dat";
+  const speed = state.speed || 1.0;
+  const baseName = state.filename ? state.filename.replace(/\.pdf$/i, "") : "Sach_Noi_VN_PDF";
+
+  // Trường hợp văn bản dán trực tiếp không có file PDF nhiều trang
+  if (!state.docId || (state.totalPages || 1) <= 1) {
+    if (!state.cleanText) return;
+    els.downloadMp3Btn.disabled = true;
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: state.cleanText, voice, speed }),
+      });
+      if (!res.ok) throw new Error("Không thể xuất file MP3");
+      const buf = await res.arrayBuffer();
+      triggerAudioFileDownload([buf], `${baseName}_Full_Audiobook.mp3`);
+    } catch (err) {
+      alert(`Lỗi tải MP3: ${err.message}`);
+    } finally {
+      els.downloadMp3Btn.disabled = false;
+    }
+    return;
+  }
+
+  // Trường hợp Xuất Sách Nói cho TOÀN BỘ SÁCH PDF (1 -> totalPages)
+  const total = state.totalPages;
+  const audioBuffers = [];
+  let lastCompletedPage = 0;
+
+  bookExportAbortController = new AbortController();
+  bookExportSavePartialRequested = false;
+
+  if (els.bookExportSavePartialBtn) {
+    els.bookExportSavePartialBtn.disabled = true;
+    els.bookExportSavePartialBtn.onclick = () => {
+      bookExportSavePartialRequested = true;
+      if (bookExportAbortController) bookExportAbortController.abort();
+    };
+  }
+  if (els.bookExportCancelBtn) {
+    els.bookExportCancelBtn.onclick = () => {
+      bookExportSavePartialRequested = false;
+      if (bookExportAbortController) bookExportAbortController.abort();
+    };
+  }
+
+  if (els.bookExportBar) els.bookExportBar.hidden = false;
   els.downloadMp3Btn.disabled = true;
-  els.downloadMp3Btn.textContent = "⏳ Đang tạo MP3...";
+
+  const updateExportUi = (pageNum, statusText) => {
+    const pct = Math.min(100, Math.round(((pageNum - 1) / total) * 100));
+    if (els.bookExportStatusText) els.bookExportStatusText.textContent = statusText;
+    if (els.bookExportPercent) els.bookExportPercent.textContent = `${pct}%`;
+    if (els.bookExportProgressFill) els.bookExportProgressFill.style.width = `${pct}%`;
+  };
 
   try {
-    const voice = els.voiceSelect.value;
-    const speed = state.speed;
+    const encodingMode = els.encodingModeSelect?.value || "auto";
 
-    const res = await fetch("/api/tts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text: state.cleanText,
-        voice,
-        speed,
-      }),
-    });
+    for (let p = 1; p <= total; p++) {
+      if (bookExportAbortController.signal.aborted) break;
+      updateExportUi(p, `Đang xuất Sách Nói: Trang ${p} / ${total}`);
 
-    if (!res.ok) throw new Error("Không thể xuất file MP3");
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    const baseName = state.filename ? state.filename.replace(/\.pdf$/i, "") : "van_ban";
-    a.download = `${baseName}_trang_${state.currentPage}.mp3`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+      // 1. Lấy văn bản sạch của trang p
+      let pageCleanText = "";
+      if (p === state.currentPage && state.cleanText) {
+        pageCleanText = state.cleanText.trim();
+      } else {
+        const pageRes = await fetch(
+          `/api/doc/${state.docId}/page/${p}?encoding_mode=${encodeURIComponent(encodingMode)}`,
+          { signal: bookExportAbortController.signal }
+        );
+        if (pageRes.ok) {
+          const pageData = await pageRes.json();
+          pageCleanText = (pageData.clean_text || "").trim();
+        }
+      }
+
+      // Bỏ qua trang bìa hoặc trang trắng không có chữ
+      if (!pageCleanText || pageCleanText.length < 2) {
+        lastCompletedPage = p;
+        continue;
+      }
+
+      // 2. Tổng hợp âm thanh MP3 cho trang p (tự động lưu & tái sử dụng cache trên đĩa)
+      const ttsRes = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: pageCleanText,
+          voice,
+          speed,
+        }),
+        signal: bookExportAbortController.signal,
+      });
+
+      if (ttsRes.ok) {
+        const buf = await ttsRes.arrayBuffer();
+        if (buf && buf.byteLength > 128) {
+          audioBuffers.push(buf);
+          lastCompletedPage = p;
+          if (els.bookExportSavePartialBtn) {
+            els.bookExportSavePartialBtn.disabled = false;
+            els.bookExportSavePartialBtn.textContent = `💾 Lưu ngay (Trang 1–${p})`;
+          }
+        }
+      }
+    }
+
+    if (bookExportSavePartialRequested && audioBuffers.length > 0) {
+      triggerAudioFileDownload(
+        audioBuffers,
+        `${baseName}_Trang_1-${lastCompletedPage}_Audiobook.mp3`
+      );
+    } else if (!bookExportAbortController.signal.aborted && audioBuffers.length > 0) {
+      if (els.bookExportStatusText) els.bookExportStatusText.textContent = `Hoàn tất ${total}/${total} trang! Đang lưu file...`;
+      if (els.bookExportPercent) els.bookExportPercent.textContent = "100%";
+      if (els.bookExportProgressFill) els.bookExportProgressFill.style.width = "100%";
+      triggerAudioFileDownload(audioBuffers, `${baseName}_Full_Audiobook.mp3`);
+    }
   } catch (err) {
-    alert(`Lỗi tải MP3: ${err.message}`);
+    if (err.name === "AbortError") {
+      if (bookExportSavePartialRequested && audioBuffers.length > 0) {
+        triggerAudioFileDownload(
+          audioBuffers,
+          `${baseName}_Trang_1-${lastCompletedPage}_Audiobook.mp3`
+        );
+      }
+    } else {
+      alert(`Lỗi xuất Sách Nói MP3: ${err.message}`);
+    }
   } finally {
+    bookExportAbortController = null;
+    bookExportSavePartialRequested = false;
     els.downloadMp3Btn.disabled = false;
-    els.downloadMp3Btn.textContent = oldLabel;
+    if (els.bookExportBar) els.bookExportBar.hidden = true;
+    if (els.bookExportSavePartialBtn) {
+      els.bookExportSavePartialBtn.textContent = "💾 Lưu ngay phần đã xong";
+      els.bookExportSavePartialBtn.disabled = true;
+    }
   }
 }
 

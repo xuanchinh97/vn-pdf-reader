@@ -56,10 +56,52 @@ def speed_to_edge_rate(speed: float) -> str:
 
 
 AVAILABLE_VOICES: List[Dict[str, str]] = [
-    # 1. Nhóm giọng đọc AI Offline Kokoro (Chất lượng cao, Tự nhiên, Trầm ấm, Không lo mạng/proxy)
+    # 1. Nhóm giọng đọc AI Offline Kokoro (14 giọng đọc Sách & Kể chuyện tự nhiên, chạy Offline 100%)
     {
         "id": "kokoro-thanh_dat",
         "name": "Thành Đạt (Nam Truyền Cảm - Kokoro AI ⭐)",
+        "provider": "kokoro",
+        "lang": "vi",
+        "gender": "Male",
+    },
+    {
+        "id": "kokoro-storyvert",
+        "name": "Storyvert (Nam Kể Chuyện Sách Đêm Khuya - Kokoro AI ⭐)",
+        "provider": "kokoro",
+        "lang": "vi",
+        "gender": "Male",
+    },
+    {
+        "id": "kokoro-manh_dung",
+        "name": "Mạnh Dũng (Nam Trầm Chững Chạc - Kokoro AI ⭐)",
+        "provider": "kokoro",
+        "lang": "vi",
+        "gender": "Male",
+    },
+    {
+        "id": "kokoro-hung_thinh",
+        "name": "Hưng Thịnh (Nam Điềm Đạm Đọc Sách - Kokoro AI ⭐)",
+        "provider": "kokoro",
+        "lang": "vi",
+        "gender": "Male",
+    },
+    {
+        "id": "kokoro-phat_tai",
+        "name": "Phát Tài (Nam Tự Nhiên Ấm Áp - Kokoro AI ⭐)",
+        "provider": "kokoro",
+        "lang": "vi",
+        "gender": "Male",
+    },
+    {
+        "id": "kokoro-duc_an",
+        "name": "Đức An (Nam Nhẹ Nhàng Sâu Lắng - Kokoro AI ⭐)",
+        "provider": "kokoro",
+        "lang": "vi",
+        "gender": "Male",
+    },
+    {
+        "id": "kokoro-duc_duy",
+        "name": "Đức Duy (Nam Trẻ Trung Rõ Ràng - Kokoro AI ⭐)",
         "provider": "kokoro",
         "lang": "vi",
         "gender": "Male",
@@ -73,14 +115,42 @@ AVAILABLE_VOICES: List[Dict[str, str]] = [
     },
     {
         "id": "kokoro-diem_trinh",
-        "name": "Diễm Trinh (Nữ Dịu Dàng - Kokoro AI ⭐)",
+        "name": "Diễm Trinh (Nữ Dịu Dàng Kể Chuyện - Kokoro AI ⭐)",
+        "provider": "kokoro",
+        "lang": "vi",
+        "gender": "Female",
+    },
+    {
+        "id": "kokoro-ngoc_huyen",
+        "name": "Ngọc Huyền (Nữ Truyền Cảm Sâu Lắng - Kokoro AI ⭐)",
         "provider": "kokoro",
         "lang": "vi",
         "gender": "Female",
     },
     {
         "id": "kokoro-mai_linh",
-        "name": "Mai Linh (Nữ Trong Trẻo - Kokoro AI ⭐)",
+        "name": "Mai Linh (Nữ Trong Trẻo Tự Nhiên - Kokoro AI ⭐)",
+        "provider": "kokoro",
+        "lang": "vi",
+        "gender": "Female",
+    },
+    {
+        "id": "kokoro-my_yen",
+        "name": "Mỹ Yến (Nữ Nhẹ Nhàng Êm Ái - Kokoro AI ⭐)",
+        "provider": "kokoro",
+        "lang": "vi",
+        "gender": "Female",
+    },
+    {
+        "id": "kokoro-thuc_trinh",
+        "name": "Thục Trinh (Nữ Thanh Lịch Đọc Sách - Kokoro AI ⭐)",
+        "provider": "kokoro",
+        "lang": "vi",
+        "gender": "Female",
+    },
+    {
+        "id": "kokoro-mai_loan",
+        "name": "Mai Loan (Nữ Đằm Thắm Cổ Điển - Kokoro AI ⭐)",
         "provider": "kokoro",
         "lang": "vi",
         "gender": "Female",
@@ -197,7 +267,7 @@ class TTSService:
         if voice.startswith("kokoro-"):
             kokoro_voice = voice.replace("kokoro-", "")
             try:
-                content = await asyncio.to_thread(self._synthesize_kokoro, clean, kokoro_voice)
+                content = await asyncio.to_thread(self._synthesize_kokoro, clean, kokoro_voice, speed)
                 if content and len(content) > 1000:
                     mp3_path.write_bytes(content)
                     return mp3_path
@@ -390,7 +460,7 @@ class TTSService:
 
         return self._onnx_session, self._onnx_config, self._onnx_voicepacks[voice_name]
 
-    def _synthesize_kokoro(self, text: str, voice_name: str) -> bytes:
+    def _synthesize_kokoro(self, text: str, voice_name: str, speed: float = 1.0) -> bytes:
         """Tổng hợp giọng đọc bằng mô hình Kokoro-Vietnamese ONNX Runtime + Smart Phonemizer."""
         import io
         import numpy as np
@@ -410,7 +480,7 @@ class TTSService:
             session, config, voicepack = self._ensure_onnx_engine(voice_name)
             vocab = config["vocab"]
             context_length = config["plbert"]["max_position_embeddings"]
-            speed_val = speed_input(1.0)
+            speed_val = speed_input(max(0.5, min(2.5, float(speed or 1.0))))
 
             audio_chunks: List[np.ndarray] = []
             for text_chunk in split_text(text):

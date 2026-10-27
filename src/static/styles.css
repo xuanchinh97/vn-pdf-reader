@@ -1988,3 +1988,124 @@ html[data-theme="dark"] .sentence-item.highlighted {
     gap: 2px;
   }
 }
+
+/* ==========================================================================
+   THANH TIẾN TRÌNH XUẤT SÁCH NÓI TOÀN BỘ SÁCH (DYNAMIC ISLAND STYLE)
+   & CUỘN MƯỢT DANH SÁCH 14 GIỌNG ĐỌC KOKORO AI
+   ========================================================================== */
+.voice-popover .voice-list-grid {
+  max-height: 340px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.book-export-bar {
+  position: fixed;
+  bottom: 92px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(460px, calc(100vw - 24px));
+  background: var(--glass-bg, rgba(252, 248, 240, 0.94));
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
+  border-radius: 18px;
+  padding: 14px 16px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.16);
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.book-export-bar[hidden] {
+  display: none !important;
+}
+
+.book-export-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.book-export-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 0;
+}
+
+.book-export-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.book-export-pct {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent, #b45309);
+  flex-shrink: 0;
+}
+
+.book-export-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(128, 128, 128, 0.18);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.book-export-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #d97706, #f59e0b);
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+
+.book-export-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.book-export-action-btn {
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.12));
+  background: rgba(128, 128, 128, 0.08);
+  color: var(--text-primary);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.book-export-action-btn.save-partial {
+  background: var(--accent, #b45309);
+  color: #fff;
+  border-color: transparent;
+}
+
+.book-export-action-btn.save-partial:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.book-export-action-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+}
+
+@media (max-width: 768px) {
+  .book-export-bar {
+    bottom: 74px;
+    padding: 12px 14px;
+  }
+}

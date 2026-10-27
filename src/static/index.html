@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet" />
   
-  <link rel="stylesheet" href="/styles.css?v=apple3.2" />
+  <link rel="stylesheet" href="/styles.css?v=apple3.5" />
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
@@ -172,6 +172,28 @@
       </div>
     </main>
 
+    <!-- THANH TIẾN TRÌNH XUẤT SÁCH NÓI TOÀN BỘ SÁCH (DYNAMIC ISLAND STYLE) -->
+    <div class="book-export-bar" id="bookExportBar" hidden>
+      <div class="book-export-top">
+        <div class="book-export-info">
+          <span class="book-export-icon">🎧</span>
+          <span class="book-export-text" id="bookExportStatusText">Đang xuất Sách Nói: Trang 1 / 10</span>
+        </div>
+        <strong class="book-export-pct" id="bookExportPercent">0%</strong>
+      </div>
+      <div class="book-export-track">
+        <div class="book-export-fill" id="bookExportProgressFill" style="width: 0%;"></div>
+      </div>
+      <div class="book-export-actions">
+        <button class="book-export-action-btn save-partial" id="bookExportSavePartialBtn" disabled title="Tải ngay file MP3 của các trang đã tổng hợp xong">
+          💾 Lưu ngay phần đã xong
+        </button>
+        <button class="book-export-action-btn cancel" id="bookExportCancelBtn" title="Hủy tiến trình xuất sách nói">
+          ✕ Hủy
+        </button>
+      </div>
+    </div>
+
     <!-- VIÊN THUỐC ÂM THANH NỔI (CHỈ HIỆN KHI ĐỌC SÁCH) -->
     <div class="floating-capsule" id="capsulePlayer">
       <button class="capsule-btn" id="prevChapterBtn" title="Chương trước (Phím J)">
@@ -263,8 +285,8 @@
   <div class="apple-popover more-popover" id="moreOptionsPopover" hidden>
     <div class="more-menu-group">
       <button class="more-menu-item" id="downloadMp3Btn">
-        <span class="menu-icon">⬇️</span>
-        <span class="menu-text">Tải file MP3 cả trang</span>
+        <span class="menu-icon">🎧</span>
+        <span class="menu-text">Tải MP3 toàn bộ sách</span>
       </button>
       <button class="more-menu-item" id="zenModeBtn">
         <span class="menu-icon">📖</span>
@@ -441,6 +463,6 @@
   <button id="pasteTextDemoBtn" hidden></button>
 
   <audio id="ttsAudio" preload="auto"></audio>
-  <script src="/app.js?v=apple3.4"></script>
+  <script src="/app.js?v=apple3.5"></script>
 </body>
 </html>
