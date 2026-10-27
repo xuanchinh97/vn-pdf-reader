@@ -1,9 +1,11 @@
 import asyncio
+import gc
 import hashlib
 import json
 import os
 import re
 import sys
+import threading
 import time
 import urllib.parse
 from pathlib import Path
@@ -160,6 +162,7 @@ class TTSService:
         self._edge_lock = asyncio.Lock()
         self._kokoro_instances: Dict[str, object] = {}
         self._kokoro_lock = asyncio.Lock()
+        self._kokoro_thread_lock = threading.Lock()
 
     def get_voices(self) -> List[Dict[str, str]]:
         return AVAILABLE_VOICES
@@ -259,16 +262,21 @@ class TTSService:
         return mp3_path
 
     def _synthesize_kokoro(self, text: str, voice_name: str) -> bytes:
-        """Tổng hợp giọng đọc bằng mô hình AI cục bộ Kokoro-Vietnamese."""
+        """Tổng hợp giọng đọc bằng mô hình AI cục bộ Kokoro-Vietnamese (chỉ giữ tối đa 1 model trong RAM)."""
         os.environ["HF_HUB_OFFLINE"] = "1"
         from kokoro_vietnamese import KokoroVietnamese
         import io
 
-        if voice_name not in self._kokoro_instances:
-            self._kokoro_instances[voice_name] = KokoroVietnamese(device="cpu", voice=voice_name)
+        with self._kokoro_thread_lock:
+            if voice_name not in self._kokoro_instances:
+                # Giải phóng model của giọng cũ trước khi nạp giọng mới để tránh cộng dồn RAM
+                if self._kokoro_instances:
+                    self._kokoro_instances.clear()
+                    gc.collect()
+                self._kokoro_instances[voice_name] = KokoroVietnamese(device="cpu", voice=voice_name)
 
-        tts = self._kokoro_instances[voice_name]
-        audio, _ = tts.synthesize(text)
+            tts = self._kokoro_instances[voice_name]
+            audio, _ = tts.synthesize(text)
         
         # Ghi sang định dạng MP3 (hoặc WAV nếu MP3 không hỗ trợ)
         buf = io.BytesIO()
