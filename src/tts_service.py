@@ -57,7 +57,7 @@ AVAILABLE_VOICES: List[Dict[str, str]] = [
     # 1. Nhóm giọng đọc AI Offline Kokoro (Chất lượng cao, Tự nhiên, Trầm ấm, Không lo mạng/proxy)
     {
         "id": "kokoro-thanh_dat",
-        "name": "Thành Đạt (Nam Truyền Cảm - Kokoro AI ⭐ Đề xuất)",
+        "name": "Thành Đạt (Nam Truyền Cảm - Kokoro AI ⭐)",
         "provider": "kokoro",
         "lang": "vi",
         "gender": "Male",
