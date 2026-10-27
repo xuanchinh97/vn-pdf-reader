@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 chcp 65001 >nul
 title VN PDF Reader - Đọc PDF Tiếng Việt Tự Nhiên
 cd /d "%~dp0"
@@ -18,4 +18,4 @@ echo ================================================================
 REM Tự động mở trình duyệt sau 1.5 giây
 start "" cmd /c "timeout /t 2 >nul & start http://127.0.0.1:8788"
 
-.venv\Scripts\python.exe -m uvicorn src.main:app --host 127.0.0.1 --port 8788
+.venv\Scripts\python.exe -m uvicorn src.main:app --host 127.0.0.1 --port 8788 --reload

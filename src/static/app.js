@@ -411,12 +411,19 @@ async function loadVoices() {
     if (!res.ok) return;
     const data = await res.json();
     if (data.voices && data.voices.length > 0) {
-      // Đưa giọng Thành Đạt lên đầu danh sách và làm giọng mặc định
-      const voices = [...data.voices].sort((a, b) => {
-        if (a.id === "kokoro-thanh_dat") return -1;
-        if (b.id === "kokoro-thanh_dat") return 1;
-        return 0;
-      });
+      // Đưa giọng Thành Đạt lên đầu danh sách, làm giọng mặc định và bỏ chữ "Đề xuất" ở giọng Tuấn Ngọc
+      const voices = [...data.voices]
+        .map((v) => {
+          if (v.id === "kokoro-tuan_ngoc") {
+            return { ...v, name: v.name.replace(/\s*Đề xuất/gi, "").replace(/\s+\)/g, ")") };
+          }
+          return v;
+        })
+        .sort((a, b) => {
+          if (a.id === "kokoro-thanh_dat") return -1;
+          if (b.id === "kokoro-thanh_dat") return 1;
+          return 0;
+        });
       state.voicesList = voices;
       const defaultVoice = voices.find((v) => v.id === "kokoro-thanh_dat") || voices[0];
       const curVoiceId = els.voiceSelect?.value || defaultVoice.id;
