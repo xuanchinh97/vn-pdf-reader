@@ -104,6 +104,15 @@ class TestTTSService(unittest.TestCase):
         self.assertEqual(p_fast.name, f"{expected_hash_fast}.mp3")
         self.assertNotEqual(p_default, p_fast)
 
+    def test_phonemize_vietnamese_smart_numbers_symbols_and_do(self):
+        # Kiểm tra số 1999, 15%, 100$ được đọc thành chữ và chữ 'do' phát âm tiếng Việt (zˈɔ) thay vì tiếng Anh (dˈuː)
+        ps = self.tts.phonemize_vietnamese_smart("Năm 1999, do tăng trưởng 15% nên đạt 100$.")
+        self.assertNotIn("999", ps)
+        self.assertNotIn("%", ps)
+        self.assertNotIn("$", ps)
+        self.assertNotIn("dˈuː", ps)
+        self.assertIn("zˈɔ", ps)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -163,6 +163,11 @@ class TTSService:
         self._kokoro_instances: Dict[str, object] = {}
         self._kokoro_lock = asyncio.Lock()
         self._kokoro_thread_lock = threading.Lock()
+        self._onnx_session = None
+        self._onnx_config: Optional[dict] = None
+        self._onnx_voicepacks: Dict[str, object] = {}
+        self._vn_normalizer = None
+        self._vn_g2p = None
 
     def get_voices(self) -> List[Dict[str, str]]:
         return AVAILABLE_VOICES
@@ -261,30 +266,198 @@ class TTSService:
         await asyncio.to_thread(self._google_tts_download, clean, lang, mp3_path)
         return mp3_path
 
+    def _ensure_vn_phonemizer(self) -> None:
+        if self._vn_normalizer is None or self._vn_g2p is None:
+            from sea_g2p import Normalizer, G2P
+
+            self._vn_normalizer = Normalizer("vi")
+            self._vn_g2p = G2P("vi")
+
+    def phonemize_vietnamese_smart(self, text: str) -> str:
+        """
+        Chuẩn hóa số (1999 -> một nghìn chín trăm chín mươi chín), ngày tháng, % và ký tự đặc biệt
+        trên toàn câu trước khi phiên âm; đồng thời neo ngữ cảnh tiếng Việt ('ạ ') cho từng từ
+        không dấu (do, to, so, no, may, ban...) để tránh bị sea_g2p đọc nhầm sang tiếng Anh ('do' -> 'đu').
+        """
+        self._ensure_vn_phonemizer()
+        from vig2p.core import fix_phonemes, WORD_RE
+
+        cleaned = text
+        cleaned = re.sub(r"(\d)\s*\$", r"\1 đô la", cleaned)
+        cleaned = re.sub(r"\$\s*(\d)", r"\1 đô la", cleaned)
+        cleaned = re.sub(r"(\d)\s*€", r"\1 ơ rô", cleaned)
+        cleaned = re.sub(r"(\d)\s*¥", r"\1 yên", cleaned)
+        cleaned = cleaned.replace("&", " và ")
+        cleaned = cleaned.replace("°C", " độ xê ")
+        cleaned = cleaned.replace("°F", " độ ép ")
+        cleaned = cleaned.replace("km/h", " ki lô mét trên giờ ")
+        cleaned = cleaned.replace("m²", " mét vuông ").replace("m2", " mét vuông ")
+        cleaned = cleaned.replace("m³", " mét khối ").replace("m3", " mét khối ")
+
+        normalized = self._vn_normalizer.normalize(cleaned)
+
+        digit_map = {
+            "0": " không ",
+            "1": " một ",
+            "2": " hai ",
+            "3": " ba ",
+            "4": " bốn ",
+            "5": " năm ",
+            "6": " sáu ",
+            "7": " bảy ",
+            "8": " tám ",
+            "9": " chín ",
+        }
+        normalized = re.sub(r"\d", lambda m: digit_map.get(m.group(0), " "), normalized)
+
+        en_block_re = re.compile(r"(<en>.*?</en>)", re.IGNORECASE | re.DOTALL)
+        token_re = re.compile(r"[A-Za-zÀ-ỹĐđ]+(?:[-'][A-Za-zÀ-ỹĐđ]+)*|\s+|.", re.UNICODE)
+
+        out: List[str] = []
+        for part in en_block_re.split(normalized):
+            if not part:
+                continue
+            if part.lower().startswith("<en>") and part.lower().endswith("</en>"):
+                raw_en = self._vn_g2p.convert(part)
+                out.append(fix_phonemes(raw_en))
+                continue
+
+            for tok in token_re.findall(part):
+                if tok.isspace():
+                    out.append(" ")
+                elif WORD_RE.match(tok):
+                    raw_vi = self._vn_g2p.convert("ạ " + tok)
+                    vi_phoneme = raw_vi.split(" ", 1)[1] if " " in raw_vi else raw_vi
+                    out.append(fix_phonemes(vi_phoneme, source_text=tok))
+                elif tok in ".,!?;:—…\"()[]":
+                    out.append(fix_phonemes(tok))
+
+        return re.sub(r"\s+", " ", "".join(out)).strip()
+
+    def _ensure_onnx_engine(self, voice_name: str):
+        """Khởi tạo phiên chạy ONNX Runtime siêu nhẹ (~390MB RAM, không cần nạp PyTorch vào RAM)."""
+        import numpy as np
+        import onnxruntime as ort
+        from kokoro_vietnamese.core import (
+            DEFAULT_CONFIG_FILE,
+            DEFAULT_HF_REPO_ID,
+            DEFAULT_ONNX_FILE,
+            _download_or_resolve,
+            resolve_voicepack_filename,
+        )
+        from kokoro_vietnamese.onnx_utils import load_config
+
+        if self._onnx_session is None or self._onnx_config is None:
+            os.environ["HF_HUB_OFFLINE"] = "1"
+            try:
+                onnx_path = _download_or_resolve(DEFAULT_HF_REPO_ID, DEFAULT_ONNX_FILE, None)
+                config_path = _download_or_resolve(DEFAULT_HF_REPO_ID, DEFAULT_CONFIG_FILE, None)
+            except Exception:
+                os.environ.pop("HF_HUB_OFFLINE", None)
+                if self._proxy:
+                    os.environ["HTTP_PROXY"] = self._proxy
+                    os.environ["HTTPS_PROXY"] = self._proxy
+                onnx_path = _download_or_resolve(DEFAULT_HF_REPO_ID, DEFAULT_ONNX_FILE, None)
+                config_path = _download_or_resolve(DEFAULT_HF_REPO_ID, DEFAULT_CONFIG_FILE, None)
+                os.environ["HF_HUB_OFFLINE"] = "1"
+
+            self._onnx_config = load_config(config_path)
+            sess_opts = ort.SessionOptions()
+            sess_opts.intra_op_num_threads = min(4, os.cpu_count() or 2)
+            sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+            self._onnx_session = ort.InferenceSession(
+                str(onnx_path),
+                sess_options=sess_opts,
+                providers=["CPUExecutionProvider"],
+            )
+
+        if voice_name not in self._onnx_voicepacks:
+            npy_dir = Path.home() / ".vn_pdf_reader" / "voicepacks"
+            npy_dir.mkdir(parents=True, exist_ok=True)
+            npy_path = npy_dir / f"{voice_name}.npy"
+            if not npy_path.exists():
+                import torch
+
+                vp_rel = resolve_voicepack_filename(voice_name, None)
+                pt_path = _download_or_resolve(DEFAULT_HF_REPO_ID, vp_rel, vp_rel)
+                tensor = torch.load(pt_path, map_location="cpu", weights_only=True)
+                arr = tensor.detach().cpu().numpy().astype(np.float32)
+                np.save(npy_path, arr)
+                del tensor
+
+            self._onnx_voicepacks.clear()
+            self._onnx_voicepacks[voice_name] = np.load(npy_path)
+
+        return self._onnx_session, self._onnx_config, self._onnx_voicepacks[voice_name]
+
     def _synthesize_kokoro(self, text: str, voice_name: str) -> bytes:
-        """Tổng hợp giọng đọc bằng mô hình AI cục bộ Kokoro-Vietnamese (chỉ giữ tối đa 1 model trong RAM)."""
-        os.environ["HF_HUB_OFFLINE"] = "1"
-        from kokoro_vietnamese import KokoroVietnamese
+        """Tổng hợp giọng đọc bằng mô hình Kokoro-Vietnamese ONNX Runtime + Smart Phonemizer."""
         import io
+        import numpy as np
+        from kokoro_vietnamese.core import (
+            DEFAULT_CROSSFADE_MS,
+            SAMPLE_RATE,
+            merge_audio_chunks,
+            split_text,
+        )
+        from kokoro_vietnamese.onnx_utils import (
+            phonemes_to_input_ids,
+            select_voice_style,
+            speed_input,
+        )
 
         with self._kokoro_thread_lock:
-            if voice_name not in self._kokoro_instances:
-                # Giải phóng model của giọng cũ trước khi nạp giọng mới để tránh cộng dồn RAM
-                if self._kokoro_instances:
-                    self._kokoro_instances.clear()
-                    gc.collect()
-                self._kokoro_instances[voice_name] = KokoroVietnamese(device="cpu", voice=voice_name)
+            session, config, voicepack = self._ensure_onnx_engine(voice_name)
+            vocab = config["vocab"]
+            context_length = config["plbert"]["max_position_embeddings"]
+            speed_val = speed_input(1.0)
 
-            tts = self._kokoro_instances[voice_name]
-            audio, _ = tts.synthesize(text)
-        
-        # Ghi sang định dạng MP3 (hoặc WAV nếu MP3 không hỗ trợ)
+            audio_chunks: List[np.ndarray] = []
+            for text_chunk in split_text(text):
+                ps = self.phonemize_vietnamese_smart(text_chunk)
+                if not ps:
+                    continue
+
+                ps_segments: List[str] = []
+                if len(ps) <= 460:
+                    ps_segments.append(ps)
+                else:
+                    words = ps.split(" ")
+                    cur = ""
+                    for w in words:
+                        if len(cur) + len(w) + 1 <= 460:
+                            cur = f"{cur} {w}".strip() if cur else w
+                        else:
+                            if cur:
+                                ps_segments.append(cur)
+                            cur = w
+                    if cur:
+                        ps_segments.append(cur)
+
+                for seg in ps_segments:
+                    input_ids = phonemes_to_input_ids(seg, vocab, context_length=context_length)
+                    if input_ids.shape[1] <= 2:
+                        continue
+                    ref_s = select_voice_style(voicepack, len(seg))
+                    waveform, _ = session.run(
+                        None,
+                        {
+                            "input_ids": input_ids,
+                            "ref_s": ref_s,
+                            "speed": speed_val,
+                        },
+                    )
+                    audio_chunks.append(np.asarray(waveform, dtype=np.float32).reshape(-1))
+
+            crossfade_samples = round(SAMPLE_RATE * int(DEFAULT_CROSSFADE_MS) / 1000)
+            audio = merge_audio_chunks(audio_chunks, crossfade_samples)
+
         buf = io.BytesIO()
         try:
-            sf.write(buf, audio, 24000, format="MP3")
+            sf.write(buf, audio, SAMPLE_RATE, format="MP3")
         except Exception:
             buf = io.BytesIO()
-            sf.write(buf, audio, 24000, format="WAV")
+            sf.write(buf, audio, SAMPLE_RATE, format="WAV")
         return buf.getvalue()
 
     def _synthesize_fpt(self, text: str, voice_name: str, api_key: str) -> bytes:
