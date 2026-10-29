@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet" />
   
-  <link rel="stylesheet" href="/styles.css?v=apple3.6" />
+  <link rel="stylesheet" href="/styles.css?v=apple3.7" />
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
@@ -110,6 +110,12 @@
       </div>
 
       <div class="topbar-right-reader">
+        <button class="apple-btn-icon" id="searchToggleBtn" title="Tìm kiếm trong sách (Ctrl+F hoặc /)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </button>
+        <button class="apple-btn-icon" id="originalPageToggleBtn" title="Xem ảnh trang PDF gốc (Phím O)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+        </button>
         <button class="apple-btn-icon btn-aa" id="readingSettingsBtn" title="Tùy chỉnh đọc sách (Aa)">
           Aa
         </button>
@@ -118,6 +124,23 @@
         </button>
       </div>
     </header>
+
+    <!-- THANH TÌM KIẾM TOÀN VĂN NỔI (IN-BOOK SEARCH BAR - Ctrl+F) -->
+    <div class="in-book-search-bar" id="inBookSearchBar" hidden>
+      <div class="search-bar-inner">
+        <svg class="search-bar-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="inBookSearchInput" placeholder="Tìm kiếm trong cuốn sách này..." autocomplete="off" />
+        <span class="search-match-count" id="searchMatchCount">0 kết quả</span>
+        <div class="search-nav-btns">
+          <button class="search-nav-btn" id="searchPrevMatchBtn" title="Kết quả trước (Shift+Enter)">▲</button>
+          <button class="search-nav-btn" id="searchNextMatchBtn" title="Kết quả sau (Enter)">▼</button>
+        </div>
+        <button class="search-bar-action-btn" id="searchOpenDrawerBtn" title="Mở danh sách kết quả trong Mục lục">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+        </button>
+        <button class="search-bar-close-btn" id="searchCloseBtn" title="Đóng tìm kiếm (Esc)">✕</button>
+      </div>
+    </div>
 
     <!-- KHÔNG GIAN ĐỌC SÁCH -->
     <main class="reader-viewport" id="dropZone">
@@ -368,6 +391,7 @@
         <button class="drawer-tab active" id="tabBtnToc">Mục lục</button>
         <button class="drawer-tab" id="tabBtnBookmarks">Dấu trang (<span id="bookmarkCount">0</span>)</button>
         <button class="drawer-tab" id="tabBtnHighlights">Highlight (<span id="highlightCount">0</span>)</button>
+        <button class="drawer-tab" id="tabBtnSearch">Tìm kiếm (<span id="searchDrawerCount">0</span>)</button>
       </div>
       <button class="apple-btn-icon" id="closeDrawerBtn" title="Đóng mục lục">✕</button>
     </div>
@@ -397,6 +421,14 @@
       <div class="drawer-pane" id="drawerTabHighlights" hidden>
         <div id="highlightsList" class="highlights-list">
           <div class="drawer-empty-hint">Chưa có đoạn văn nào được highlight.</div>
+        </div>
+      </div>
+
+      <!-- Tab 4: Kết quả Tìm kiếm toàn văn -->
+      <div class="drawer-pane" id="drawerTabSearch" hidden>
+        <div class="search-drawer-summary" id="searchDrawerSummary">Nhập từ khóa ở thanh tìm kiếm (Ctrl+F) để xem kết quả toàn văn.</div>
+        <div id="searchResultsList" class="search-results-list">
+          <div class="drawer-empty-hint">Chưa có kết quả tìm kiếm nào.</div>
         </div>
       </div>
     </div>
@@ -434,7 +466,10 @@
         <div style="display:flex; justify-content:space-between;"><kbd>Space</kbd> <span>Đọc / Tạm dừng</span></div>
         <div style="display:flex; justify-content:space-between;"><kbd>J / K</kbd> <span>Chương trước / Chương sau</span></div>
         <div style="display:flex; justify-content:space-between;"><kbd>◀ / ▶</kbd> <span>Lật trang trước / sau</span></div>
-        <div style="display:flex; justify-content:space-between;"><kbd>M</kbd> <span>Mục lục</span></div>
+        <div style="display:flex; justify-content:space-between;"><kbd>Ctrl + F / /</kbd> <span>Tìm kiếm trong sách</span></div>
+        <div style="display:flex; justify-content:space-between;"><kbd>O</kbd> <span>Xem ảnh trang PDF gốc</span></div>
+        <div style="display:flex; justify-content:space-between;"><kbd>M</kbd> <span>Mục lục & Dấu trang</span></div>
+        <div style="display:flex; justify-content:space-between;"><kbd>B</kbd> <span>Đánh dấu trang</span></div>
         <div style="display:flex; justify-content:space-between;"><kbd>F</kbd> <span>Toàn màn hình</span></div>
         <div style="display:flex; justify-content:space-between;"><kbd>Esc</kbd> <span>Đóng cửa sổ / Về Home</span></div>
       </div>
@@ -444,10 +479,64 @@
     </div>
   </div>
 
+  <!-- ==================== MODAL XEM ẢNH TRANG PDF GỐC (LIGHTBOX) ==================== -->
+  <div class="modal-backdrop original-page-backdrop" id="originalPageModal" hidden>
+    <div class="original-page-modal-card">
+      <div class="original-page-header">
+        <div class="original-page-title-group">
+          <span class="original-page-badge">PDF GỐC</span>
+          <h3 id="originalPageModalTitle">Trang 1 / 1</h3>
+        </div>
+        
+        <div class="original-page-controls">
+          <div class="page-stepper-group">
+            <button class="modal-stepper-btn" id="origPrevPageBtn" title="Trang trước (◀)">‹</button>
+            <span id="origPageIndicator">1 / 1</span>
+            <button class="modal-stepper-btn" id="origNextPageBtn" title="Trang sau (▶)">›</button>
+          </div>
+          
+          <div class="dpi-toggle-group">
+            <button class="dpi-btn active" id="origDpi170Btn">170 DPI</button>
+            <button class="dpi-btn" id="origDpi300Btn" title="Độ phân giải siêu nét">300 DPI</button>
+          </div>
+
+          <div class="orig-zoom-group">
+            <button class="orig-zoom-btn" id="origZoomOutBtn" title="Thu nhỏ">-</button>
+            <span id="origZoomLevelLabel">100%</span>
+            <button class="orig-zoom-btn" id="origZoomInBtn" title="Phóng to">+</button>
+            <button class="orig-zoom-btn" id="origZoomFitBtn" title="Vừa màn hình">Fit</button>
+          </div>
+
+          <button class="orig-tool-btn" id="origToggleSplitBtn" title="Bật/Tắt chế độ chia đôi (Split View)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="3" x2="12" y2="21"></line></svg>
+            <span id="origSplitBtnText">Chia đôi</span>
+          </button>
+
+          <a class="orig-tool-btn" id="origDownloadBtn" download="page.png" title="Tải ảnh trang PDF này" target="_blank">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>Tải ảnh</span>
+          </a>
+
+          <button class="apple-btn-icon" id="closeOriginalPageBtn" title="Đóng (Esc)">✕</button>
+        </div>
+      </div>
+
+      <div class="original-page-body" id="origPageViewport">
+        <div class="orig-loading-spinner" id="origLoadingSpinner" hidden>
+          <div class="spinner-circle"></div>
+          <span>Đang tải ảnh trang PDF...</span>
+        </div>
+        <div class="orig-img-container" id="origImgContainer">
+          <img id="originalPageLightboxImg" alt="Trang PDF gốc" />
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="dictModal" hidden><div id="closeDictBtn"></div><div id="closeDictFooterBtn"></div><input id="dictSearchInput"/><button id="dictSearchBtn"></button><div id="dictResults"></div></div>
   <button id="pasteTextDemoBtn" hidden></button>
 
   <audio id="ttsAudio" preload="auto"></audio>
-  <script src="/app.js?v=apple3.6"></script>
+  <script src="/app.js?v=apple3.7"></script>
 </body>
 </html>

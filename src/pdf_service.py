@@ -3,8 +3,9 @@ import hashlib
 import io
 import json
 import re
+import unicodedata
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import pymupdf as fitz  # PyMuPDF 2.0+
 import httpx
@@ -30,6 +31,8 @@ class PDFService:
     def __init__(self):
         # Lưu đường dẫn file PDF theo doc_id
         self._docs: Dict[str, Path] = {}
+        # Bộ nhớ đệm văn bản trang đã xử lý (doc_id, page_no, mode) -> Dict
+        self._page_text_cache: Dict[Tuple[str, int, str], Dict[str, Any]] = {}
 
     def register_pdf(self, filename: str, file_bytes: bytes) -> Dict[str, object]:
         """Lưu file PDF vào bộ nhớ đệm cục bộ và trả về thông tin tổng quan."""
@@ -265,6 +268,10 @@ class PDFService:
         Trích xuất văn bản từ trang PDF (1-indexed), sắp xếp theo thứ tự đọc tự nhiên,
         loại bỏ vùng header/footer sát mép giấy và chạy bộ xử lý Tiếng Việt.
         """
+        cache_key = (doc_id, page_number, force_mode)
+        if cache_key in self._page_text_cache:
+            return self._page_text_cache[cache_key]
+
         pdf_path = self._get_pdf_path(doc_id)
         with fitz.open(pdf_path) as doc:
             if page_number < 1 or page_number > len(doc):
@@ -318,7 +325,125 @@ class PDFService:
         processed["doc_id"] = doc_id
         processed["page_number"] = page_number
         processed["raw_text"] = raw_text
+
+        # Giới hạn kích thước cache trang (tối đa 500 trang gần nhất)
+        if len(self._page_text_cache) > 500:
+            self._page_text_cache.clear()
+        self._page_text_cache[cache_key] = processed
         return processed
+
+    def search_document(
+        self, doc_id: str, query: str, max_results: int = 200
+    ) -> Dict[str, Any]:
+        """
+        Tìm kiếm toàn văn trong tài liệu PDF (hỗ trợ tiếng Việt có dấu, không phân biệt hoa thường,
+        và tự động sửa lỗi mã phông chữ TCVN3/VNI).
+        Trả về danh sách kết quả kèm số trang, vị trí câu, và trích đoạn văn bản (snippet).
+        """
+        safe_query = query.strip()
+        if len(safe_query) < 2:
+            raise ValueError("Từ khóa tìm kiếm phải có độ dài ít nhất 2 ký tự.")
+
+        pdf_path = self._get_pdf_path(doc_id)
+        q_norm = unicodedata.normalize("NFC", safe_query)
+        pattern = re.compile(re.escape(q_norm), re.IGNORECASE)
+
+        results: List[Dict[str, Any]] = []
+        results_by_page: Dict[int, List[Dict[str, Any]]] = {}
+        total_matches = 0
+        is_truncated = False
+
+        with fitz.open(pdf_path) as doc:
+            page_count = len(doc)
+            for page_idx in range(page_count):
+                page_no = page_idx + 1
+                page_data = self.extract_page_text(doc_id, page_no)
+                page_text = unicodedata.normalize("NFC", str(page_data.get("text", "")))
+                sentences = page_data.get("sentences", [])
+
+                if not page_text:
+                    continue
+
+                page_matches: List[Dict[str, Any]] = []
+
+                # 1. Quét theo từng câu để có sentence_index chính xác
+                for s_idx, sentence in enumerate(sentences):
+                    s_norm = unicodedata.normalize("NFC", str(sentence))
+                    for match in pattern.finditer(s_norm):
+                        m_start, m_end = match.span()
+                        ctx_start = max(0, m_start - 35)
+                        ctx_end = min(len(s_norm), m_end + 35)
+                        prefix = "..." if ctx_start > 0 else ""
+                        suffix = "..." if ctx_end < len(s_norm) else ""
+                        snippet = f"{prefix}{s_norm[ctx_start:ctx_end].strip()}{suffix}"
+
+                        match_item = {
+                            "page": page_no,
+                            "sentence_index": s_idx,
+                            "match_text": match.group(0),
+                            "snippet": snippet,
+                            "start_char": m_start,
+                            "end_char": m_end,
+                        }
+                        results.append(match_item)
+                        page_matches.append(match_item)
+                        total_matches += 1
+
+                        if total_matches >= max_results:
+                            is_truncated = True
+                            break
+                    if is_truncated:
+                        break
+
+                # 2. Dự phòng: Nếu văn bản trang có match nhưng chưa được gom vào sentences
+                if not page_matches and pattern.search(page_text):
+                    for match in pattern.finditer(page_text):
+                        m_start, m_end = match.span()
+                        ctx_start = max(0, m_start - 40)
+                        ctx_end = min(len(page_text), m_end + 40)
+                        prefix = "..." if ctx_start > 0 else ""
+                        suffix = "..." if ctx_end < len(page_text) else ""
+                        clean_snip = re.sub(r'\s+', ' ', page_text[ctx_start:ctx_end]).strip()
+                        snippet = f"{prefix}{clean_snip}{suffix}"
+
+                        match_item = {
+                            "page": page_no,
+                            "sentence_index": 0,
+                            "match_text": match.group(0),
+                            "snippet": snippet,
+                            "start_char": m_start,
+                            "end_char": m_end,
+                        }
+                        results.append(match_item)
+                        page_matches.append(match_item)
+                        total_matches += 1
+
+                        if total_matches >= max_results:
+                            is_truncated = True
+                            break
+
+                if page_matches:
+                    results_by_page[page_no] = page_matches
+
+                if is_truncated:
+                    break
+
+        return {
+            "doc_id": doc_id,
+            "query": safe_query,
+            "total_matches": total_matches,
+            "page_count": page_count,
+            "is_truncated": is_truncated,
+            "results": results,
+            "results_by_page": [
+                {
+                    "page": p,
+                    "count": len(items),
+                    "matches": items,
+                }
+                for p, items in sorted(results_by_page.items())
+            ],
+        }
 
     def render_page_image(
         self, doc_id: str, page_number: int, dpi: int = 180, enhance_for_ocr: bool = False

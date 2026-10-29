@@ -206,6 +206,36 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertFalse(data["found"])
         self.assertIn("meanings", data)
 
+    def test_search_document_endpoint_success(self):
+        with open(self.standard_pdf_path, "rb") as f:
+            upload_resp = self.client.post(
+                "/api/upload",
+                files={"file": ("standard_unicode.pdf", f, "application/pdf")},
+            )
+        doc_id = upload_resp.json()["doc_id"]
+        search_resp = self.client.get(f"/api/doc/{doc_id}/search?q=Vi%E1%BB%87t+Nam")
+        self.assertEqual(search_resp.status_code, 200)
+        data = search_resp.json()
+        self.assertEqual(data["doc_id"], doc_id)
+        self.assertEqual(data["query"], "Việt Nam")
+        self.assertGreater(data["total_matches"], 0)
+        self.assertIn("results", data)
+        self.assertIn("results_by_page", data)
+
+    def test_search_document_endpoint_short_query_returns_400(self):
+        with open(self.standard_pdf_path, "rb") as f:
+            upload_resp = self.client.post(
+                "/api/upload",
+                files={"file": ("standard_unicode.pdf", f, "application/pdf")},
+            )
+        doc_id = upload_resp.json()["doc_id"]
+        search_resp = self.client.get(f"/api/doc/{doc_id}/search?q=a")
+        self.assertEqual(search_resp.status_code, 400)
+
+    def test_search_document_endpoint_nonexistent_returns_404(self):
+        search_resp = self.client.get("/api/doc/fake_doc_id_9999/search?q=Vi%E1%BB%87t+Nam")
+        self.assertEqual(search_resp.status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()

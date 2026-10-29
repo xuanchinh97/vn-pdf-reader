@@ -17,7 +17,7 @@ from src.vn_text_processor import process_vietnamese_pdf_text
 app = FastAPI(
     title="VN PDF Reader & Natural TTS",
     description="Công cụ đọc PDF Tiếng Việt thông minh (Sửa lỗi font TCVN3/VNI, Quét OCR & Giọng đọc AI tự nhiên)",
-    version="1.3.0",
+    version="1.6.0",
 )
 
 app.add_middleware(
@@ -195,6 +195,25 @@ async def get_doc_pages_overview(doc_id: str):
         raise HTTPException(status_code=404, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Lỗi đọc danh sách trang: {exc}")
+
+
+@app.get("/api/doc/{doc_id}/search")
+async def search_document_endpoint(
+    doc_id: str,
+    q: str = Query(..., description="Từ hoặc cụm từ cần tìm trong sách"),
+    max_results: int = Query(200, ge=1, le=500),
+):
+    clean_q = q.strip()
+    if len(clean_q) < 2:
+        raise HTTPException(status_code=400, detail="Từ khóa tìm kiếm phải có độ dài ít nhất 2 ký tự.")
+    try:
+        return pdf_service.search_document(doc_id, clean_q, max_results=max_results)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Lỗi tìm kiếm văn bản trong tài liệu: {exc}")
 
 
 @app.get("/api/doc/{doc_id}/annotations")

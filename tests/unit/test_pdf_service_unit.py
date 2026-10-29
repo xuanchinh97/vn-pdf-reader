@@ -224,6 +224,37 @@ class TestPDFService(unittest.TestCase):
         res = pdf_service.get_annotations("../../etc/passwd")
         self.assertEqual(res, {"bookmarks": [], "highlights": []})
 
+    def test_search_document_standard_unicode(self):
+        info = pdf_service.register_pdf("test_standard.pdf", self.standard_pdf_bytes)
+        doc_id = info["doc_id"]
+        res = pdf_service.search_document(doc_id, "Việt Nam")
+        self.assertEqual(res["doc_id"], doc_id)
+        self.assertEqual(res["query"], "Việt Nam")
+        self.assertGreater(res["total_matches"], 0)
+        self.assertGreater(len(res["results"]), 0)
+        first_match = res["results"][0]
+        self.assertIn("page", first_match)
+        self.assertIn("snippet", first_match)
+        self.assertIn("sentence_index", first_match)
+        self.assertIn("việt nam", first_match["snippet"].lower())
+
+    def test_search_document_tcvn3_auto_repaired(self):
+        info = pdf_service.register_pdf("test_tcvn3.pdf", self.tcvn3_pdf_bytes)
+        doc_id = info["doc_id"]
+        res = pdf_service.search_document(doc_id, "Hạnh phúc")
+        self.assertGreater(res["total_matches"], 0)
+        self.assertIn("Hạnh phúc", res["results"][0]["snippet"])
+
+    def test_search_document_query_too_short_raises_value_error(self):
+        info = pdf_service.register_pdf("test_standard.pdf", self.standard_pdf_bytes)
+        doc_id = info["doc_id"]
+        with self.assertRaises(ValueError):
+            pdf_service.search_document(doc_id, " a ")
+
+    def test_search_document_nonexistent_raises_file_not_found(self):
+        with self.assertRaises(FileNotFoundError):
+            pdf_service.search_document("nonexistent_doc_id", "từ khóa")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -55,6 +55,14 @@ const state = {
   isOcrRunning: false,
   ocrSessionId: 0,
   playSessionId: 0,
+  searchQuery: "",
+  searchResults: [],
+  searchResultsByPage: [],
+  searchCurrentIndex: -1,
+  isSearching: false,
+  origPageDpi: 170,
+  origPageZoom: 100,
+  isSplitView: false,
 };
 
 // DOM Elements
@@ -183,6 +191,37 @@ const els = {
   manualTextArea: document.getElementById("manualTextArea"),
   applyManualTextBtn: document.getElementById("applyManualTextBtn"),
   cancelManualTextBtn: document.getElementById("cancelManualTextBtn"),
+  searchToggleBtn: document.getElementById("searchToggleBtn"),
+  inBookSearchBar: document.getElementById("inBookSearchBar"),
+  inBookSearchInput: document.getElementById("inBookSearchInput"),
+  searchMatchCount: document.getElementById("searchMatchCount"),
+  searchPrevMatchBtn: document.getElementById("searchPrevMatchBtn"),
+  searchNextMatchBtn: document.getElementById("searchNextMatchBtn"),
+  searchOpenDrawerBtn: document.getElementById("searchOpenDrawerBtn"),
+  searchCloseBtn: document.getElementById("searchCloseBtn"),
+  tabBtnSearch: document.getElementById("tabBtnSearch"),
+  searchDrawerCount: document.getElementById("searchDrawerCount"),
+  drawerTabSearch: document.getElementById("drawerTabSearch"),
+  searchDrawerSummary: document.getElementById("searchDrawerSummary"),
+  searchResultsList: document.getElementById("searchResultsList"),
+  originalPageToggleBtn: document.getElementById("originalPageToggleBtn"),
+  originalPageModal: document.getElementById("originalPageModal"),
+  originalPageModalTitle: document.getElementById("originalPageModalTitle"),
+  origPrevPageBtn: document.getElementById("origPrevPageBtn"),
+  origNextPageBtn: document.getElementById("origNextPageBtn"),
+  origPageIndicator: document.getElementById("origPageIndicator"),
+  origDpi170Btn: document.getElementById("origDpi170Btn"),
+  origDpi300Btn: document.getElementById("origDpi300Btn"),
+  origZoomOutBtn: document.getElementById("origZoomOutBtn"),
+  origZoomLevelLabel: document.getElementById("origZoomLevelLabel"),
+  origZoomInBtn: document.getElementById("origZoomInBtn"),
+  origZoomFitBtn: document.getElementById("origZoomFitBtn"),
+  origToggleSplitBtn: document.getElementById("origToggleSplitBtn"),
+  origSplitBtnText: document.getElementById("origSplitBtnText"),
+  origDownloadBtn: document.getElementById("origDownloadBtn"),
+  closeOriginalPageBtn: document.getElementById("closeOriginalPageBtn"),
+  origLoadingSpinner: document.getElementById("origLoadingSpinner"),
+  originalPageLightboxImg: document.getElementById("originalPageLightboxImg"),
   sentencesContainer: document.getElementById("sentencesContainer"),
   bookPageCanvas: document.getElementById("bookPageCanvas"),
   bookPrevPageBtn: document.getElementById("bookPrevPageBtn"),
@@ -1155,10 +1194,96 @@ function bindEvents() {
     if (els.floatingSelectionBar) els.floatingSelectionBar.hidden = true;
   });
 
-  // 15. Phím tắt bàn phím E-Reader
+  // 15. Tìm kiếm toàn văn trong sách (In-Book Search)
+  els.searchToggleBtn?.addEventListener("click", toggleSearchBar);
+  els.searchCloseBtn?.addEventListener("click", closeSearchBar);
+  els.searchPrevMatchBtn?.addEventListener("click", () => {
+    goToSearchMatch(state.searchCurrentIndex - 1);
+  });
+  els.searchNextMatchBtn?.addEventListener("click", () => {
+    goToSearchMatch(state.searchCurrentIndex + 1);
+  });
+  els.searchOpenDrawerBtn?.addEventListener("click", () => {
+    openDrawer("search");
+  });
+  els.tabBtnSearch?.addEventListener("click", () => switchDrawerTab("search"));
+
+  els.inBookSearchInput?.addEventListener("input", (e) => {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+      executeInBookSearch(e.target.value);
+    }, 280);
+  });
+
+  els.inBookSearchInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (e.shiftKey) {
+        goToSearchMatch(state.searchCurrentIndex - 1);
+      } else if (state.searchResults.length > 0) {
+        goToSearchMatch(state.searchCurrentIndex + 1);
+      } else {
+        executeInBookSearch(e.target.value);
+      }
+    } else if (e.key === "Escape") {
+      closeSearchBar();
+    }
+  });
+
+  // 16. Xem ảnh trang PDF gốc (Original Page Lightbox & Split View)
+  els.originalPageToggleBtn?.addEventListener("click", toggleOriginalPageModal);
+  els.closeOriginalPageBtn?.addEventListener("click", closeOriginalPageModal);
+  els.originalPageModal?.addEventListener("click", (e) => {
+    if (e.target === els.originalPageModal) closeOriginalPageModal();
+  });
+
+  els.origPrevPageBtn?.addEventListener("click", () => {
+    if (state.currentPage > 1) {
+      goToPage(state.currentPage - 1, false);
+      loadOriginalPageImage(state.currentPage, state.origPageDpi);
+    }
+  });
+  els.origNextPageBtn?.addEventListener("click", () => {
+    if (state.currentPage < state.totalPages) {
+      goToPage(state.currentPage + 1, false);
+      loadOriginalPageImage(state.currentPage, state.origPageDpi);
+    }
+  });
+
+  els.origDpi170Btn?.addEventListener("click", () => setOrigDpi(170));
+  els.origDpi300Btn?.addEventListener("click", () => setOrigDpi(300));
+  els.origZoomInBtn?.addEventListener("click", () => updateOrigZoom(20));
+  els.origZoomOutBtn?.addEventListener("click", () => updateOrigZoom(-20));
+  els.origZoomFitBtn?.addEventListener("click", () => updateOrigZoom("fit"));
+  els.origToggleSplitBtn?.addEventListener("click", toggleSplitView);
+
+  // 17. Phím tắt bàn phím E-Reader
   window.addEventListener("keydown", (e) => {
+    // Phím Ctrl+F hoặc Cmd+F mở thanh tìm kiếm ở bất kỳ đâu
+    if ((e.ctrlKey || e.metaKey) && (e.key === "f" || e.key === "F")) {
+      e.preventDefault();
+      openSearchBar();
+      return;
+    }
+
     const tag = document.activeElement?.tagName?.toLowerCase();
-    if (tag === "input" || tag === "textarea" || tag === "select") return;
+    if (tag === "input" || tag === "textarea" || tag === "select") {
+      if (e.key === "Escape") {
+        closeSearchBar();
+        closeOriginalPageModal();
+      }
+      return;
+    }
+
+    if (e.key === "/") {
+      e.preventDefault();
+      openSearchBar();
+      return;
+    } else if (e.key === "o" || e.key === "O") {
+      e.preventDefault();
+      toggleOriginalPageModal();
+      return;
+    }
 
     if (e.code === "Space" && state.sentences.length > 0) {
       e.preventDefault();
@@ -1204,6 +1329,8 @@ function bindEvents() {
       if (els.floatingSelectionBar && !els.floatingSelectionBar.hidden) {
         els.floatingSelectionBar.hidden = true;
       }
+      closeSearchBar();
+      closeOriginalPageModal();
       closeDrawer();
       closeDictModal();
       closeShortcutsModal();
@@ -1372,6 +1499,19 @@ async function goToPage(pageNumber, autoPlay = false) {
     updateBookmarkRibbonState();
     updateHighlightActiveTocItem();
     renderHighlightsOnPage();
+
+    // Đồng bộ ảnh trang PDF gốc nếu modal Lightbox hoặc Split View đang mở
+    if (els.originalPageModal && !els.originalPageModal.hidden) {
+      loadOriginalPageImage(pageNumber, state.origPageDpi);
+    }
+
+    // Nếu đang tìm kiếm và có kết quả trên trang này, tự động highlight
+    if (state.searchResults.length > 0 && state.searchCurrentIndex >= 0) {
+      const curMatch = state.searchResults[state.searchCurrentIndex];
+      if (curMatch && curMatch.page === pageNumber) {
+        highlightSearchMatchOnPage(curMatch);
+      }
+    }
 
     // Tự động quét OCR nếu trang bị lỗi font hoặc là ảnh scan
     if (data.needs_ocr && els.autoOcrCheckbox.checked) {
@@ -3165,6 +3305,7 @@ function switchDrawerTab(tabName) {
     { name: "toc", btn: els.tabBtnToc, pane: els.drawerTabToc },
     { name: "bookmarks", btn: els.tabBtnBookmarks, pane: els.drawerTabBookmarks },
     { name: "highlights", btn: els.tabBtnHighlights, pane: els.drawerTabHighlights },
+    { name: "search", btn: els.tabBtnSearch, pane: els.drawerTabSearch },
   ];
   tabs.forEach((t) => {
     const active = t.name === tabName;
@@ -3273,6 +3414,363 @@ function openShortcutsModal() {
 
 function closeShortcutsModal() {
   if (els.shortcutsModal) els.shortcutsModal.hidden = true;
+}
+
+// ============================================================================
+// TÍNH NĂNG 1: TÌM KIẾM TOÀN VĂN TRONG SÁCH (IN-BOOK FULL-TEXT SEARCH)
+// ============================================================================
+
+let searchDebounceTimer = null;
+
+function openSearchBar(initialQuery = "") {
+  if (!els.inBookSearchBar) return;
+  els.inBookSearchBar.removeAttribute("hidden");
+  els.inBookSearchBar.hidden = false;
+  if (els.inBookSearchInput) {
+    if (initialQuery) els.inBookSearchInput.value = initialQuery;
+    els.inBookSearchInput.focus();
+    els.inBookSearchInput.select();
+  }
+}
+
+function closeSearchBar() {
+  if (els.inBookSearchBar) {
+    els.inBookSearchBar.setAttribute("hidden", "");
+    els.inBookSearchBar.hidden = true;
+  }
+  clearSentenceSearchHighlights();
+  state.searchCurrentIndex = -1;
+  if (els.searchMatchCount) els.searchMatchCount.textContent = "0 kết quả";
+}
+
+function toggleSearchBar() {
+  if (els.inBookSearchBar && !els.inBookSearchBar.hidden) {
+    closeSearchBar();
+  } else {
+    openSearchBar();
+  }
+}
+
+function clearSentenceSearchHighlights() {
+  if (!els.sentencesContainer) return;
+  els.sentencesContainer.querySelectorAll(".search-target-sentence").forEach((el) => {
+    el.classList.remove("search-target-sentence");
+  });
+  els.sentencesContainer.querySelectorAll(".search-match-highlight").forEach((mark) => {
+    const parent = mark.parentNode;
+    if (parent) {
+      parent.replaceChild(document.createTextNode(mark.textContent), mark);
+      parent.normalize();
+    }
+  });
+}
+
+async function executeInBookSearch(query) {
+  const cleanQ = (query || "").trim();
+  state.searchQuery = cleanQ;
+
+  if (cleanQ.length < 2) {
+    state.searchResults = [];
+    state.searchResultsByPage = [];
+    state.searchCurrentIndex = -1;
+    if (els.searchMatchCount) els.searchMatchCount.textContent = "Nhập ít nhất 2 ký tự";
+    if (els.searchDrawerCount) els.searchDrawerCount.textContent = "0";
+    if (els.searchPrevMatchBtn) els.searchPrevMatchBtn.disabled = true;
+    if (els.searchNextMatchBtn) els.searchNextMatchBtn.disabled = true;
+    renderDrawerSearchResults();
+    clearSentenceSearchHighlights();
+    return;
+  }
+
+  if (els.searchMatchCount) els.searchMatchCount.textContent = "Đang tìm...";
+  state.isSearching = true;
+
+  try {
+    const res = await fetch(`/api/doc/${state.docId}/search?q=${encodeURIComponent(cleanQ)}`);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || "Không thể tìm kiếm trong tài liệu");
+    }
+    const data = await res.json();
+    state.searchResults = data.results || [];
+    state.searchResultsByPage = data.results_by_page || [];
+    state.searchCurrentIndex = state.searchResults.length > 0 ? 0 : -1;
+
+    const count = state.searchResults.length;
+    if (els.searchDrawerCount) els.searchDrawerCount.textContent = count;
+    if (els.searchPrevMatchBtn) els.searchPrevMatchBtn.disabled = count === 0;
+    if (els.searchNextMatchBtn) els.searchNextMatchBtn.disabled = count === 0;
+
+    if (count > 0) {
+      if (els.searchMatchCount) els.searchMatchCount.textContent = `1 / ${count}${data.is_truncated ? '+' : ''}`;
+      renderDrawerSearchResults();
+      goToSearchMatch(0);
+    } else {
+      if (els.searchMatchCount) els.searchMatchCount.textContent = "0 kết quả";
+      renderDrawerSearchResults();
+      clearSentenceSearchHighlights();
+    }
+  } catch (err) {
+    console.error("[Search] Lỗi tìm kiếm:", err);
+    if (els.searchMatchCount) els.searchMatchCount.textContent = "Lỗi tìm kiếm";
+    renderDrawerSearchResults();
+  } finally {
+    state.isSearching = false;
+  }
+}
+
+async function goToSearchMatch(index) {
+  if (!state.searchResults || state.searchResults.length === 0) return;
+  const count = state.searchResults.length;
+  const safeIdx = (index + count) % count;
+  state.searchCurrentIndex = safeIdx;
+
+  if (els.searchMatchCount) {
+    els.searchMatchCount.textContent = `${safeIdx + 1} / ${count}`;
+  }
+
+  const match = state.searchResults[safeIdx];
+  if (!match) return;
+
+  // Cập nhật trạng thái active trong Drawer
+  if (els.searchResultsList) {
+    els.searchResultsList.querySelectorAll(".search-result-item").forEach((it, i) => {
+      it.classList.toggle("active", i === safeIdx);
+    });
+  }
+
+  // Nếu match nằm ở trang khác, chuyển trang
+  if (match.page !== state.currentPage) {
+    await goToPage(match.page, false);
+  }
+
+  // Highlight kết quả trên trang hiện tại
+  highlightSearchMatchOnPage(match);
+}
+
+function highlightSearchMatchOnPage(match) {
+  clearSentenceSearchHighlights();
+  if (!match || !state.searchQuery || !els.sentencesContainer) return;
+
+  // 1. Tìm thẻ sentence mục tiêu theo sentence_index
+  const sentenceEl = els.sentencesContainer.querySelector(`#sentence-${match.sentence_index}`) ||
+                     els.sentencesContainer.querySelector(`[data-index="${match.sentence_index}"]`);
+
+  if (sentenceEl) {
+    sentenceEl.classList.add("search-target-sentence");
+    const textNodeContainer = sentenceEl.querySelector(".sentence-text") || sentenceEl;
+    highlightMatchesInElement(textNodeContainer, state.searchQuery);
+
+    setTimeout(() => {
+      sentenceEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+  } else {
+    // Fallback: Tìm thẻ câu chứa đoạn text
+    const allSentences = els.sentencesContainer.querySelectorAll(".sentence-item");
+    for (const el of allSentences) {
+      if (el.textContent.toLowerCase().includes(state.searchQuery.toLowerCase())) {
+        el.classList.add("search-target-sentence");
+        highlightMatchesInElement(el.querySelector(".sentence-text") || el, state.searchQuery);
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        break;
+      }
+    }
+  }
+}
+
+function highlightMatchesInElement(element, query) {
+  if (!element || !query) return;
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null, false);
+  const textNodes = [];
+  while (walker.nextNode()) {
+    textNodes.push(walker.currentNode);
+  }
+
+  const regex = new RegExp(`(${escapeRegex(query)})`, "gi");
+
+  textNodes.forEach((node) => {
+    const parent = node.parentNode;
+    if (!parent || parent.nodeName === "MARK" || parent.classList.contains("search-match-highlight")) return;
+
+    const val = node.nodeValue;
+    if (regex.test(val)) {
+      regex.lastIndex = 0;
+      const frag = document.createDocumentFragment();
+      let lastIndex = 0;
+      let m;
+
+      while ((m = regex.exec(val)) !== null) {
+        if (m.index > lastIndex) {
+          frag.appendChild(document.createTextNode(val.substring(lastIndex, m.index)));
+        }
+        const mark = document.createElement("mark");
+        mark.className = "search-match-highlight search-match-active";
+        mark.textContent = m[0];
+        frag.appendChild(mark);
+        lastIndex = regex.lastIndex;
+      }
+      if (lastIndex < val.length) {
+        frag.appendChild(document.createTextNode(val.substring(lastIndex)));
+      }
+      parent.replaceChild(frag, node);
+    }
+  });
+}
+
+function escapeRegex(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function renderDrawerSearchResults() {
+  if (!els.searchResultsList) return;
+  if (!state.searchResults || state.searchResults.length === 0) {
+    if (els.searchDrawerSummary) {
+      els.searchDrawerSummary.textContent = state.searchQuery
+        ? `Không tìm thấy kết quả nào cho "${state.searchQuery}".`
+        : "Nhập từ khóa ở thanh tìm kiếm (Ctrl+F) để xem kết quả toàn văn.";
+    }
+    els.searchResultsList.innerHTML = `<div class="drawer-empty-hint">Không có kết quả tìm kiếm nào.</div>`;
+    return;
+  }
+
+  if (els.searchDrawerSummary) {
+    els.searchDrawerSummary.textContent = `Tìm thấy ${state.searchResults.length} kết quả cho "${state.searchQuery}":`;
+  }
+
+  let html = "";
+  state.searchResults.forEach((item, globalIdx) => {
+    const isActive = globalIdx === state.searchCurrentIndex;
+    const cleanSnippet = escapeHtml(item.snippet || "");
+    const highlightedSnippet = cleanSnippet.replace(
+      new RegExp(`(${escapeRegex(state.searchQuery)})`, "gi"),
+      "<mark>$1</mark>"
+    );
+
+    html += `
+      <div class="search-result-item ${isActive ? 'active' : ''}" data-global-index="${globalIdx}">
+        <div class="search-result-top">
+          <span class="search-result-page-badge">Trang ${item.page}</span>
+          <span style="font-size:11px; color:var(--text-tertiary);">#${globalIdx + 1}</span>
+        </div>
+        <div class="search-result-snippet">${highlightedSnippet}</div>
+      </div>
+    `;
+  });
+
+  els.searchResultsList.innerHTML = html;
+
+  els.searchResultsList.querySelectorAll(".search-result-item").forEach((itemEl) => {
+    itemEl.addEventListener("click", () => {
+      const idx = parseInt(itemEl.getAttribute("data-global-index"), 10);
+      goToSearchMatch(idx);
+    });
+  });
+}
+
+// ============================================================================
+// TÍNH NĂNG 2: XEM ẢNH TRANG PDF GỐC (ORIGINAL PAGE LIGHTBOX & SPLIT VIEW)
+// ============================================================================
+
+function openOriginalPageModal(pageNumber = state.currentPage) {
+  if (!els.originalPageModal) return;
+  els.originalPageModal.removeAttribute("hidden");
+  els.originalPageModal.hidden = false;
+  state.origPageZoom = 100;
+  loadOriginalPageImage(pageNumber, state.origPageDpi);
+}
+
+function closeOriginalPageModal() {
+  if (!els.originalPageModal) return;
+  els.originalPageModal.setAttribute("hidden", "");
+  els.originalPageModal.hidden = true;
+}
+
+function toggleOriginalPageModal() {
+  if (els.originalPageModal && !els.originalPageModal.hidden) {
+    closeOriginalPageModal();
+  } else {
+    openOriginalPageModal(state.currentPage);
+  }
+}
+
+function loadOriginalPageImage(pageNumber, dpi = 170) {
+  if (!state.docId || !els.originalPageLightboxImg) return;
+  const safePage = Math.max(1, Math.min(state.totalPages, pageNumber));
+
+  if (els.originalPageModalTitle) {
+    els.originalPageModalTitle.textContent = `Trang ${safePage} / ${state.totalPages}`;
+  }
+  if (els.origPageIndicator) {
+    els.origPageIndicator.textContent = `${safePage} / ${state.totalPages}`;
+  }
+  if (els.origPrevPageBtn) els.origPrevPageBtn.disabled = safePage <= 1;
+  if (els.origNextPageBtn) els.origNextPageBtn.disabled = safePage >= state.totalPages;
+
+  if (els.origDownloadBtn) {
+    els.origDownloadBtn.href = `/api/doc/${state.docId}/page/${safePage}/image?dpi=300`;
+    els.origDownloadBtn.download = `${state.filename || 'doc'}_trang_${safePage}.png`;
+  }
+
+  if (els.origLoadingSpinner) els.origLoadingSpinner.hidden = false;
+
+  const img = new Image();
+  const url = `/api/doc/${state.docId}/page/${safePage}/image?dpi=${dpi}&t=${Date.now()}`;
+  img.onload = () => {
+    els.originalPageLightboxImg.src = url;
+    if (els.origLoadingSpinner) els.origLoadingSpinner.hidden = true;
+  };
+  img.onerror = () => {
+    if (els.origLoadingSpinner) els.origLoadingSpinner.hidden = true;
+    console.error("[OriginalPage] Không thể tải ảnh trang PDF");
+  };
+  img.src = url;
+
+  applyOrigZoom();
+}
+
+function updateOrigZoom(delta) {
+  if (delta === "fit") {
+    state.origPageZoom = 100;
+  } else {
+    state.origPageZoom = Math.max(40, Math.min(260, state.origPageZoom + delta));
+  }
+  applyOrigZoom();
+}
+
+function applyOrigZoom() {
+  if (!els.originalPageLightboxImg) return;
+  els.originalPageLightboxImg.style.transform = `scale(${state.origPageZoom / 100})`;
+  if (els.origZoomLevelLabel) {
+    els.origZoomLevelLabel.textContent = `${state.origPageZoom}%`;
+  }
+}
+
+function setOrigDpi(dpi) {
+  state.origPageDpi = dpi;
+  if (els.origDpi170Btn) els.origDpi170Btn.classList.toggle("active", dpi === 170);
+  if (els.origDpi300Btn) els.origDpi300Btn.classList.toggle("active", dpi === 300);
+  loadOriginalPageImage(state.currentPage, dpi);
+}
+
+function toggleSplitView() {
+  state.isSplitView = !state.isSplitView;
+  document.body.classList.toggle("split-view-active", state.isSplitView);
+  if (els.origSplitBtnText) {
+    els.origSplitBtnText.textContent = state.isSplitView ? "Tắt chia đôi" : "Chia đôi";
+  }
+  if (els.origToggleSplitBtn) {
+    els.origToggleSplitBtn.classList.toggle("active", state.isSplitView);
+  }
+
+  if (state.isSplitView) {
+    if (els.pdfPageImage && state.docId) {
+      els.pdfPageImage.src = `/api/doc/${state.docId}/page/${state.currentPage}/image?dpi=170`;
+    }
+    closeOriginalPageModal();
+    showAppleToast("Đã bật Chế độ chia đôi màn hình (Văn bản & Ảnh PDF gốc)", "📖", 3500);
+  } else {
+    showAppleToast("Đã chuyển về Chế độ đọc tập trung 1 cột", "📖", 3000);
+  }
 }
 
 // Khởi chạy ứng dụng

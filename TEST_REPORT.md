@@ -1,11 +1,11 @@
 # BÁO CÁO KẾT QUẢ KIỂM THỬ — VN PDF READER
 
-- **Thời gian thực hiện:** `2026-10-22T10:14:31.608976`
+- **Thời gian thực hiện:** `2026-10-29T10:14:13.733370`
 - **Trạng thái:** **✅ HOÀN HẢO**
-- **Tổng số ca kiểm thử (Test Cases):** `52`
-- **Passed:** `52` | **Failed:** `0` | **Errors:** `0`
+- **Tổng số ca kiểm thử (Test Cases):** `77`
+- **Passed:** `77` | **Failed:** `0` | **Errors:** `0`
 - **Tỷ lệ thành công:** `100.0%`
-- **Thời gian thực thi:** `1.883 giây`
+- **Thời gian thực thi:** `5.847 giây`
 
 ---
 
@@ -70,25 +70,50 @@ test_vni_compound_vowels (tests.unit.test_vn_text_processor_extended.TestVNIConv
 test_vni_detection (tests.unit.test_vn_text_processor_extended.TestVNIConversion.test_vni_detection) ... ok
 test_vni_preserves_technical_codes (tests.unit.test_vn_text_processor_extended.TestVNIConversion.test_vni_preserves_technical_codes) ... ok
 test_vni_standard_words (tests.unit.test_vn_text_processor_extended.TestVNIConversion.test_vni_standard_words) ... ok
+test_adaptive_hardware_profile_tiers (tests.unit.test_tts_service_unit.TestTTSService.test_adaptive_hardware_profile_tiers) ... ok
 test_caching_behavior (tests.unit.test_tts_service_unit.TestTTSService.test_caching_behavior) ... ok
 test_edge_tts_fallback_on_network_timeout (tests.unit.test_tts_service_unit.TestTTSService.test_edge_tts_fallback_on_network_timeout) ... ok
 test_empty_text_raises_value_error (tests.unit.test_tts_service_unit.TestTTSService.test_empty_text_raises_value_error) ... ok
+test_inflight_deduplication_prevents_double_synthesis (tests.unit.test_tts_service_unit.TestTTSService.test_inflight_deduplication_prevents_double_synthesis) ... ok
 test_long_text_chunking_google_tts (tests.unit.test_tts_service_unit.TestTTSService.test_long_text_chunking_google_tts) ... ok
+test_pack_phoneme_segments_reduces_onnx_calls (tests.unit.test_tts_service_unit.TestTTSService.test_pack_phoneme_segments_reduces_onnx_calls) ... ok
+test_phonemize_vietnamese_smart_numbers_symbols_and_do (tests.unit.test_tts_service_unit.TestTTSService.test_phonemize_vietnamese_smart_numbers_symbols_and_do) ... ok
+test_sentence_cache_reuse_during_book_export (tests.unit.test_tts_service_unit.TestTTSService.test_sentence_cache_reuse_during_book_export) ... ok
+test_speed_cache_key_differentiation (tests.unit.test_tts_service_unit.TestTTSService.test_speed_cache_key_differentiation) ... ok
 test_speed_to_edge_rate (tests.unit.test_tts_service_unit.TestTTSService.test_speed_to_edge_rate) ... ok
 test_voice_list (tests.unit.test_tts_service_unit.TestTTSService.test_voice_list) ... ok
+test_annotations_crud (tests.unit.test_pdf_service_unit.TestPDFService.test_annotations_crud) ... ok
+test_annotations_null_safety (tests.unit.test_pdf_service_unit.TestPDFService.test_annotations_null_safety) ... ok
 test_extract_page_tcvn3_auto_repaired (tests.unit.test_pdf_service_unit.TestPDFService.test_extract_page_tcvn3_auto_repaired) ... ok
 test_extract_page_text_filters_margins_and_preserves_content (tests.unit.test_pdf_service_unit.TestPDFService.test_extract_page_text_filters_margins_and_preserves_content) ... ok
 test_extract_scanned_pdf_flags_needs_ocr (tests.unit.test_pdf_service_unit.TestPDFService.test_extract_scanned_pdf_flags_needs_ocr) ... ok
+test_extract_toc_multi_line_and_printed_dot_leaders (tests.unit.test_pdf_service_unit.TestPDFService.test_extract_toc_multi_line_and_printed_dot_leaders) ... ok
+test_extract_toc_tier1_metadata (tests.unit.test_pdf_service_unit.TestPDFService.test_extract_toc_tier1_metadata) ... ok
+test_extract_toc_tier2_heuristic (tests.unit.test_pdf_service_unit.TestPDFService.test_extract_toc_tier2_heuristic) ... ok
 test_invalid_page_number_raises_value_error (tests.unit.test_pdf_service_unit.TestPDFService.test_invalid_page_number_raises_value_error) ... ok
 test_nonexistent_doc_id_raises_file_not_found (tests.unit.test_pdf_service_unit.TestPDFService.test_nonexistent_doc_id_raises_file_not_found) ... ok
+test_path_traversal_sanitization (tests.unit.test_pdf_service_unit.TestPDFService.test_path_traversal_sanitization) ... ok
 test_register_pdf (tests.unit.test_pdf_service_unit.TestPDFService.test_register_pdf) ... ok
 test_render_page_image_enhanced_for_ocr (tests.unit.test_pdf_service_unit.TestPDFService.test_render_page_image_enhanced_for_ocr) ... ok
 test_render_page_image_standard (tests.unit.test_pdf_service_unit.TestPDFService.test_render_page_image_standard) ... ok
+test_search_document_nonexistent_raises_file_not_found (tests.unit.test_pdf_service_unit.TestPDFService.test_search_document_nonexistent_raises_file_not_found) ... ok
+test_search_document_query_too_short_raises_value_error (tests.unit.test_pdf_service_unit.TestPDFService.test_search_document_query_too_short_raises_value_error) ... ok
+test_search_document_standard_unicode (tests.unit.test_pdf_service_unit.TestPDFService.test_search_document_standard_unicode) ... ok
+test_search_document_tcvn3_auto_repaired (tests.unit.test_pdf_service_unit.TestPDFService.test_search_document_tcvn3_auto_repaired) ... ok
+test_annotations_endpoints (tests.integration.test_api_endpoints.TestAPIEndpoints.test_annotations_endpoints) ... ok
 test_clean_text_endpoint (tests.integration.test_api_endpoints.TestAPIEndpoints.test_clean_text_endpoint) ... ok
+test_dictionary_lookup_missing_param (tests.integration.test_api_endpoints.TestAPIEndpoints.test_dictionary_lookup_missing_param) ... ok
+test_dictionary_lookup_offline_success (tests.integration.test_api_endpoints.TestAPIEndpoints.test_dictionary_lookup_offline_success) ... ok
+test_dictionary_lookup_unknown_word (tests.integration.test_api_endpoints.TestAPIEndpoints.test_dictionary_lookup_unknown_word) ... ok
+test_get_doc_toc_endpoint (tests.integration.test_api_endpoints.TestAPIEndpoints.test_get_doc_toc_endpoint) ... ok
+test_get_doc_toc_nonexistent (tests.integration.test_api_endpoints.TestAPIEndpoints.test_get_doc_toc_nonexistent) ... ok
 test_get_page_image (tests.integration.test_api_endpoints.TestAPIEndpoints.test_get_page_image) ... ok
 test_get_page_text (tests.integration.test_api_endpoints.TestAPIEndpoints.test_get_page_text) ... ok
 test_get_page_text_invalid_page (tests.integration.test_api_endpoints.TestAPIEndpoints.test_get_page_text_invalid_page) ... ok
 test_get_voices (tests.integration.test_api_endpoints.TestAPIEndpoints.test_get_voices) ... ok
+test_search_document_endpoint_nonexistent_returns_404 (tests.integration.test_api_endpoints.TestAPIEndpoints.test_search_document_endpoint_nonexistent_returns_404) ... ok
+test_search_document_endpoint_short_query_returns_400 (tests.integration.test_api_endpoints.TestAPIEndpoints.test_search_document_endpoint_short_query_returns_400) ... ok
+test_search_document_endpoint_success (tests.integration.test_api_endpoints.TestAPIEndpoints.test_search_document_endpoint_success) ... ok
 test_tts_endpoint (tests.integration.test_api_endpoints.TestAPIEndpoints.test_tts_endpoint) ... ok
 test_tts_endpoint_empty_text (tests.integration.test_api_endpoints.TestAPIEndpoints.test_tts_endpoint_empty_text) ... ok
 test_upload_empty_pdf (tests.integration.test_api_endpoints.TestAPIEndpoints.test_upload_empty_pdf) ... ok
@@ -100,7 +125,7 @@ test_e2e_standard_multipage_pdf (tests.e2e.test_e2e_pipeline.TestE2EPipeline.tes
 test_e2e_tcvn3_document_repaired_and_read (tests.e2e.test_e2e_pipeline.TestE2EPipeline.test_e2e_tcvn3_document_repaired_and_read) ... ok
 
 ----------------------------------------------------------------------
-Ran 52 tests in 1.883s
+Ran 77 tests in 5.847s
 
 OK
 ```

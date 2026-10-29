@@ -4,6 +4,28 @@ Toàn bộ các thay đổi, tính năng mới và cải tiến của dự án *
 
 ---
 
+## [1.6.0] - 2026-10-29
+
+### Added
+- **Tìm Kiếm Toàn Văn Trong Sách (In-Book Full-Text Search / `Ctrl+F` & `/`):**
+  - **Backend API (`GET /api/doc/{doc_id}/search`):** Tìm kiếm không phân biệt hoa thường, chuẩn hóa Unicode NFC, tự động quét và sửa lỗi phông chữ TCVN3/VNI, hỗ trợ phân trang kết quả kèm số trang, vị trí câu (`sentence_index`) và trích đoạn ngữ cảnh (`snippet`).
+  - **Bộ Nhớ Đệm Văn Bản Trang (`_page_text_cache`):** Tối ưu tốc độ tìm kiếm và lật trang PDF xuống dưới 1-3ms cho mỗi trang.
+  - **Thanh Tìm Kiếm Nổi (`#inBookSearchBar`):** Giao diện kính mờ bo tròn (Apple Glassmorphism), hiển thị bộ đếm kết quả thực thời (`1 / 15`), nút lật kết quả trước/sau (`▲`/`▼` hoặc Enter/Shift+Enter).
+  - **Tab Tìm Kiếm trong Drawer (`#tabBtnSearch`):** Hiển thị toàn bộ danh sách kết quả theo trang, gắn huy hiệu số trang và bôi đậm từ khóa, cho phép bấm để nhảy ngay tới đoạn văn tương ứng.
+  - **Highlight Kết Quả Tức Thì trong Trang Sách:** Tự động cuộn mượt (`scrollIntoView`) tới câu đích, bọc từ khóa bằng `<mark class="search-match-highlight search-match-active">` với hiệu ứng màu cam nổi bật và viền nhấp nháy `.search-target-sentence`.
+  - **Phím Tắt:** Kích hoạt tức thì bằng `Ctrl+F`, `Cmd+F` hoặc phím `/` khi đang đọc; đóng bằng phím `Esc`.
+
+- **Xem Ảnh Trang PDF Gốc (Original Page Lightbox & Chế Độ Chia Đôi):**
+  - **Nút Bật/Tắt Trang Gốc Trên Header (`#originalPageToggleBtn` / Phím `O`):** Mở cửa sổ Lightbox độ nét cao của trang hiện hành để đối chiếu ảnh minh họa, sơ đồ, biểu đồ kỹ thuật.
+  - **Cửa Sổ Phóng To Trang Gốc (`#originalPageModal`):**
+    - Bộ chuyển đổi DPI sắc nét: Tùy chọn `170 DPI` chuẩn hoặc `300 DPI` siêu nét.
+    - Bộ công cụ Zoom linh hoạt: `[-]`, `[100%]`, `[+]`, và `[Fit]` vừa khung màn hình.
+    - Lật trang trực tiếp trong Lightbox với đồng bộ 2 chiều về giao diện đọc chính.
+    - Nút 1-click tải ảnh PNG trang PDF về máy (`#origDownloadBtn`).
+  - **Chế Độ Chia Đôi Màn Hình (Split View):** Cho phép bật chế độ 2 cột song song (bên trái chữ sách sạch với giọng đọc AI, bên phải ảnh trang PDF gốc) trên màn hình máy tính/tablet rộng.
+
+---
+
 ## [1.5.0] - 2026-10-27
 
 ### Added
