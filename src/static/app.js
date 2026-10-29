@@ -1169,6 +1169,7 @@ function bindEvents() {
 
   // 11. Mục lục, Dấu trang & Highlights (Drawer)
   els.drawerToggleBtn?.addEventListener("click", toggleDrawer);
+  els.docTitleLabel?.addEventListener("click", toggleDrawer);
   els.closeDrawerBtn?.addEventListener("click", closeDrawer);
   els.drawerBackdrop?.addEventListener("click", closeDrawer);
   els.tabBtnToc?.addEventListener("click", () => switchDrawerTab("toc"));
