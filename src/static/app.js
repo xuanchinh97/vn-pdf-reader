@@ -3825,7 +3825,7 @@ function loadOriginalPageImage(pageNumber, dpi = 170) {
   };
   img.onerror = () => {
     if (els.origLoadingSpinner) els.origLoadingSpinner.hidden = true;
-    console.error("[OriginalPage] Không thể tải ảnh trang PDF");
+    console.error("[OriginalPage] Không thể tải trang PDF gốc");
   };
   img.src = url;
 
@@ -3891,7 +3891,7 @@ function toggleSplitView() {
     if (els.splitContainer) els.splitContainer.classList.remove("single-pane");
     closeOriginalPageModal();
     updateSplitPaneView();
-    showAppleToast("Đã bật Chế độ chia đôi màn hình (Văn bản & Ảnh PDF gốc)", "📖", 3500);
+    showAppleToast("Đã bật Chế độ chia đôi màn hình (Văn bản & Trang PDF gốc)", "📖", 3500);
   } else {
     if (els.pdfPane) els.pdfPane.hidden = true;
     if (els.splitContainer) els.splitContainer.classList.add("single-pane");
