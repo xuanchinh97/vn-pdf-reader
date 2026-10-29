@@ -49,7 +49,8 @@ const state = {
   sleepTimerInterval: null,
   sleepStopOnPageEnd: false,
   isSeeking: false,
-  audioBlobCache: new Map(),  // key: `${voice}|${text}` -> blobUrl
+  audioBlobCache: new Map(),      // key: `${voice}|${text}` -> blobUrl
+  inFlightAudioPromises: new Map(), // key: `${voice}|${text}` -> Promise<blobUrl>
   ocrWorker: null,
   isOcrRunning: false,
   ocrSessionId: 0,
@@ -1369,6 +1370,8 @@ async function goToPage(pageNumber, autoPlay = false) {
 
     if (autoPlay && state.sentences.length > 0) {
       playFromSentence(0);
+    } else if (!autoPlay && state.sentences.length > 0) {
+      prewarmFirstSentenceOnPage();
     }
   } catch (err) {
     console.error("Lỗi tải trang:", err);
@@ -1697,34 +1700,61 @@ async function fetchSentenceAudioUrl(sentenceText) {
     return state.audioBlobCache.get(cacheKey);
   }
 
-  const res = await fetch("/api/tts", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      text: sentenceText,
-      voice,
-      speed: 1.0,
-    }),
-  });
-
-  if (!res.ok) {
-    throw new Error("Không tạo được âm thanh TTS từ server");
+  // Nếu câu này đang được prefetch (pending trên mạng), tái sử dụng ngay Promise đó
+  // thay vì bắn thêm request thứ 2 vào /api/tts gây nghẽn hàng đợi!
+  if (state.inFlightAudioPromises.has(cacheKey)) {
+    return state.inFlightAudioPromises.get(cacheKey);
   }
 
-  const blob = await res.blob();
-  const blobUrl = URL.createObjectURL(blob);
-  state.audioBlobCache.set(cacheKey, blobUrl);
-  return blobUrl;
+  const fetchPromise = (async () => {
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: sentenceText,
+          voice,
+          speed: 1.0,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Không tạo được âm thanh TTS từ server");
+      }
+
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      state.audioBlobCache.set(cacheKey, blobUrl);
+      return blobUrl;
+    } finally {
+      state.inFlightAudioPromises.delete(cacheKey);
+    }
+  })();
+
+  state.inFlightAudioPromises.set(cacheKey, fetchPromise);
+  return fetchPromise;
 }
 
-async function prefetchUpcomingSentences(fromIndex) {
-  for (let offset = 1; offset <= 2; offset++) {
+async function prefetchUpcomingSentences(fromIndex, expectedSessionId = state.playSessionId) {
+  for (let offset = 1; offset <= 4; offset++) {
+    // Nếu người dùng đã bấm dừng hoặc nhảy sang câu/trang khác, dừng ngay vòng lặp prefetch cũ
+    if (expectedSessionId !== state.playSessionId || !state.isPlaying) {
+      break;
+    }
     const idx = fromIndex + offset;
     if (idx < state.sentences.length) {
       try {
         await fetchSentenceAudioUrl(state.sentences[idx]);
       } catch (_) {}
     }
+  }
+}
+
+function prewarmFirstSentenceOnPage() {
+  if (!state.sentences || state.sentences.length === 0 || state.isPlaying) return;
+  const firstSentence = state.sentences[0];
+  if (firstSentence && firstSentence.trim().length > 1) {
+    fetchSentenceAudioUrl(firstSentence).catch(() => {});
   }
 }
 
@@ -1777,7 +1807,7 @@ async function playFromSentence(index) {
     await els.ttsAudio.play();
 
     // Chỉ tải ngầm câu tiếp theo sau khi câu hiện tại đã bắt đầu phát thành công
-    prefetchUpcomingSentences(index);
+    prefetchUpcomingSentences(index, sessionId);
   } catch (err) {
     console.warn("Lỗi tải âm thanh TTS, chuyển sang Web Speech API dự phòng:", err);
     speakWithBrowserFallback(state.sentences[index], index, sessionId);
@@ -1952,7 +1982,12 @@ async function downloadFullPageMp3() {
       const res = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: state.cleanText, voice, speed }),
+        body: JSON.stringify({
+          text: state.cleanText,
+          voice,
+          speed,
+          sentences: state.sentences || [],
+        }),
       });
       if (!res.ok) throw new Error("Không thể xuất file MP3");
       const buf = await res.arrayBuffer();
@@ -1968,11 +2003,16 @@ async function downloadFullPageMp3() {
 
   // Trường hợp Xuất Sách Nói chạy ngầm cho TOÀN BỘ SÁCH PDF (1 -> totalPages)
   const total = state.totalPages;
-  const audioBuffers = [];
+  const pageAudioSlot = new Array(total + 1).fill(null);
+  let completedCount = 0;
   let lastCompletedPage = 0;
 
   bookExportAbortController = new AbortController();
   bookExportSavePartialRequested = false;
+
+  // Tự động co giãn theo phần cứng máy: Máy <= 4 luồng chạy tuần tự (1 worker), máy > 4 luồng chạy pipeline (2 workers)
+  const hwCores = Number(navigator.hardwareConcurrency) || 4;
+  const maxPageWorkers = hwCores <= 4 ? 1 : 2;
 
   showAppleToast(
     `Đang tạo Sách Nói MP3 ngầm (${total} trang)... Sẽ thông báo khi hoàn tất!`,
@@ -1981,51 +2021,151 @@ async function downloadFullPageMp3() {
   );
   setDownloadMenuText(`Đang tạo ngầm (1/${total}) • Bấm để lưu ngay`, "⏳");
 
-  try {
-    const encodingMode = els.encodingModeSelect?.value || "auto";
-
-    for (let p = 1; p <= total; p++) {
-      if (bookExportAbortController.signal.aborted) break;
-      setDownloadMenuText(`Đang tạo ngầm (Trang ${p}/${total}) • Bấm để lưu ngay`, "⏳");
-
-      let pageCleanText = "";
-      if (p === state.currentPage && state.cleanText) {
-        pageCleanText = state.cleanText.trim();
-      } else {
-        const pageRes = await fetch(
-          `/api/doc/${state.docId}/page/${p}?encoding_mode=${encodeURIComponent(encodingMode)}`,
-          { signal: bookExportAbortController.signal }
-        );
-        if (pageRes.ok) {
-          const pageData = await pageRes.json();
-          pageCleanText = (pageData.clean_text || "").trim();
+  const collectOrderedBuffers = () => {
+    const out = [];
+    let maxPage = 0;
+    for (let idx = 1; idx <= total; idx++) {
+      if (pageAudioSlot[idx]) {
+        if (pageAudioSlot[idx].byteLength > 128) {
+          out.push(pageAudioSlot[idx]);
         }
-      }
-
-      if (!pageCleanText || pageCleanText.length < 2) {
-        lastCompletedPage = p;
-        continue;
-      }
-
-      const ttsRes = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: pageCleanText,
-          voice,
-          speed,
-        }),
-        signal: bookExportAbortController.signal,
-      });
-
-      if (ttsRes.ok) {
-        const buf = await ttsRes.arrayBuffer();
-        if (buf && buf.byteLength > 128) {
-          audioBuffers.push(buf);
-          lastCompletedPage = p;
-        }
+        maxPage = idx;
       }
     }
+    if (maxPage > lastCompletedPage) lastCompletedPage = maxPage;
+    return out;
+  };
+
+  try {
+    const encodingMode = els.encodingModeSelect?.value || "auto";
+    const pageTextPromises = new Map();
+
+    const fetchPageContent = (pageNum) => {
+      if (pageNum < 1 || pageNum > total) return Promise.resolve({ text: "", sentences: [] });
+      if (pageNum === state.currentPage && state.cleanText) {
+        return Promise.resolve({
+          text: state.cleanText.trim(),
+          sentences: Array.isArray(state.sentences) ? state.sentences : [],
+        });
+      }
+      if (pageTextPromises.has(pageNum)) {
+        return pageTextPromises.get(pageNum);
+      }
+      const pPromise = fetch(
+        `/api/doc/${state.docId}/page/${pageNum}?mode=${encodeURIComponent(encodingMode)}`,
+        { signal: bookExportAbortController.signal }
+      )
+        .then(async (res) => {
+          if (!res.ok) return { text: "", sentences: [] };
+          const data = await res.json();
+          return {
+            text: (data.text || data.clean_text || "").trim(),
+            sentences: Array.isArray(data.sentences) ? data.sentences : [],
+          };
+        })
+        .catch((err) => {
+          if (err.name === "AbortError") throw err;
+          return { text: "", sentences: [] };
+        });
+      pageTextPromises.set(pageNum, pPromise);
+      return pPromise;
+    };
+
+    // Khởi động đọc trước văn bản của 2 trang đầu tiên
+    fetchPageContent(1).catch(() => {});
+    if (total >= 2) fetchPageContent(2).catch(() => {});
+
+    let nextPageCursor = 1;
+
+    const runExportWorker = async () => {
+      while (nextPageCursor <= total && !bookExportAbortController.signal.aborted) {
+        const p = nextPageCursor++;
+        // Đọc trước (Prefetch) văn bản của trang kế tiếp trong lúc tổng hợp âm thanh
+        if (p + 1 <= total) fetchPageContent(p + 1).catch(() => {});
+
+        // Nhường ưu tiên CPU/TTS cho người dùng nếu đang bật nghe trực tiếp (Live Reading)
+        while (state.isPlaying && !state.isPaused && !bookExportAbortController.signal.aborted) {
+          setDownloadMenuText(`Tạm nhường ưu tiên đọc trực tiếp (${completedCount}/${total})`, "⏸️");
+          await new Promise((r) => setTimeout(r, 800));
+        }
+        if (bookExportAbortController.signal.aborted) break;
+
+        setDownloadMenuText(
+          `Đang tạo ngầm (Trang ${Math.min(total, completedCount + 1)}/${total}) • Bấm để lưu ngay`,
+          "⏳"
+        );
+
+        const { text: pageCleanText, sentences: pageSentences } = await fetchPageContent(p);
+        pageTextPromises.delete(p);
+
+        if (!pageCleanText || pageCleanText.length < 2) {
+          pageAudioSlot[p] = new ArrayBuffer(0);
+          completedCount++;
+          lastCompletedPage = Math.max(lastCompletedPage, p);
+          continue;
+        }
+
+        // Nếu toàn bộ các câu của trang đã nằm sẵn trong bộ nhớ trình duyệt (state.audioBlobCache),
+        // ghép trực tiếp trong < 2ms mà không cần gọi lại API!
+        const speedSuffix = Math.abs(speed - 1.0) > 0.01 ? `|speed_${speed.toFixed(2)}` : "";
+        let assembledFromMemCache = false;
+        if (pageSentences.length > 0) {
+          const allInMem = pageSentences.every((s) =>
+            state.audioBlobCache.has(`${voice}${speedSuffix}|${s.trim()}`)
+          );
+          if (allInMem) {
+            try {
+              const partBuffers = await Promise.all(
+                pageSentences.map(async (s) => {
+                  const blobUrl = state.audioBlobCache.get(`${voice}${speedSuffix}|${s.trim()}`);
+                  const r = await fetch(blobUrl);
+                  const ab = await r.arrayBuffer();
+                  return stripMp3XingHeader(ab);
+                })
+              );
+              const mergedPageBlob = new Blob(partBuffers, { type: "audio/mpeg" });
+              const mergedAb = await mergedPageBlob.arrayBuffer();
+              if (mergedAb && mergedAb.byteLength > 128) {
+                pageAudioSlot[p] = mergedAb;
+                completedCount++;
+                lastCompletedPage = Math.max(lastCompletedPage, p);
+                assembledFromMemCache = true;
+              }
+            } catch (_) {}
+          }
+        }
+        if (assembledFromMemCache) continue;
+
+        const ttsRes = await fetch("/api/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: pageCleanText,
+            voice,
+            speed,
+            sentences: pageSentences,
+          }),
+          signal: bookExportAbortController.signal,
+        });
+
+        if (ttsRes.ok) {
+          const buf = await ttsRes.arrayBuffer();
+          if (buf && buf.byteLength > 128) {
+            pageAudioSlot[p] = buf;
+            completedCount++;
+            lastCompletedPage = Math.max(lastCompletedPage, p);
+          }
+        }
+      }
+    };
+
+    const workers = [];
+    for (let w = 0; w < Math.min(maxPageWorkers, total); w++) {
+      workers.push(runExportWorker());
+    }
+    await Promise.all(workers);
+
+    const audioBuffers = collectOrderedBuffers();
 
     if (bookExportSavePartialRequested && audioBuffers.length > 0) {
       triggerAudioFileDownload(
@@ -2046,6 +2186,7 @@ async function downloadFullPageMp3() {
       );
     }
   } catch (err) {
+    const audioBuffers = collectOrderedBuffers();
     if (err.name === "AbortError") {
       if (bookExportSavePartialRequested && audioBuffers.length > 0) {
         triggerAudioFileDownload(

@@ -52,6 +52,7 @@ class TTSRequest(BaseModel):
     text: str
     voice: str = "kokoro-thanh_dat"
     speed: float = 1.0
+    sentences: Optional[List[str]] = None
 
 
 class ConfigUpdateRequest(BaseModel):
@@ -66,7 +67,10 @@ class AnnotationsPayload(BaseModel):
 
 @app.get("/api/config")
 async def get_config_endpoint():
-    return tts_service.config
+    return {
+        **tts_service.config,
+        "hardware_profile": tts_service.get_hardware_profile(),
+    }
 
 
 @app.post("/api/config")
@@ -157,7 +161,10 @@ async def synthesize_tts(req: TTSRequest):
         raise HTTPException(status_code=400, detail="Nội dung cần đọc đang trống.")
     try:
         mp3_path = await tts_service.synthesize_speech(
-            text=req.text, voice=req.voice, speed=req.speed
+            text=req.text,
+            voice=req.voice,
+            speed=req.speed,
+            sentences=req.sentences,
         )
         return FileResponse(
             path=str(mp3_path),

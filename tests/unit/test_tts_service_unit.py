@@ -113,6 +113,111 @@ class TestTTSService(unittest.TestCase):
         self.assertNotIn("dˈuː", ps)
         self.assertIn("zˈɔ", ps)
 
+        # Kiểm tra bộ nhớ đệm phiên âm từ đơn (_word_phoneme_cache)
+        self.assertIn("do", self.tts._word_phoneme_cache)
+        ps2 = self.tts.phonemize_vietnamese_smart("Năm 1999, do tăng trưởng 15% nên đạt 100$.")
+        self.assertEqual(ps, ps2)
+
+    def test_inflight_deduplication_prevents_double_synthesis(self):
+        # Kiểm tra khi 2 request cùng gọi synthesize_speech cho cùng 1 câu (ví dụ prefetch + playFromSentence),
+        # backend chỉ thực thi _do_synthesize_speech đúng 1 lần duy nhất
+        unique_text = f"Câu kiểm thử chống trùng lặp in-flight {time.time()}"
+        call_count = 0
+
+        async def fake_do_synth(clean, voice, speed, mp3_path, sentences=None):
+            nonlocal call_count
+            call_count += 1
+            await asyncio.sleep(0.08)
+            mp3_path.write_bytes(b"ID3" + b"\x00" * 1500)
+            return mp3_path
+
+        async def run_concurrent():
+            with patch.object(self.tts, "_do_synthesize_speech", side_effect=fake_do_synth):
+                r1, r2 = await asyncio.gather(
+                    self.tts.synthesize_speech(unique_text, "kokoro-thanh_dat"),
+                    self.tts.synthesize_speech(unique_text, "kokoro-thanh_dat"),
+                )
+                return r1, r2
+
+        p1, p2 = asyncio.run(run_concurrent())
+        self.assertEqual(p1, p2)
+        self.assertEqual(call_count, 1)
+
+    def test_adaptive_hardware_profile_tiers(self):
+        from src.tts_service import compute_hardware_profile
+
+        low_2 = compute_hardware_profile(2)
+        self.assertEqual(low_2["tier"], "low")
+        self.assertEqual(low_2["max_workers"], 1)
+        self.assertEqual(low_2["intra_op_threads"], 1)
+
+        low_4 = compute_hardware_profile(4)
+        self.assertEqual(low_4["tier"], "low")
+        self.assertEqual(low_4["max_workers"], 1)
+        self.assertEqual(low_4["intra_op_threads"], 3)
+
+        med_8 = compute_hardware_profile(8)
+        self.assertEqual(med_8["tier"], "medium")
+        self.assertEqual(med_8["max_workers"], 2)
+        self.assertEqual(med_8["intra_op_threads"], 6)
+
+        high_20 = compute_hardware_profile(20)
+        self.assertEqual(high_20["tier"], "high")
+        self.assertEqual(high_20["max_workers"], 2)
+        self.assertEqual(high_20["intra_op_threads"], 8)
+
+    def test_pack_phoneme_segments_reduces_onnx_calls(self):
+        sample_page = " ".join(
+            [
+                "Không ai điên rồ cả.",
+                "Mọi người đưa ra quyết định tài chính dựa trên trải nghiệm cá nhân.",
+                "Những gì có vẻ điên rồ với bạn có thể hoàn toàn hợp lý với tôi.",
+            ]
+            * 6
+        )
+        packed = self.tts.pack_phoneme_segments(sample_page, max_packed_len=400)
+        # 18 câu ngắn được gom gọn thành <= 5 cụm (<= 400 ký tự mỗi cụm)
+        self.assertGreaterEqual(len(packed), 1)
+        self.assertLessEqual(len(packed), 5)
+        for seg in packed:
+            self.assertLessEqual(len(seg), 460)
+
+    def test_sentence_cache_reuse_during_book_export(self):
+        from src.tts_service import TTS_CACHE_DIR, _make_cache_key
+
+        s1 = f"Câu đã nghe trước số 1 {time.time()}."
+        s2 = f"Câu chưa nghe số 2 {time.time()}."
+        full_page = f"{s1} {s2}"
+        voice = "kokoro-thanh_dat"
+
+        # Giả lập s1 đã có sẵn trong TTS_CACHE_DIR
+        s1_key = _make_cache_key(s1, voice, 1.0)
+        s1_path = TTS_CACHE_DIR / f"{s1_key}.mp3"
+        s1_path.write_bytes(b"\xff\xf3" + b"\x11" * 600)
+
+        synthesized_blocks = []
+
+        async def fake_single_block(clean, v, spd, out_path):
+            synthesized_blocks.append(clean)
+            out_path.write_bytes(b"\xff\xf3" + b"\x22" * 600)
+            return out_path
+
+        try:
+            with patch.object(self.tts, "_synthesize_single_block", side_effect=fake_single_block):
+                res_path = asyncio.run(
+                    self.tts.synthesize_speech(full_page, voice, 1.0, sentences=[s1, s2])
+                )
+            self.assertTrue(res_path.exists())
+            # Chỉ tổng hợp s2, không tổng hợp lại s1!
+            self.assertEqual(synthesized_blocks, [s2])
+            self.assertGreater(res_path.stat().st_size, 1000)
+        finally:
+            s1_path.unlink(missing_ok=True)
+            full_key = _make_cache_key(full_page, voice, 1.0)
+            (TTS_CACHE_DIR / f"{full_key}.mp3").unlink(missing_ok=True)
+            s2_key = _make_cache_key(s2, voice, 1.0)
+            (TTS_CACHE_DIR / f"{s2_key}.mp3").unlink(missing_ok=True)
+
 
 if __name__ == "__main__":
     unittest.main()
