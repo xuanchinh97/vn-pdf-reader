@@ -63,6 +63,8 @@ const state = {
   origPageDpi: 170,
   origPageZoom: 100,
   isSplitView: false,
+  splitPageZoom: 100,
+  splitPageDpi: 170,
 };
 
 // DOM Elements
@@ -222,6 +224,17 @@ const els = {
   closeOriginalPageBtn: document.getElementById("closeOriginalPageBtn"),
   origLoadingSpinner: document.getElementById("origLoadingSpinner"),
   originalPageLightboxImg: document.getElementById("originalPageLightboxImg"),
+  origPageViewport: document.getElementById("origPageViewport"),
+  origImgContainer: document.getElementById("origImgContainer"),
+  splitPaneToolbar: document.querySelector(".split-pane-toolbar"),
+  splitPanePageLabel: document.getElementById("splitPanePageLabel"),
+  splitDpi170Btn: document.getElementById("splitDpi170Btn"),
+  splitDpi300Btn: document.getElementById("splitDpi300Btn"),
+  splitZoomOutBtn: document.getElementById("splitZoomOutBtn"),
+  splitZoomLevelLabel: document.getElementById("splitZoomLevelLabel"),
+  splitZoomInBtn: document.getElementById("splitZoomInBtn"),
+  splitCloseBtn: document.getElementById("splitCloseBtn"),
+  splitImgScroll: document.getElementById("splitImgScroll"),
   sentencesContainer: document.getElementById("sentencesContainer"),
   bookPageCanvas: document.getElementById("bookPageCanvas"),
   bookPrevPageBtn: document.getElementById("bookPrevPageBtn"),
@@ -1024,7 +1037,7 @@ function bindEvents() {
   els.exitZenBtn?.addEventListener("click", toggleZenMode);
 
   // 6. Đổi chủ đề màu (Sepia -> Dark -> E-Ink -> Light)
-  els.themeToggleBtn.addEventListener("click", () => {
+  els.themeToggleBtn?.addEventListener("click", () => {
     state.themeIndex = (state.themeIndex + 1) % state.themes.length;
     applyReadingPreferences();
     updateThemeButton();
@@ -1040,51 +1053,53 @@ function bindEvents() {
   });
 
   // 8. Chế độ bảng mã & OCR
-  els.encodingModeSelect.addEventListener("change", () => {
+  els.encodingModeSelect?.addEventListener("change", () => {
     if (state.docId) {
       goToPage(state.currentPage, false);
     }
   });
 
-  els.ocrPageBtn.addEventListener("click", () => {
+  els.ocrPageBtn?.addEventListener("click", () => {
     if (state.docId && !state.isOcrRunning) {
       runBrowserVietnameseOcr(false);
     }
   });
 
   // 9. Chỉnh sửa văn bản thủ công
-  els.editModeBtn.addEventListener("click", () => {
-    els.manualTextArea.value = state.cleanText;
-    els.editorBox.hidden = !els.editorBox.hidden;
+  els.editModeBtn?.addEventListener("click", () => {
+    if (els.manualTextArea) els.manualTextArea.value = state.cleanText;
+    if (els.editorBox) els.editorBox.hidden = !els.editorBox.hidden;
   });
 
-  els.pasteTextDemoBtn.addEventListener("click", () => {
-    els.emptyState.hidden = true;
-    els.splitContainer.hidden = false;
-    els.pdfPane.hidden = true;
-    els.splitContainer.classList.add("single-pane");
-    els.showPdfPaneBtn.hidden = true;
-    els.docTitleLabel.textContent = "Chế độ đọc văn bản tự do";
-    els.editModeBtn.disabled = false;
-    els.editorBox.hidden = false;
-    els.manualTextArea.focus();
+  els.pasteTextDemoBtn?.addEventListener("click", () => {
+    if (els.emptyState) els.emptyState.hidden = true;
+    if (els.splitContainer) {
+      els.splitContainer.hidden = false;
+      els.splitContainer.classList.add("single-pane");
+    }
+    if (els.pdfPane) els.pdfPane.hidden = true;
+    if (els.showPdfPaneBtn) els.showPdfPaneBtn.hidden = true;
+    if (els.docTitleLabel) els.docTitleLabel.textContent = "Chế độ đọc văn bản tự do";
+    if (els.editModeBtn) els.editModeBtn.disabled = false;
+    if (els.editorBox) els.editorBox.hidden = false;
+    els.manualTextArea?.focus();
   });
 
-  els.applyManualTextBtn.addEventListener("click", async () => {
-    const raw = els.manualTextArea.value.trim();
+  els.applyManualTextBtn?.addEventListener("click", async () => {
+    const raw = els.manualTextArea?.value?.trim();
     if (!raw) return;
     stopReading();
     await processRawTextFromClient(raw, "Đã áp dụng văn bản chỉnh sửa thủ công.");
-    els.editorBox.hidden = true;
+    if (els.editorBox) els.editorBox.hidden = true;
   });
 
-  els.cancelManualTextBtn.addEventListener("click", () => {
-    els.editorBox.hidden = true;
+  els.cancelManualTextBtn?.addEventListener("click", () => {
+    if (els.editorBox) els.editorBox.hidden = true;
   });
 
   // 10. Zoom PDF & Toggle Cột PDF
-  els.zoomInBtn.addEventListener("click", () => updateZoom(15));
-  els.zoomOutBtn.addEventListener("click", () => updateZoom(-15));
+  els.zoomInBtn?.addEventListener("click", () => updateZoom(15));
+  els.zoomOutBtn?.addEventListener("click", () => updateZoom(-15));
 
   els.togglePdfPaneBtn?.addEventListener("click", () => {
     const isHidden = els.pdfPane.hidden;
@@ -1256,6 +1271,56 @@ function bindEvents() {
   els.origZoomOutBtn?.addEventListener("click", () => updateOrigZoom(-20));
   els.origZoomFitBtn?.addEventListener("click", () => updateOrigZoom("fit"));
   els.origToggleSplitBtn?.addEventListener("click", toggleSplitView);
+
+  // Split View Toolbar bindings
+  els.splitCloseBtn?.addEventListener("click", () => {
+    if (state.isSplitView) toggleSplitView();
+  });
+  els.splitDpi170Btn?.addEventListener("click", () => setSplitDpi(170));
+  els.splitDpi300Btn?.addEventListener("click", () => setSplitDpi(300));
+  els.splitZoomInBtn?.addEventListener("click", () => updateSplitZoom(20));
+  els.splitZoomOutBtn?.addEventListener("click", () => updateSplitZoom(-20));
+
+  // Lightbox Pan & Drag
+  let isOrigPanning = false;
+  let origStartX = 0;
+  let origStartY = 0;
+  let origScrollLeft = 0;
+  let origScrollTop = 0;
+
+  els.origPageViewport?.addEventListener("mousedown", (e) => {
+    if (e.button !== 0) return;
+    isOrigPanning = true;
+    els.origPageViewport.classList.add("is-panning");
+    origStartX = e.pageX - els.origPageViewport.offsetLeft;
+    origStartY = e.pageY - els.origPageViewport.offsetTop;
+    origScrollLeft = els.origPageViewport.scrollLeft;
+    origScrollTop = els.origPageViewport.scrollTop;
+  });
+
+  window.addEventListener("mouseup", () => {
+    if (isOrigPanning) {
+      isOrigPanning = false;
+      els.origPageViewport?.classList.remove("is-panning");
+    }
+  });
+
+  els.origPageViewport?.addEventListener("mousemove", (e) => {
+    if (!isOrigPanning) return;
+    e.preventDefault();
+    const x = e.pageX - els.origPageViewport.offsetLeft;
+    const y = e.pageY - els.origPageViewport.offsetTop;
+    els.origPageViewport.scrollLeft = origScrollLeft - (x - origStartX);
+    els.origPageViewport.scrollTop = origScrollTop - (y - origStartY);
+  });
+
+  els.origPageViewport?.addEventListener("wheel", (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      if (e.deltaY < 0) updateOrigZoom(15);
+      else updateOrigZoom(-15);
+    }
+  }, { passive: false });
 
   // 17. Phím tắt bàn phím E-Reader
   window.addEventListener("keydown", (e) => {
@@ -1503,6 +1568,9 @@ async function goToPage(pageNumber, autoPlay = false) {
     // Đồng bộ ảnh trang PDF gốc nếu modal Lightbox hoặc Split View đang mở
     if (els.originalPageModal && !els.originalPageModal.hidden) {
       loadOriginalPageImage(pageNumber, state.origPageDpi);
+    }
+    if (state.isSplitView) {
+      updateSplitPaneView();
     }
 
     // Nếu đang tìm kiếm và có kết quả trên trang này, tự động highlight
@@ -3739,7 +3807,18 @@ function updateOrigZoom(delta) {
 
 function applyOrigZoom() {
   if (!els.originalPageLightboxImg) return;
-  els.originalPageLightboxImg.style.transform = `scale(${state.origPageZoom / 100})`;
+  els.originalPageLightboxImg.style.transform = "none";
+  if (state.origPageZoom === 100) {
+    els.originalPageLightboxImg.style.maxWidth = "100%";
+    els.originalPageLightboxImg.style.width = "auto";
+    els.originalPageLightboxImg.style.height = "auto";
+  } else {
+    const baseW = Math.max(380, els.origPageViewport ? els.origPageViewport.clientWidth - 48 : 720);
+    const targetW = Math.round(baseW * (state.origPageZoom / 100));
+    els.originalPageLightboxImg.style.maxWidth = "none";
+    els.originalPageLightboxImg.style.width = `${targetW}px`;
+    els.originalPageLightboxImg.style.height = "auto";
+  }
   if (els.origZoomLevelLabel) {
     els.origZoomLevelLabel.textContent = `${state.origPageZoom}%`;
   }
@@ -3753,8 +3832,17 @@ function setOrigDpi(dpi) {
 }
 
 function toggleSplitView() {
+  if (window.innerWidth < 768 && !state.isSplitView) {
+    showAppleToast("Chế độ chia đôi chỉ hỗ trợ màn hình máy tính / tablet ngang (>= 768px)", "⚠️", 3500);
+    return;
+  }
+
   state.isSplitView = !state.isSplitView;
   document.body.classList.toggle("split-view-active", state.isSplitView);
+
+  if (els.originalPageToggleBtn) {
+    els.originalPageToggleBtn.classList.toggle("active", state.isSplitView);
+  }
   if (els.origSplitBtnText) {
     els.origSplitBtnText.textContent = state.isSplitView ? "Tắt chia đôi" : "Chia đôi";
   }
@@ -3763,15 +3851,65 @@ function toggleSplitView() {
   }
 
   if (state.isSplitView) {
-    if (els.pdfPageImage && state.docId) {
-      els.pdfPageImage.src = `/api/doc/${state.docId}/page/${state.currentPage}/image?dpi=170`;
-    }
+    if (els.pdfPane) els.pdfPane.hidden = false;
+    if (els.splitContainer) els.splitContainer.classList.remove("single-pane");
     closeOriginalPageModal();
+    updateSplitPaneView();
     showAppleToast("Đã bật Chế độ chia đôi màn hình (Văn bản & Ảnh PDF gốc)", "📖", 3500);
   } else {
+    if (els.pdfPane) els.pdfPane.hidden = true;
+    if (els.splitContainer) els.splitContainer.classList.add("single-pane");
     showAppleToast("Đã chuyển về Chế độ đọc tập trung 1 cột", "📖", 3000);
   }
 }
+
+function updateSplitPaneView() {
+  if (!state.isSplitView || !els.pdfPageImage || !state.docId) return;
+  const safePage = Math.max(1, Math.min(state.totalPages, state.currentPage));
+  if (els.splitPanePageLabel) {
+    els.splitPanePageLabel.textContent = `Trang ${safePage} / ${state.totalPages}`;
+  }
+  const url = `/api/doc/${state.docId}/page/${safePage}/image?dpi=${state.splitPageDpi}&t=${Date.now()}`;
+  els.pdfPageImage.src = url;
+  applySplitZoom();
+}
+
+function updateSplitZoom(delta) {
+  if (delta === "fit") {
+    state.splitPageZoom = 100;
+  } else {
+    state.splitPageZoom = Math.max(50, Math.min(250, state.splitPageZoom + delta));
+  }
+  applySplitZoom();
+}
+
+function applySplitZoom() {
+  if (!els.pdfPageImage) return;
+  if (state.splitPageZoom === 100) {
+    els.pdfPageImage.style.width = "100%";
+    els.pdfPageImage.style.maxWidth = "100%";
+  } else {
+    els.pdfPageImage.style.maxWidth = "none";
+    els.pdfPageImage.style.width = `${state.splitPageZoom}%`;
+  }
+  if (els.splitZoomLevelLabel) {
+    els.splitZoomLevelLabel.textContent = `${state.splitPageZoom}%`;
+  }
+}
+
+function setSplitDpi(dpi) {
+  state.splitPageDpi = dpi;
+  if (els.splitDpi170Btn) els.splitDpi170Btn.classList.toggle("active", dpi === 170);
+  if (els.splitDpi300Btn) els.splitDpi300Btn.classList.toggle("active", dpi === 300);
+  updateSplitPaneView();
+}
+
+window.addEventListener("resize", () => {
+  if (state.isSplitView && window.innerWidth < 768) {
+    toggleSplitView();
+    showAppleToast("Màn hình hẹp: Đã tự động tắt chế độ chia đôi", "ℹ️", 3000);
+  }
+});
 
 // Khởi chạy ứng dụng
 initApp();

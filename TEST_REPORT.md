@@ -1,11 +1,11 @@
 # BÁO CÁO KẾT QUẢ KIỂM THỬ — VN PDF READER
 
-- **Thời gian thực hiện:** `2026-10-29T10:14:13.733370`
+- **Thời gian thực hiện:** `2026-10-29T11:28:10.886912`
 - **Trạng thái:** **✅ HOÀN HẢO**
 - **Tổng số ca kiểm thử (Test Cases):** `77`
 - **Passed:** `77` | **Failed:** `0` | **Errors:** `0`
 - **Tỷ lệ thành công:** `100.0%`
-- **Thời gian thực thi:** `5.847 giây`
+- **Thời gian thực thi:** `5.997 giây`
 
 ---
 
@@ -125,7 +125,7 @@ test_e2e_standard_multipage_pdf (tests.e2e.test_e2e_pipeline.TestE2EPipeline.tes
 test_e2e_tcvn3_document_repaired_and_read (tests.e2e.test_e2e_pipeline.TestE2EPipeline.test_e2e_tcvn3_document_repaired_and_read) ... ok
 
 ----------------------------------------------------------------------
-Ran 77 tests in 5.847s
+Ran 77 tests in 5.997s
 
 OK
 ```

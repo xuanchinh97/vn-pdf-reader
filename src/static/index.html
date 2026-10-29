@@ -146,7 +146,29 @@
     <main class="reader-viewport" id="dropZone">
       <div id="emptyState" hidden></div>
       <div id="splitContainer" style="width:100%; display:flex; justify-content:center;">
-        <section id="pdfPane" hidden><img id="pdfPageImage" alt="" /><div id="zoomOutBtn"></div><div id="zoomInBtn"></div><span id="zoomLabel"></span></section>
+        <section id="pdfPane" hidden>
+          <div class="split-pane-toolbar" id="splitPaneToolbar">
+            <div class="split-pane-title-group">
+              <span class="split-pane-badge">PDF GỐC</span>
+              <span class="split-pane-page-label" id="splitPanePageLabel">Trang 1 / 1</span>
+            </div>
+            <div class="split-pane-tools">
+              <div class="split-dpi-group">
+                <button class="split-tool-btn active" id="splitDpi170Btn">170 DPI</button>
+                <button class="split-tool-btn" id="splitDpi300Btn" title="Độ phân giải cao">300 DPI</button>
+              </div>
+              <div class="split-zoom-group">
+                <button class="split-tool-btn" id="splitZoomOutBtn" title="Thu nhỏ">-</button>
+                <span id="splitZoomLevelLabel">100%</span>
+                <button class="split-tool-btn" id="splitZoomInBtn" title="Phóng to">+</button>
+              </div>
+              <button class="split-close-btn" id="splitCloseBtn" title="Đóng chế độ chia đôi (quay về 1 cột)">✕ Đóng chia đôi</button>
+            </div>
+          </div>
+          <div class="split-img-scroll" id="splitImgScroll">
+            <img id="pdfPageImage" alt="Trang PDF gốc" />
+          </div>
+        </section>
         
         <article class="book-container" id="readerPane">
           <div class="book-chapter-header" id="chapterHeader">
