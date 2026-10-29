@@ -100,12 +100,19 @@
 
       <div class="reader-center" id="pageNavGroup">
         <div class="reader-book-title" id="docTitleLabel">Hà Nội Ba Mươi Sáu Phố Phường — Thạch Lam</div>
-        <div class="reader-page-subtitle">
-          <button class="nav-arrow-btn" id="prevPageBtn" title="Trang trước (Phím ◀)">‹</button>
-          <span>Trang</span>
-          <input type="number" id="pageInput" min="1" value="15" />
-          <span>/ <strong id="totalPagesLabel">120</strong></span>
-          <button class="nav-arrow-btn" id="nextPageBtn" title="Trang sau (Phím ▶)">›</button>
+        <div class="reader-page-subtitle" id="pageNavSubtitle">
+          <button class="nav-arrow-btn" id="prevPageBtn" title="Trang trước (Phím ◀)" aria-label="Trang trước">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <div class="page-nav-badge">
+            <span class="page-nav-label">Trang</span>
+            <input type="text" inputmode="numeric" pattern="[0-9]*" id="pageInput" value="15" title="Nhập số trang và nhấn Enter để nhảy đến" aria-label="Số trang hiện tại" autocomplete="off" />
+            <span class="page-nav-divider">/</span>
+            <span class="page-nav-total" id="totalPagesLabel">120</span>
+          </div>
+          <button class="nav-arrow-btn" id="nextPageBtn" title="Trang sau (Phím ▶)" aria-label="Trang sau">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
         </div>
       </div>
 

@@ -302,6 +302,7 @@ async function initApp() {
   renderTocList();
   await loadAnnotations();
   updateBookmarkRibbonState();
+  adjustPageInputWidth();
 
   // Khởi động ở màn hình Home chuẩn Thư Viện Apple
   showScreen("home");
@@ -341,6 +342,15 @@ function showScreen(screenName) {
 window.showScreen = showScreen;
 window.openDrawer = openDrawer;
 window.closeDrawer = closeDrawer;
+
+function adjustPageInputWidth() {
+  if (!els.pageInput) return;
+  const valStr = String(els.pageInput.value || "1");
+  const charWidth = 9.5;
+  const padding = 18;
+  const targetW = Math.max(34, Math.round(valStr.length * charWidth + padding));
+  els.pageInput.style.width = `${targetW}px`;
+}
 
 function saveRecentBook(docId, title, totalPages, currentPage = 1) {
   try {
@@ -429,6 +439,7 @@ function renderRecentBooks() {
         els.totalPagesLabel.textContent = book.totalPages;
         els.pageInput.max = book.totalPages;
         els.pageInput.value = state.currentPage;
+        adjustPageInputWidth();
         
         // Tải lại TOC, Pages Overview và Annotations của cuốn sách này
         try {
@@ -749,11 +760,34 @@ function bindEvents() {
     if (state.currentPage < state.totalPages) goToPage(state.currentPage + 1, false);
   });
 
-  els.pageInput.addEventListener("change", () => {
+  els.pageInput?.addEventListener("focus", () => {
+    els.pageInput.select();
+  });
+
+  els.pageInput?.addEventListener("input", () => {
+    const cleaned = els.pageInput.value.replace(/[^0-9]/g, "");
+    if (els.pageInput.value !== cleaned) {
+      els.pageInput.value = cleaned;
+    }
+    adjustPageInputWidth();
+  });
+
+  els.pageInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      els.pageInput.blur();
+    } else if (e.key === "Escape") {
+      els.pageInput.value = state.currentPage;
+      adjustPageInputWidth();
+      els.pageInput.blur();
+    }
+  });
+
+  els.pageInput?.addEventListener("change", () => {
     let target = parseInt(els.pageInput.value, 10);
     if (isNaN(target)) target = state.currentPage;
     target = Math.max(1, Math.min(state.totalPages, target));
     els.pageInput.value = target;
+    adjustPageInputWidth();
     if (target !== state.currentPage) {
       goToPage(target, false);
     }
@@ -1532,6 +1566,7 @@ async function goToPage(pageNumber, autoPlay = false) {
   window.scrollTo({ top: 0, behavior: "smooth" });
   saveRecentBook(state.docId, state.filename, state.totalPages, pageNumber);
   els.pageInput.value = pageNumber;
+  adjustPageInputWidth();
   els.prevPageBtn.disabled = pageNumber <= 1;
   els.nextPageBtn.disabled = pageNumber >= state.totalPages;
   if (els.bookPrevPageBtn) els.bookPrevPageBtn.disabled = pageNumber <= 1;
