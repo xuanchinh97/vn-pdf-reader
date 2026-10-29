@@ -788,14 +788,26 @@ function bindEvents() {
     els.ttsAudio.defaultPlaybackRate = state.speed;
     els.ttsAudio.playbackRate = state.speed;
     els.waveformBars?.classList.add("playing");
+    updateMediaSessionPlaybackState("playing");
+    updateMediaSessionPosition();
   });
 
   els.ttsAudio.addEventListener("pause", () => {
     els.waveformBars?.classList.remove("playing");
+    if (state.isPaused) {
+      updateMediaSessionPlaybackState("paused");
+    } else if (!state.isPlaying) {
+      updateMediaSessionPlaybackState("none");
+    }
+    updateMediaSessionPosition();
   });
 
   els.ttsAudio.addEventListener("ended", () => {
     els.waveformBars?.classList.remove("playing");
+  });
+
+  els.ttsAudio.addEventListener("loadedmetadata", () => {
+    updateMediaSessionPosition();
   });
 
   // 4. Menu Aa (Apple Books Popover)
@@ -1654,13 +1666,19 @@ function setPlayButtonVisual(stateName) {
     if (els.playPauseBtn) els.playPauseBtn.title = "Tạm dừng (Phím Space)";
     els.waveformBars?.classList.remove("loading");
     els.waveformBars?.classList.add("playing");
+    updateMediaSessionPlaybackState("playing");
   } else if (stateName === "loading") {
     if (els.playPauseBtn) els.playPauseBtn.title = "Đang tải âm thanh...";
     els.waveformBars?.classList.remove("playing");
     els.waveformBars?.classList.add("loading");
+  } else if (stateName === "paused") {
+    if (els.playPauseBtn) els.playPauseBtn.title = "Tiếp tục đọc (Phím Space)";
+    els.waveformBars?.classList.remove("playing", "loading");
+    updateMediaSessionPlaybackState("paused");
   } else {
     if (els.playPauseBtn) els.playPauseBtn.title = "Đọc ngay (Phím Space)";
     els.waveformBars?.classList.remove("playing", "loading");
+    updateMediaSessionPlaybackState("none");
   }
 }
 
@@ -1689,6 +1707,7 @@ function stopReading() {
   els.ttsAudio.currentTime = 0;
   setPlayButtonVisual("stopped");
   highlightSentence(-1);
+  updateMediaSessionPlaybackState("none");
 }
 
 async function fetchSentenceAudioUrl(sentenceText) {
@@ -2274,6 +2293,7 @@ function seekAudioRelative(delta) {
     }
   } else {
     els.ttsAudio.currentTime = Math.max(0, Math.min(duration, newTime));
+    updateMediaSessionPosition();
   }
 }
 
@@ -2294,6 +2314,7 @@ function setReadingSpeed(val) {
   if (els.ttsAudio) {
     els.ttsAudio.defaultPlaybackRate = clamped;
     els.ttsAudio.playbackRate = clamped;
+    updateMediaSessionPosition();
   }
 
   // Cập nhật trạng thái active trên các preset chips
@@ -2401,6 +2422,28 @@ function formatTime(sec) {
   return `${m}:${s < 10 ? "0" : ""}${s}`;
 }
 
+function updateMediaSessionPlaybackState(playbackState) {
+  if (!("mediaSession" in navigator)) return;
+  try {
+    navigator.mediaSession.playbackState = playbackState;
+  } catch (_) {}
+}
+
+function updateMediaSessionPosition() {
+  if (!("mediaSession" in navigator) || !("setPositionState" in navigator.mediaSession)) return;
+  const dur = els.ttsAudio?.duration;
+  if (dur && !isNaN(dur) && dur > 0 && isFinite(dur)) {
+    try {
+      const cur = Math.min(Math.max(0, els.ttsAudio.currentTime || 0), dur);
+      navigator.mediaSession.setPositionState({
+        duration: dur,
+        playbackRate: state.speed || 1.0,
+        position: cur,
+      });
+    } catch (_) {}
+  }
+}
+
 function setupAudioScrubber() {
   els.ttsAudio.addEventListener("timeupdate", () => {
     if (state.isSeeking) return;
@@ -2411,6 +2454,7 @@ function setupAudioScrubber() {
     if (dur > 0 && els.audioScrubber) {
       els.audioScrubber.value = (cur / dur) * 100;
     }
+    updateMediaSessionPosition();
   });
 
   els.audioScrubber?.addEventListener("input", () => {
@@ -2424,44 +2468,115 @@ function setupAudioScrubber() {
     const dur = els.ttsAudio.duration || 0;
     els.ttsAudio.currentTime = (els.audioScrubber.value / 100) * dur;
     state.isSeeking = false;
+    updateMediaSessionPosition();
   });
 }
 
 function setupMediaSession() {
-  if ("mediaSession" in navigator) {
-    navigator.mediaSession.setActionHandler("play", () => {
-      if (state.isPaused) togglePlayPause();
-      else if (!state.isPlaying) playFromSentence(Math.max(0, state.currentSentenceIndex));
-    });
-    navigator.mediaSession.setActionHandler("pause", () => {
-      if (state.isPlaying && !state.isPaused) togglePlayPause();
-    });
-    navigator.mediaSession.setActionHandler("previoustrack", () => {
-      if (state.currentSentenceIndex > 0) playFromSentence(state.currentSentenceIndex - 1);
-    });
-    navigator.mediaSession.setActionHandler("nexttrack", () => {
-      if (state.currentSentenceIndex + 1 < state.sentences.length) playFromSentence(state.currentSentenceIndex + 1);
-    });
-    navigator.mediaSession.setActionHandler("seekbackward", () => {
-      seekAudioRelative(-5);
-    });
-    navigator.mediaSession.setActionHandler("seekforward", () => {
-      seekAudioRelative(10);
-    });
-  }
+  if (!("mediaSession" in navigator)) return;
+
+  const safeSetAction = (action, handler) => {
+    try {
+      navigator.mediaSession.setActionHandler(action, handler);
+    } catch (_) {}
+  };
+
+  safeSetAction("play", () => {
+    if (state.isPaused) {
+      togglePlayPause();
+    } else if (!state.isPlaying) {
+      const startIdx = state.currentSentenceIndex >= 0 ? state.currentSentenceIndex : 0;
+      playFromSentence(startIdx);
+    }
+  });
+
+  safeSetAction("pause", () => {
+    if (state.isPlaying && !state.isPaused) {
+      togglePlayPause();
+    }
+  });
+
+  safeSetAction("stop", () => {
+    stopReading();
+  });
+
+  safeSetAction("previoustrack", () => {
+    if (state.currentSentenceIndex > 0) {
+      playFromSentence(state.currentSentenceIndex - 1);
+    } else if (state.currentPage > 1) {
+      goToPage(state.currentPage - 1, true);
+    } else {
+      seekAudioRelative(-999);
+    }
+  });
+
+  safeSetAction("nexttrack", () => {
+    if (state.currentSentenceIndex + 1 < state.sentences.length) {
+      playFromSentence(state.currentSentenceIndex + 1);
+    } else if (state.docId && state.currentPage < state.totalPages) {
+      goToPage(state.currentPage + 1, true);
+    } else {
+      stopReading();
+    }
+  });
+
+  safeSetAction("seekbackward", (details) => {
+    const offset = details && details.seekOffset ? -details.seekOffset : -5;
+    seekAudioRelative(offset);
+  });
+
+  safeSetAction("seekforward", (details) => {
+    const offset = details && details.seekOffset ? details.seekOffset : 10;
+    seekAudioRelative(offset);
+  });
+
+  safeSetAction("seekto", (details) => {
+    if (details && details.seekTime !== undefined && els.ttsAudio && els.ttsAudio.duration) {
+      els.ttsAudio.currentTime = Math.min(Math.max(0, details.seekTime), els.ttsAudio.duration);
+      updateMediaSessionPosition();
+    }
+  });
 }
 
 function updateMediaSession(index) {
-  if ("mediaSession" in navigator) {
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: state.sentences[index] || "Đọc sách PDF",
-      artist: state.filename || "VN PDF Reader",
-      album: `Trang ${state.currentPage} / ${state.totalPages || 1}`,
-      artwork: [
-        { src: "/favicon.ico", sizes: "64x64", type: "image/x-icon" }
-      ]
+  if (!("mediaSession" in navigator)) return;
+
+  const sentence = (state.sentences && state.sentences[index]) ? state.sentences[index].trim() : "";
+  const title = sentence
+    ? (sentence.length > 120 ? sentence.slice(0, 117).trim() + "..." : sentence)
+    : "Đọc sách PDF Tiếng Việt";
+
+  const bookTitle = state.filename || els.docTitleLabel?.textContent?.trim() || "VN PDF Reader";
+  const chapterText = els.chapterTitle?.textContent?.trim() || "";
+  const artist = chapterText && !chapterText.startsWith("—") ? `${chapterText} • ${bookTitle}` : bookTitle;
+
+  const voiceLabel = els.voiceCurrentLabel?.textContent?.trim() || "Giọng đọc AI";
+  const album = `Trang ${state.currentPage} / ${state.totalPages || 1} • ${voiceLabel}`;
+
+  const artwork = [
+    { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
+  ];
+
+  if (state.docId && state.docId !== "demo_hanoi") {
+    artwork.unshift({
+      src: `/api/doc/${state.docId}/page/${state.currentPage}/image?dpi=100`,
+      sizes: "300x420",
+      type: "image/png",
     });
   }
+
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title,
+      artist,
+      album,
+      artwork,
+    });
+  } catch (_) {}
+
+  updateMediaSessionPlaybackState("playing");
+  updateMediaSessionPosition();
 }
 
 async function loadAnnotations() {
