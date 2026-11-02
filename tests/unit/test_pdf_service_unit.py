@@ -24,6 +24,8 @@ class TestPDFService(unittest.TestCase):
         cls.standard_pdf_bytes = (FIXTURES_DIR / "standard_unicode.pdf").read_bytes()
         cls.scanned_pdf_bytes = (FIXTURES_DIR / "scanned_image.pdf").read_bytes()
         cls.tcvn3_pdf_bytes = (FIXTURES_DIR / "tcvn3_document.pdf").read_bytes()
+        cls.epub_bytes = (FIXTURES_DIR / "sample_book.epub").read_bytes()
+        cls.txt_bytes = (FIXTURES_DIR / "sample_document.txt").read_bytes()
 
     def test_register_pdf(self):
         info = pdf_service.register_pdf("test_standard.pdf", self.standard_pdf_bytes)
@@ -255,6 +257,41 @@ class TestPDFService(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             pdf_service.search_document("nonexistent_doc_id", "từ khóa")
 
+
+    def test_register_and_extract_epub(self):
+        info = pdf_service.register_pdf("sample_book.epub", self.epub_bytes)
+        self.assertIn("doc_id", info)
+        self.assertEqual(info["file_type"], "epub")
+        self.assertGreaterEqual(info["page_count"], 1)
+
+        # Trích xuất trang 1
+        page1 = pdf_service.extract_page_text(info["doc_id"], 1)
+        self.assertFalse(page1["needs_ocr"])
+        self.assertIn("EPUB", page1["text"])
+        self.assertGreater(len(page1["sentences"]), 0)
+
+        # Render ảnh thumbnail trang 1
+        thumb = pdf_service.render_page_image(info["doc_id"], 1, dpi=60)
+        self.assertGreater(len(thumb), 500)
+
+        # Tìm kiếm trong sách EPUB
+        search_res = pdf_service.search_document(info["doc_id"], "Bình Minh")
+        self.assertGreater(search_res["total_matches"], 0)
+
+    def test_register_and_extract_txt(self):
+        info = pdf_service.register_pdf("sample_document.txt", self.txt_bytes)
+        self.assertIn("doc_id", info)
+        self.assertEqual(info["file_type"], "txt")
+        self.assertGreaterEqual(info["page_count"], 1)
+
+        # Trích xuất trang 1
+        page1 = pdf_service.extract_page_text(info["doc_id"], 1)
+        self.assertFalse(page1["needs_ocr"])
+        self.assertIn("TXT", page1["text"])
+
+        # Tìm kiếm trong tài liệu TXT
+        search_res = pdf_service.search_document(info["doc_id"], "Tương Lai")
+        self.assertGreater(search_res["total_matches"], 0)
 
 if __name__ == "__main__":
     unittest.main()

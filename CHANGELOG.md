@@ -4,6 +4,66 @@ Toàn bộ các thay đổi, tính năng mới và cải tiến của dự án *
 
 ---
 
+## [1.9.0] - 2026-11-02
+
+### Added & Optimized
+- **Quản Lý Cache LRU/TTL & Bảo Vệ Ổ Đĩa (REC-02):**
+  - **Module `CacheManager` (`src/cache_manager.py`):** Giới hạn dung lượng bộ nhớ đệm TTS trên ổ đĩa (mặc định 2GB, có thể cấu hình).
+  - **Thuật toán dọn dẹp LRU:** Tự động theo dõi thời gian truy cập (`atime`) của từng file MP3 và dọn dẹp các tệp cũ nhất về mức 80% (1.6GB) khi dung lượng đầy; giữ nguyên `mtime` để tương thích toàn diện với kiểm thử.
+  - **Dọn dẹp RAM trang đọc (`PDFService`):** Nâng cấp bộ nhớ đệm `_page_text_cache` sang `collections.OrderedDict`, triển khai giải thuật LRU đẩy phần tử cũ nhất ra khỏi RAM (`popitem(last=False)`) thay vì xóa trắng toàn bộ 500 trang như trước.
+  - **API Quản lý Cache:** Bổ sung endpoint `GET /api/cache/stats` (thống kê dung lượng ổ đĩa, số file, RAM cache) và `POST /api/cache/clean` (dọn dẹp thủ công).
+
+- **Tách Từ Điển & Tìm Kiếm Toàn Văn SQLite FTS5 (REC-03):**
+  - **Bóc tách từ điển khỏi `src/main.py`:** Tách hơn 500 dòng từ điển tĩnh thô ra tệp hạt giống `src/dictionary_seed.py` và lưu trữ trong cơ sở dữ liệu SQLite trung tâm (`~/.vn_pdf_reader/app.db`).
+  - **Tương thích ngược 100%:** Xây dựng `_OfflineDictionaryProxy` duy trì biến `OFFLINE_DICTIONARY` trong `main.py`, truy vấn trực tiếp qua SQLite mà không gây breaking change cho bất kỳ mã nguồn nào.
+  - **Tự động lưu đệm Wiktionary:** Khi người dùng tra từ mới thành công từ Wiktionary, hệ thống tự động ghi nhớ vào SQLite để phục vụ chế độ offline lần sau.
+  - **Lập chỉ mục tìm kiếm FTS5 siêu tốc (<10ms):** Xây dựng bảng ảo `doc_pages_fts` sử dụng tokenizer `unicode61 remove_diacritics 2`, hỗ trợ tìm kiếm không dấu lẫn có dấu cho tiếng Việt (kể cả ký tự đặc thù `đ/Đ` $\rightarrow$ `d/D`), tự động fallback sang quét tuần tự nếu cần.
+
+---
+
+## [1.8.0] - 2026-11-02
+
+### Changed & Refactored
+- **Tái Cấu Trúc Frontend Thành Kiến Trúc Native ES Modules (REC-04):**
+  - **Phân rã tệp nguyên khối (Monolith Splitting):** Chia tách tệp `app.js` đơn khối gần 4.000 dòng thành 7 modules chuyên trách độc lập nằm trong thư mục `src/static/js/`, không phụ thuộc build tool/bundler (Zero Build Step, Native ESM):
+    - **`js/state.js`:** Quản lý trạng thái trung tâm duy nhất (`state`), ánh xạ DOM Elements (`els`), bảng dữ liệu mục lục mẫu và các hàm tiện ích dùng chung (`showAppleToast`, `formatTime`, `escapeHtml`, `escapeRegex`).
+    - **`js/reader-core.js` (`ReaderCore`):** Quản lý vòng đời trang sách, tải file đa định dạng (PDF/EPUB/TXT), nhóm câu thành đoạn văn (`groupSentencesIntoParagraphs`), tùy biến typography (`Aa`), chế độ đọc tập trung (`Zen Mode`), quét OCR phía client và Lightbox/Split View trang gốc.
+    - **`js/audio-controller.js` (`AudioController`):** Điều phối bộ phát âm thanh đa nguồn (Kokoro, Edge, Google), tải trước câu ngầm (`prefetchUpcomingSentences`), tô sáng câu đọc (Whispersync), Audio Scrubber, Sleep Timer, MediaSession API và bộ xuất sách nói MP3 đa luồng.
+    - **`js/annotation-mgr.js` (`AnnotationManager`):** Quản lý Dấu trang (`Bookmarks`), Điểm nhấn dạ quang 4 màu (`Highlights`), đồng bộ dữ liệu hai chiều (`localStorage` và `/api/doc/{id}/annotations`).
+    - **`js/toc-viewer.js` (`TOCViewer`):** Quản lý ngăn kéo đa tab (`Drawer`), cây mục lục phân cấp (`Document Outline`) và ảnh thu nhỏ trang tải lười (`Page Thumbnails`).
+    - **`js/search-drawer.js` (`SearchDrawer`):** Thanh tìm kiếm nổi toàn văn trong sách (In-book Search), bộ đếm kết quả, nhảy câu và highlight từ khóa tức thì trên trang.
+    - **`js/ui-utils.js` (`UIUtils`):** Modal cài đặt HTTP Proxy, modal phím tắt trợ giúp và modal tra cứu từ điển tiếng Việt (Wiktionary + Offline fallback).
+    - **`app.js`:** Tệp khởi tạo trung tâm đóng vai trò điều phối (`Orchestrator`), gán toàn bộ sự kiện (`bindEvents`) và khởi động ứng dụng (`initApp`).
+  - **Tối ưu hóa thẻ nạp kịch bản (`index.html`):** Chuyển sang `<script type="module" src="/app.js?v=esm1.0"></script>`.
+
+---
+
+## [1.7.0] - 2026-10-30
+
+### Added
+- **Hỗ Trợ Đa Định Dạng Sách Điện Tử (EPUB & TXT - FNC-01):**
+  - **Lõi Xử Lý Đa Định Dạng (PyMuPDF Unified Engine):** Tận dụng trực tiếp khả năng đọc định dạng native của PyMuPDF 2.0+ để mở và phân tích tệp `.epub` và `.txt` mà không phát sinh thêm thư viện ngoài.
+  - **Sách Điện Tử EPUB (Reflowable Layout):** Trích xuất văn bản tiếng Việt trơn tru từ các file EPUB, tự động đọc cây mục lục (TOC), loại bỏ hoàn toàn các lỗi ngắt dòng cứng của file PDF và tăng gấp đôi độ mượt mà của giọng đọc AI TTS.
+  - **Tệp Văn Bản TXT & Tự Động Chuẩn Hóa Bảng Mã:** Tự động phát hiện và chuyển đổi bảng mã cũ (TCVN3, VNI, CP1258, Windows-1252) sang Unicode dựng sẵn (NFC); tự động phân trang theo khối văn bản đọc tự nhiên.
+  - **Mở Rộng API Upload (`POST /api/upload`):** Chấp nhận tệp `.pdf`, `.epub`, `.txt`; tự động trả về trường metadata `file_type`.
+  - **Cải Tiến Giao Diện Thư Viện & Dropzone:** Khu vực kéo thả mở rộng nhận diện đa định dạng; danh sách sách gần đây gắn nhãn định dạng (`PDF`, `EPUB`, `TXT`) trên từng bìa sách.
+  - **Điều Khiển Giao Diện Theo Định Dạng (Contextual UI):** Tự động ẩn nút "Xem ảnh trang gốc" và "Quét lại OCR" khi đọc tệp số nguyên bản (EPUB/TXT).
+
+---
+
+## [1.6.1] - 2026-10-30
+
+### Security & Removed
+- **Loại Bỏ Hoàn Toàn Tích Hợp FPT.AI TTS:**
+  - Gỡ bỏ 6 giọng đọc FPT.AI (`fpt-banmai`, `fpt-thuminh`, `fpt-leminh`, `fpt-lannhi`, `fpt-myan`, `fpt-giahuy`) khỏi danh mục giọng đọc khả dụng.
+  - Xóa bỏ triệt để việc hardcode `fpt_api_key` trong `DEFAULT_CONFIG` và tự động loại bỏ khóa này khỏi tệp cấu hình đĩa `tts_config.json`.
+  - Loại bỏ hoàn toàn logic gọi API HTTP polling v5 (`_synthesize_fpt`) và biến khóa mạch `_fpt_blocked_until` trong `TTSService`.
+  - Tinh gọn API `/api/config`: Loại bỏ trường `fpt_api_key` trong `ConfigUpdateRequest` và giao diện cấu hình.
+  - Cập nhật Modal Cài đặt trên giao diện người dùng thành *"Cài đặt Mạng & HTTP Proxy"*, loại bỏ ô nhập FPT API Key.
+  - Tăng cường an toàn kết nối: Proxy HTTP chuyển sang lấy từ biến môi trường `HTTP_PROXY`, cơ chế tải Google TTS fallback có cơ chế tự động thử kết nối trực tiếp nếu proxy không phản hồi.
+
+---
+
 ## [1.6.0] - 2026-10-29
 
 ### Added

@@ -21,17 +21,21 @@ python -m venv .venv
 | File | Role |
 |---|---|
 | `src/main.py` | FastAPI app, all `/api/*` endpoints, mounts `src/static/` at `/` (mount is at the **end** of the file — new API routes must be added before it) |
-| `src/pdf_service.py` | PyMuPDF extraction, 2-tier TOC (metadata → heuristic regex), header/footer filtering, page image render, Gemini OCR |
+| `src/db_service.py` | SQLite database service: central dictionary storage and FTS5 full-text search indexing (`unicode61 remove_diacritics 2`) |
+| `src/cache_manager.py` | Disk cache manager for TTS audio (2GB limit, LRU pruning, cache stats and cleanup APIs) |
+| `src/dictionary_seed.py` | Built-in Vietnamese dictionary seed data (37 core entries) for SQLite seeding |
+| `src/pdf_service.py` | PyMuPDF extraction, 2-tier TOC (metadata → heuristic regex), header/footer filtering, page image render, LRU page cache (`collections.OrderedDict`), FTS5 search integration |
 | `src/vn_text_processor.py` | TCVN3/VNI/Mojibake → Unicode NFC, detached diacritic fix, line unwrapping, Vietnamese sentence splitting (abbreviation-aware) |
-| `src/tts_service.py` | Multi-engine TTS orchestrator: Kokoro (local) → FPT.AI → Edge-TTS → Google fallback, with circuit breakers and disk cache |
-| `src/static/{index.html,styles.css,app.js}` | Frontend (no build step, no framework). `app.js` is ~100KB — single file, no modules |
+| `src/tts_service.py` | Multi-engine TTS orchestrator: Kokoro (local) → Edge-TTS → Google fallback, with circuit breakers and disk cache |
+| `src/static/{index.html,styles.css,app.js,js/*}` | Frontend (Native ES Modules, zero build step, no framework). `app.js` orchestrates modular components (`reader-core`, `audio-controller`, `annotation-mgr`, `toc-viewer`, `search-drawer`, `ui-utils`, `state`). |
 
 ## Storage (user home, not in repo)
 
 - `~/.vn_pdf_reader/docs/{md5}.pdf` — uploaded PDFs (keyed by first 12 chars of MD5)
 - `~/.vn_pdf_reader/annotations/{doc_id}.json` — bookmarks + highlights
-- `~/.vn_pdf_reader/tts_cache/{md5}.mp3` — TTS audio cache (key includes voice + speed)
-- `~/.vn_pdf_reader/tts_config.json` — FPT.AI API key + HTTP proxy
+- `~/.vn_pdf_reader/tts_cache/{md5}.mp3` — TTS audio cache (key includes voice + speed, managed by LRU)
+- `~/.vn_pdf_reader/app.db` — SQLite database (offline dictionary & FTS5 search index)
+- `~/.vn_pdf_reader/tts_config.json` — HTTP proxy config
 
 ## Testing
 

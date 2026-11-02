@@ -34,6 +34,10 @@ class TestTTSService(unittest.TestCase):
         self.assertIn("google-vi-female", voice_ids)
         self.assertIn("vi-VN-HoaiMyNeural", voice_ids)
         self.assertIn("vi-VN-NamMinhNeural", voice_ids)
+        # Đảm bảo đã loại bỏ hoàn toàn các giọng đọc FPT.AI
+        self.assertNotIn("fpt-banmai", voice_ids)
+        self.assertFalse(any(v.get("provider") == "fpt" for v in voices))
+        self.assertNotIn("fpt_api_key", self.tts.config)
 
     def test_speed_to_edge_rate(self):
         self.assertEqual(speed_to_edge_rate(1.0), "+0%")

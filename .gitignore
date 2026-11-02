@@ -21,8 +21,9 @@ htmlcov/
 test_*.mp3
 test_*.wav
 
-# Uploaded / Downloaded PDFs
+# Uploaded / Downloaded PDFs & Test Fixtures
 *.pdf
+tests/fixtures/sample_pdfs/
 
 # Editor & System Files
 .DS_Store

@@ -20,6 +20,8 @@ class TestAPIEndpoints(unittest.TestCase):
         cls.standard_pdf_path = FIXTURES_DIR / "standard_unicode.pdf"
         cls.tcvn3_pdf_path = FIXTURES_DIR / "tcvn3_document.pdf"
         cls.scanned_pdf_path = FIXTURES_DIR / "scanned_image.pdf"
+        cls.epub_path = FIXTURES_DIR / "sample_book.epub"
+        cls.txt_path = FIXTURES_DIR / "sample_document.txt"
 
     def test_get_voices(self):
         resp = self.client.get("/api/voices")
@@ -27,6 +29,26 @@ class TestAPIEndpoints(unittest.TestCase):
         data = resp.json()
         self.assertIn("voices", data)
         self.assertGreater(len(data["voices"]), 0)
+        # Đảm bảo không còn giọng đọc FPT.AI trong API
+        voice_ids = [v["id"] for v in data["voices"]]
+        self.assertNotIn("fpt-banmai", voice_ids)
+        self.assertFalse(any(v.get("provider") == "fpt" for v in data["voices"]))
+
+    def test_get_and_update_config_no_fpt(self):
+        # 1. GET /api/config không chứa fpt_api_key
+        resp = self.client.get("/api/config")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertNotIn("fpt_api_key", data)
+        self.assertIn("http_proxy", data)
+
+        # 2. POST /api/config cập nhật http_proxy
+        post_resp = self.client.post("/api/config", json={"http_proxy": "http://127.0.0.1:8888"})
+        self.assertEqual(post_resp.status_code, 200)
+        res_data = post_resp.json()
+        self.assertEqual(res_data["status"], "ok")
+        self.assertNotIn("fpt_api_key", res_data["config"])
+        self.assertEqual(res_data["config"]["http_proxy"], "http://127.0.0.1:8888")
 
     def test_upload_valid_pdf(self):
         with open(self.standard_pdf_path, "rb") as f:
@@ -40,14 +62,38 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertEqual(data["filename"], "standard_unicode.pdf")
         self.assertEqual(data["page_count"], 3)
 
+    def test_upload_valid_epub(self):
+        with open(self.epub_path, "rb") as f:
+            resp = self.client.post(
+                "/api/upload",
+                files={"file": ("sample_book.epub", f, "application/epub+zip")},
+            )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertIn("doc_id", data)
+        self.assertEqual(data["file_type"], "epub")
+        self.assertEqual(data["filename"], "sample_book.epub")
+
+    def test_upload_valid_txt(self):
+        with open(self.txt_path, "rb") as f:
+            resp = self.client.post(
+                "/api/upload",
+                files={"file": ("sample_document.txt", f, "text/plain")},
+            )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertIn("doc_id", data)
+        self.assertEqual(data["file_type"], "txt")
+        self.assertEqual(data["filename"], "sample_document.txt")
+
     def test_upload_invalid_file_extension(self):
-        fake_content = b"This is a text file, not PDF."
+        fake_content = b"This is a word document, not supported."
         resp = self.client.post(
             "/api/upload",
-            files={"file": ("test.txt", fake_content, "text/plain")},
+            files={"file": ("test.docx", fake_content, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
         )
         self.assertEqual(resp.status_code, 400)
-        self.assertIn("Vui lòng chọn file có định dạng .pdf", resp.json()["detail"])
+        self.assertIn("Vui lòng chọn file có định dạng hỗ trợ", resp.json()["detail"])
 
     def test_upload_empty_pdf(self):
         resp = self.client.post(
@@ -235,6 +281,23 @@ class TestAPIEndpoints(unittest.TestCase):
     def test_search_document_endpoint_nonexistent_returns_404(self):
         search_resp = self.client.get("/api/doc/fake_doc_id_9999/search?q=Vi%E1%BB%87t+Nam")
         self.assertEqual(search_resp.status_code, 404)
+
+    def test_cache_stats_endpoint(self):
+        resp = self.client.get("/api/cache/stats")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["status"], "ok")
+        self.assertIn("disk_cache", data)
+        self.assertIn("page_cache", data)
+        self.assertIn("total_files", data["disk_cache"])
+        self.assertIn("total_size_mb", data["disk_cache"])
+
+    def test_cache_clean_endpoint(self):
+        resp = self.client.post("/api/cache/clean?all=false")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["status"], "ok")
+        self.assertIn("result", data)
 
 
 if __name__ == "__main__":

@@ -16,27 +16,23 @@ import edge_tts
 import httpx
 import soundfile as sf
 
-try:
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-except Exception:
-    pass
-
-TTS_CACHE_DIR = Path.home() / ".vn_pdf_reader" / "tts_cache"
-TTS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+from src.cache_manager import cache_manager, TTS_CACHE_DIR
 
 CONFIG_PATH = Path.home() / ".vn_pdf_reader" / "tts_config.json"
 
 DEFAULT_CONFIG = {
-    "fpt_api_key": "cuRd26HHCfSXMMIAOCSQenwd72jUkKI7",
-    "http_proxy": "http://10.10.101.208:3128",
+    "http_proxy": os.environ.get("HTTP_PROXY", ""),
 }
 
 
 def load_config() -> dict:
     if CONFIG_PATH.exists():
         try:
-            return json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+            cfg = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+            if "fpt_api_key" in cfg:
+                cfg.pop("fpt_api_key", None)
+                save_config(cfg)
+            return cfg
         except Exception:
             pass
     return dict(DEFAULT_CONFIG)
@@ -218,49 +214,6 @@ AVAILABLE_VOICES: List[Dict[str, str]] = [
         "lang": "vi",
         "gender": "Male",
     },
-    # Nhóm giọng đọc FPT.AI
-    {
-        "id": "fpt-banmai",
-        "name": "Ban Mai (Nữ Bắc - FPT.AI Truyền Cảm)",
-        "provider": "fpt",
-        "lang": "vi",
-        "gender": "Female",
-    },
-    {
-        "id": "fpt-thuminh",
-        "name": "Thu Minh (Nữ Bắc - FPT.AI Dịu Dàng)",
-        "provider": "fpt",
-        "lang": "vi",
-        "gender": "Female",
-    },
-    {
-        "id": "fpt-leminh",
-        "name": "Lê Minh (Nam Bắc - FPT.AI Trầm Ấm)",
-        "provider": "fpt",
-        "lang": "vi",
-        "gender": "Male",
-    },
-    {
-        "id": "fpt-lannhi",
-        "name": "Lan Nhi (Nữ Nam - FPT.AI Tự Nhiên)",
-        "provider": "fpt",
-        "lang": "vi",
-        "gender": "Female",
-    },
-    {
-        "id": "fpt-myan",
-        "name": "Mỹ An (Nữ Trung - FPT.AI)",
-        "provider": "fpt",
-        "lang": "vi",
-        "gender": "Female",
-    },
-    {
-        "id": "fpt-giahuy",
-        "name": "Gia Huy (Nam Trung - FPT.AI)",
-        "provider": "fpt",
-        "lang": "vi",
-        "gender": "Male",
-    },
     {
         "id": "google-vi-female",
         "name": "Chị Google (Dự phòng)",
@@ -274,9 +227,9 @@ AVAILABLE_VOICES: List[Dict[str, str]] = [
 class TTSService:
     def __init__(self):
         self.config = load_config()
-        self._proxy = self.config.get("http_proxy") or "http://10.10.101.208:3128"
+        raw_proxy = self.config.get("http_proxy") or os.environ.get("HTTP_PROXY", "")
+        self._proxy = raw_proxy.strip() if raw_proxy and raw_proxy.strip() else None
         self._edge_blocked_until: float = 0.0
-        self._fpt_blocked_until: float = 0.0
         self._edge_lock = asyncio.Lock()
         self._kokoro_instances: Dict[str, object] = {}
         self._kokoro_lock = asyncio.Lock()
@@ -302,11 +255,6 @@ class TTSService:
     def get_voices(self) -> List[Dict[str, str]]:
         return AVAILABLE_VOICES
 
-    def update_fpt_api_key(self, api_key: str) -> None:
-        self.config["fpt_api_key"] = api_key.strip()
-        self._fpt_blocked_until = 0.0
-        save_config(self.config)
-
     async def synthesize_speech(
         self,
         text: str,
@@ -322,6 +270,7 @@ class TTSService:
         mp3_path = TTS_CACHE_DIR / f"{cache_key}.mp3"
 
         if mp3_path.exists() and mp3_path.stat().st_size > 128:
+            cache_manager.touch_file(mp3_path)
             return mp3_path
 
         # Chống trùng lặp request (In-Flight Deduplication ở Backend):
@@ -352,6 +301,7 @@ class TTSService:
         sentences: Optional[List[str]] = None,
     ) -> Path:
         if mp3_path.exists() and mp3_path.stat().st_size > 128:
+            cache_manager.touch_file(mp3_path)
             return mp3_path
 
         # Tái sử dụng Cache cấp độ câu (Sentence-Level Cache Reuse):
@@ -366,6 +316,7 @@ class TTSService:
                     s_key = _make_cache_key(s, voice, speed)
                     s_path = TTS_CACHE_DIR / f"{s_key}.mp3"
                     if s_path.exists() and s_path.stat().st_size > 128:
+                        cache_manager.touch_file(s_path)
                         sent_entries.append(("cached", s_path))
                         cached_count += 1
                     else:
@@ -396,6 +347,8 @@ class TTSService:
 
                     if len(merged_bytes) > 128:
                         mp3_path.write_bytes(bytes(merged_bytes))
+                        cache_manager.touch_file(mp3_path)
+                        cache_manager.prune_if_needed()
                         return mp3_path
 
         return await self._synthesize_single_block(clean, voice, speed, mp3_path)
@@ -404,6 +357,7 @@ class TTSService:
         self, clean: str, voice: str, speed: float, mp3_path: Path
     ) -> Path:
         if mp3_path.exists() and mp3_path.stat().st_size > 128:
+            cache_manager.touch_file(mp3_path)
             return mp3_path
 
         # 1. Nếu chọn giọng Kokoro AI (Chạy hoàn toàn cục bộ trên CPU)
@@ -413,27 +367,13 @@ class TTSService:
                 content = await asyncio.to_thread(self._synthesize_kokoro, clean, kokoro_voice, speed)
                 if content and len(content) > 1000:
                     mp3_path.write_bytes(content)
+                    cache_manager.touch_file(mp3_path)
+                    cache_manager.prune_if_needed()
                     return mp3_path
             except Exception as exc:
                 print(f"[TTS] Kokoro AI gặp lỗi ({exc}), chuyển sang Microsoft Edge Neural...")
 
-        # 2. Nếu chọn giọng FPT.AI
-        if voice.startswith("fpt-"):
-            if time.time() >= self._fpt_blocked_until:
-                fpt_voice_name = voice.replace("fpt-", "")
-                fpt_key = self.config.get("fpt_api_key") or DEFAULT_CONFIG["fpt_api_key"]
-                try:
-                    content = await asyncio.to_thread(self._synthesize_fpt, clean, fpt_voice_name, fpt_key)
-                    if content and len(content) > 1000:
-                        mp3_path.write_bytes(content)
-                        return mp3_path
-                except Exception as exc:
-                    print(f"[TTS] FPT.AI gặp lỗi ({exc}), tạm khóa FPT 120s và chuyển sang Microsoft Edge Neural...")
-                    self._fpt_blocked_until = time.time() + 120.0
-            else:
-                print(f"[TTS] FPT.AI đang tạm khóa do chạm trần quota, chuyển thẳng sang Microsoft Edge...")
-
-        # 2. Nếu chọn giọng Microsoft Edge hoặc fallback từ FPT
+        # 2. Nếu chọn giọng Microsoft Edge
         edge_voice = (
             voice
             if voice.startswith("vi-VN-")
@@ -465,6 +405,8 @@ class TTSService:
                     )
                     await asyncio.wait_for(communicate.save(str(mp3_path)), timeout=18.0)
                 if mp3_path.exists() and mp3_path.stat().st_size > 128:
+                    cache_manager.touch_file(mp3_path)
+                    cache_manager.prune_if_needed()
                     return mp3_path
             except edge_tts.exceptions.NoAudioReceived:
                 # Nếu chỉ là do nội dung câu đặc thù không sinh được audio trên Edge,
@@ -477,6 +419,8 @@ class TTSService:
         # 3. Fallback cuối cùng: Google Translate TTS
         lang = "vi"
         await asyncio.to_thread(self._google_tts_download, clean, lang, mp3_path)
+        cache_manager.touch_file(mp3_path)
+        cache_manager.prune_if_needed()
         return mp3_path
 
     def _ensure_vn_phonemizer(self) -> None:
@@ -714,51 +658,7 @@ class TTSService:
             sf.write(buf, audio, SAMPLE_RATE, format="WAV")
             return buf.getvalue()
 
-    def _synthesize_fpt(self, text: str, voice_name: str, api_key: str) -> bytes:
-        """Gọi FPT.AI API v5 để sinh giọng đọc chất lượng cao."""
-        url = "https://api.fpt.ai/hmi/tts/v5"
-        headers = {
-            "api-key": api_key,
-            "api_key": api_key,
-            "voice": voice_name,
-            "speed": "0",
-        }
-
-        # Gọi request tạo âm thanh (thử tối đa 2 lần nếu gặp rate limit tạm thời)
-        async_url = None
-        for attempt in range(2):
-            try:
-                with httpx.Client(proxy=self._proxy, timeout=12.0) as client:
-                    resp = client.post(url, headers=headers, content=text.encode("utf-8"))
-                    data = resp.json()
-                    if data.get("error") == 0 and "async" in data:
-                        async_url = data["async"]
-                        break
-                    elif resp.status_code == 429 or "rate limit" in str(data).lower():
-                        raise RuntimeError("Hạn mức FPT.AI bị giới hạn (Rate limit hoặc hết quota tài khoản Free)")
-                    else:
-                        raise RuntimeError(f"FPT.AI lỗi: {data.get('message')}")
-            except Exception as e:
-                if attempt == 1 or "Hạn mức" in str(e):
-                    raise e
-                time.sleep(1.0)
-
-        if not async_url:
-            raise RuntimeError("FPT.AI không trả về link âm thanh.")
-
-        # Polling để tải file MP3 khi FPT.AI tổng hợp xong (thường 0.6s - 2s)
-        for _ in range(12):
-            time.sleep(0.6)
-            try:
-                with httpx.Client(proxy=self._proxy, timeout=8.0) as dl_client:
-                    dl_resp = dl_client.get(async_url)
-                    if dl_resp.status_code == 200 and len(dl_resp.content) > 1000:
-                        return dl_resp.content
-            except Exception:
-                continue
-
-        raise TimeoutError("Quá thời gian chờ FPT.AI tạo file âm thanh.")
-
+    
     def _google_tts_download(self, text: str, lang: str, output_path: Path) -> None:
         words = text.split()
         chunks: List[str] = []
@@ -778,31 +678,46 @@ class TTSService:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         }
 
-        with httpx.Client(proxy=self._proxy, timeout=10.0) as client:
-            if len(chunks) <= 1:
-                for chunk in chunks:
-                    encoded_q = urllib.parse.quote(chunk)
-                    url = (
-                        f"https://translate.google.com/translate_tts?ie=UTF-8"
-                        f"&tl={lang}&client=tw-ob&q={encoded_q}"
-                    )
-                    resp = client.get(url, headers=headers)
-                    if resp.status_code == 200:
-                        audio_bytes.extend(resp.content)
-            else:
-                def _fetch_chunk(chunk_str: str) -> bytes:
-                    encoded_q = urllib.parse.quote(chunk_str)
-                    url = (
-                        f"https://translate.google.com/translate_tts?ie=UTF-8"
-                        f"&tl={lang}&client=tw-ob&q={encoded_q}"
-                    )
-                    resp = client.get(url, headers=headers)
-                    return resp.content if resp.status_code == 200 else b""
+        proxies_to_try = [self._proxy, None] if self._proxy else [None]
+        last_exc = None
+        succeeded = False
+        for p in proxies_to_try:
+            try:
+                chunk_bytes = bytearray()
+                with httpx.Client(proxy=p, timeout=10.0) as client:
+                    if len(chunks) <= 1:
+                        for chunk in chunks:
+                            encoded_q = urllib.parse.quote(chunk)
+                            url = (
+                                f"https://translate.google.com/translate_tts?ie=UTF-8"
+                                f"&tl={lang}&client=tw-ob&q={encoded_q}"
+                            )
+                            resp = client.get(url, headers=headers)
+                            if resp.status_code == 200:
+                                chunk_bytes.extend(resp.content)
+                    else:
+                        def _fetch_chunk(chunk_str: str) -> bytes:
+                            encoded_q = urllib.parse.quote(chunk_str)
+                            url = (
+                                f"https://translate.google.com/translate_tts?ie=UTF-8"
+                                f"&tl={lang}&client=tw-ob&q={encoded_q}"
+                            )
+                            resp = client.get(url, headers=headers)
+                            return resp.content if resp.status_code == 200 else b""
 
-                with concurrent.futures.ThreadPoolExecutor(max_workers=min(4, len(chunks))) as pool:
-                    for part_bytes in pool.map(_fetch_chunk, chunks):
-                        if part_bytes:
-                            audio_bytes.extend(part_bytes)
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=min(4, len(chunks))) as pool:
+                            for part_bytes in pool.map(_fetch_chunk, chunks):
+                                if part_bytes:
+                                    chunk_bytes.extend(part_bytes)
+                audio_bytes.extend(chunk_bytes)
+                succeeded = True
+                break
+            except Exception as exc:
+                last_exc = exc
+                continue
+
+        if not succeeded and last_exc:
+            raise last_exc
 
         output_path.write_bytes(bytes(audio_bytes))
 

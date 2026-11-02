@@ -10,6 +10,7 @@ Kiểm thử toàn trình từ đầu vào PDF đến đầu ra âm thanh MP3 v�
 import time
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 from starlette.testclient import TestClient
 
 from src.main import app
@@ -170,6 +171,62 @@ class TestE2EPipeline(unittest.TestCase):
         self.assertTrue(pdata["needs_ocr"])
         self.assertIn("Phát hiện", pdata["reason"])
 
+
+    def test_e2e_epub_book_pipeline(self):
+        epub_path = FIXTURES_DIR / "sample_book.epub"
+
+        # 1. Upload EPUB
+        with open(epub_path, "rb") as f:
+            up_resp = self.client.post(
+                "/api/upload",
+                files={"file": ("sample_book.epub", f, "application/epub+zip")},
+            )
+        self.assertEqual(up_resp.status_code, 200)
+        doc_info = up_resp.json()
+        doc_id = doc_info["doc_id"]
+        self.assertEqual(doc_info["file_type"], "epub")
+
+        # 2. Đọc trang 1 và kiểm tra không cần OCR
+        page_resp = self.client.get(f"/api/doc/{doc_id}/page/1")
+        self.assertEqual(page_resp.status_code, 200)
+        pdata = page_resp.json()
+        self.assertFalse(pdata["needs_ocr"])
+        self.assertIn("EPUB", pdata["text"])
+        self.assertGreater(len(pdata["sentences"]), 0)
+
+        # 3. Tạo âm thanh TTS từ câu đầu tiên của sách EPUB (mock network downloader để đảm bảo deterministic)
+        first_sentence = pdata["sentences"][0]
+        with patch("src.tts_service.TTSService._google_tts_download") as mock_dl:
+            def fake_dl(text, lang, output_path):
+                output_path.write_bytes(b"\xff\xfb\x90\x00" * 300)
+            mock_dl.side_effect = fake_dl
+            tts_resp = self.client.post(
+                "/api/tts",
+                json={"text": first_sentence, "voice": "google-vi-female", "speed": 1.0},
+            )
+            self.assertEqual(tts_resp.status_code, 200)
+            self.assertEqual(tts_resp.headers["content-type"], "audio/mpeg")
+
+    def test_e2e_txt_document_pipeline(self):
+        txt_path = FIXTURES_DIR / "sample_document.txt"
+
+        # 1. Upload TXT
+        with open(txt_path, "rb") as f:
+            up_resp = self.client.post(
+                "/api/upload",
+                files={"file": ("sample_document.txt", f, "text/plain")},
+            )
+        self.assertEqual(up_resp.status_code, 200)
+        doc_info = up_resp.json()
+        doc_id = doc_info["doc_id"]
+        self.assertEqual(doc_info["file_type"], "txt")
+
+        # 2. Đọc trang 1
+        page_resp = self.client.get(f"/api/doc/{doc_id}/page/1")
+        self.assertEqual(page_resp.status_code, 200)
+        pdata = page_resp.json()
+        self.assertFalse(pdata["needs_ocr"])
+        self.assertIn("TXT", pdata["text"])
 
 if __name__ == "__main__":
     unittest.main()

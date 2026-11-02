@@ -1,11 +1,11 @@
 # BÁO CÁO KẾT QUẢ KIỂM THỬ — VN PDF READER
 
-- **Thời gian thực hiện:** `2026-10-29T14:55:30.499797`
+- **Thời gian thực hiện:** `2026-11-02T10:16:03.506019`
 - **Trạng thái:** **✅ HOÀN HẢO**
-- **Tổng số ca kiểm thử (Test Cases):** `77`
-- **Passed:** `77` | **Failed:** `0` | **Errors:** `0`
+- **Tổng số ca kiểm thử (Test Cases):** `86`
+- **Passed:** `86` | **Failed:** `0` | **Errors:** `0`
 - **Tỷ lệ thành công:** `100.0%`
-- **Thời gian thực thi:** `6.296 giây`
+- **Thời gian thực thi:** `8.259 giây`
 
 ---
 
@@ -93,6 +93,8 @@ test_extract_toc_tier2_heuristic (tests.unit.test_pdf_service_unit.TestPDFServic
 test_invalid_page_number_raises_value_error (tests.unit.test_pdf_service_unit.TestPDFService.test_invalid_page_number_raises_value_error) ... ok
 test_nonexistent_doc_id_raises_file_not_found (tests.unit.test_pdf_service_unit.TestPDFService.test_nonexistent_doc_id_raises_file_not_found) ... ok
 test_path_traversal_sanitization (tests.unit.test_pdf_service_unit.TestPDFService.test_path_traversal_sanitization) ... ok
+test_register_and_extract_epub (tests.unit.test_pdf_service_unit.TestPDFService.test_register_and_extract_epub) ... ok
+test_register_and_extract_txt (tests.unit.test_pdf_service_unit.TestPDFService.test_register_and_extract_txt) ... ok
 test_register_pdf (tests.unit.test_pdf_service_unit.TestPDFService.test_register_pdf) ... ok
 test_render_page_image_enhanced_for_ocr (tests.unit.test_pdf_service_unit.TestPDFService.test_render_page_image_enhanced_for_ocr) ... ok
 test_render_page_image_standard (tests.unit.test_pdf_service_unit.TestPDFService.test_render_page_image_standard) ... ok
@@ -101,10 +103,13 @@ test_search_document_query_too_short_raises_value_error (tests.unit.test_pdf_ser
 test_search_document_standard_unicode (tests.unit.test_pdf_service_unit.TestPDFService.test_search_document_standard_unicode) ... ok
 test_search_document_tcvn3_auto_repaired (tests.unit.test_pdf_service_unit.TestPDFService.test_search_document_tcvn3_auto_repaired) ... ok
 test_annotations_endpoints (tests.integration.test_api_endpoints.TestAPIEndpoints.test_annotations_endpoints) ... ok
+test_cache_clean_endpoint (tests.integration.test_api_endpoints.TestAPIEndpoints.test_cache_clean_endpoint) ... ok
+test_cache_stats_endpoint (tests.integration.test_api_endpoints.TestAPIEndpoints.test_cache_stats_endpoint) ... ok
 test_clean_text_endpoint (tests.integration.test_api_endpoints.TestAPIEndpoints.test_clean_text_endpoint) ... ok
 test_dictionary_lookup_missing_param (tests.integration.test_api_endpoints.TestAPIEndpoints.test_dictionary_lookup_missing_param) ... ok
 test_dictionary_lookup_offline_success (tests.integration.test_api_endpoints.TestAPIEndpoints.test_dictionary_lookup_offline_success) ... ok
 test_dictionary_lookup_unknown_word (tests.integration.test_api_endpoints.TestAPIEndpoints.test_dictionary_lookup_unknown_word) ... ok
+test_get_and_update_config_no_fpt (tests.integration.test_api_endpoints.TestAPIEndpoints.test_get_and_update_config_no_fpt) ... ok
 test_get_doc_toc_endpoint (tests.integration.test_api_endpoints.TestAPIEndpoints.test_get_doc_toc_endpoint) ... ok
 test_get_doc_toc_nonexistent (tests.integration.test_api_endpoints.TestAPIEndpoints.test_get_doc_toc_nonexistent) ... ok
 test_get_page_image (tests.integration.test_api_endpoints.TestAPIEndpoints.test_get_page_image) ... ok
@@ -118,14 +123,18 @@ test_tts_endpoint (tests.integration.test_api_endpoints.TestAPIEndpoints.test_tt
 test_tts_endpoint_empty_text (tests.integration.test_api_endpoints.TestAPIEndpoints.test_tts_endpoint_empty_text) ... ok
 test_upload_empty_pdf (tests.integration.test_api_endpoints.TestAPIEndpoints.test_upload_empty_pdf) ... ok
 test_upload_invalid_file_extension (tests.integration.test_api_endpoints.TestAPIEndpoints.test_upload_invalid_file_extension) ... ok
+test_upload_valid_epub (tests.integration.test_api_endpoints.TestAPIEndpoints.test_upload_valid_epub) ... ok
 test_upload_valid_pdf (tests.integration.test_api_endpoints.TestAPIEndpoints.test_upload_valid_pdf) ... ok
+test_upload_valid_txt (tests.integration.test_api_endpoints.TestAPIEndpoints.test_upload_valid_txt) ... ok
 test_e2e_broken_font_pdf_warning (tests.e2e.test_e2e_pipeline.TestE2EPipeline.test_e2e_broken_font_pdf_warning) ... ok
+test_e2e_epub_book_pipeline (tests.e2e.test_e2e_pipeline.TestE2EPipeline.test_e2e_epub_book_pipeline) ... ok
 test_e2e_scanned_pdf_flags_ocr_needed (tests.e2e.test_e2e_pipeline.TestE2EPipeline.test_e2e_scanned_pdf_flags_ocr_needed) ... ok
 test_e2e_standard_multipage_pdf (tests.e2e.test_e2e_pipeline.TestE2EPipeline.test_e2e_standard_multipage_pdf) ... ok
 test_e2e_tcvn3_document_repaired_and_read (tests.e2e.test_e2e_pipeline.TestE2EPipeline.test_e2e_tcvn3_document_repaired_and_read) ... ok
+test_e2e_txt_document_pipeline (tests.e2e.test_e2e_pipeline.TestE2EPipeline.test_e2e_txt_document_pipeline) ... ok
 
 ----------------------------------------------------------------------
-Ran 77 tests in 6.296s
+Ran 86 tests in 8.259s
 
 OK
 ```

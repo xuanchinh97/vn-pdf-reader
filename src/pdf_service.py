@@ -4,6 +4,7 @@ import io
 import json
 import re
 import unicodedata
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -11,6 +12,7 @@ import pymupdf as fitz  # PyMuPDF 2.0+
 import httpx
 from PIL import Image, ImageEnhance, ImageOps
 
+from src.db_service import db_service
 from src.vn_text_processor import (
     process_vietnamese_pdf_text,
     convert_tcvn3_to_unicode,
@@ -31,19 +33,45 @@ class PDFService:
     def __init__(self):
         # Lưu đường dẫn file PDF theo doc_id
         self._docs: Dict[str, Path] = {}
-        # Bộ nhớ đệm văn bản trang đã xử lý (doc_id, page_no, mode) -> Dict
-        self._page_text_cache: Dict[Tuple[str, int, str], Dict[str, Any]] = {}
+        # Bộ nhớ đệm văn bản trang đã xử lý (doc_id, page_no, mode) -> Dict (LRU OrderedDict)
+        self._page_text_cache: OrderedDict[Tuple[str, int, str], Dict[str, Any]] = OrderedDict()
+        self._max_page_cache_size: int = 500
 
     def register_pdf(self, filename: str, file_bytes: bytes) -> Dict[str, object]:
-        """Lưu file PDF vào bộ nhớ đệm cục bộ và trả về thông tin tổng quan."""
+        """Lưu file (PDF, EPUB, TXT) vào bộ nhớ đệm cục bộ và trả về thông tin tổng quan."""
+        ext = Path(filename).suffix.lower()
+        if ext not in (".pdf", ".epub", ".txt"):
+            ext = ".pdf"
+        file_type = ext.lstrip(".")
+
+        # Nếu là file TXT, tự động chuẩn hóa bảng mã về Unicode UTF-8 chuẩn
+        if ext == ".txt":
+            try:
+                decoded = file_bytes.decode("utf-8")
+            except UnicodeDecodeError:
+                try:
+                    decoded = file_bytes.decode("cp1258")
+                except UnicodeDecodeError:
+                    try:
+                        decoded = file_bytes.decode("windows-1252")
+                    except Exception:
+                        decoded = file_bytes.decode("utf-8", errors="replace")
+            # Tự động chuyển đổi nếu file TXT bảng mã TCVN3 hoặc VNI
+            if is_likely_tcvn3(decoded):
+                decoded = convert_tcvn3_to_unicode(decoded)
+            elif is_likely_vni(decoded):
+                decoded = convert_vni_to_unicode(decoded)
+            decoded = fix_detached_diacritics(decoded)
+            file_bytes = decoded.encode("utf-8")
+
         doc_hash = hashlib.md5(file_bytes).hexdigest()[:12]
-        pdf_path = STORAGE_DIR / f"{doc_hash}.pdf"
-        if not pdf_path.exists():
-            pdf_path.write_bytes(file_bytes)
+        doc_path = STORAGE_DIR / f"{doc_hash}{ext}"
+        if not doc_path.exists():
+            doc_path.write_bytes(file_bytes)
 
-        self._docs[doc_hash] = pdf_path
+        self._docs[doc_hash] = doc_path
 
-        with fitz.open(pdf_path) as doc:
+        with fitz.open(doc_path) as doc:
             page_count = len(doc)
             metadata = doc.metadata or {}
             title = metadata.get("title") or filename
@@ -53,20 +81,25 @@ class PDFService:
         return {
             "doc_id": doc_hash,
             "filename": filename,
+            "file_type": file_type,
             "title": title,
             "page_count": page_count,
             "toc": toc,
         }
 
+    # Bí danh tiện ích cho các phiên bản tương thích
+    register_document = register_pdf
+
     def _get_pdf_path(self, doc_id: str) -> Path:
         safe_id = re.sub(r'[^a-zA-Z0-9_\-]', '', doc_id)
         if safe_id in self._docs and self._docs[safe_id].exists():
             return self._docs[safe_id]
-        candidate = STORAGE_DIR / f"{safe_id}.pdf"
-        if candidate.exists():
-            self._docs[safe_id] = candidate
-            return candidate
-        raise FileNotFoundError(f"Không tìm thấy tài liệu PDF với ID: {doc_id}")
+        for ext in (".pdf", ".epub", ".txt"):
+            candidate = STORAGE_DIR / f"{safe_id}{ext}"
+            if candidate.exists():
+                self._docs[safe_id] = candidate
+                return candidate
+        raise FileNotFoundError(f"Không tìm thấy tài liệu với ID: {doc_id}")
 
     def extract_toc(self, doc_id: str) -> List[Dict[str, Any]]:
         """
@@ -270,6 +303,7 @@ class PDFService:
         """
         cache_key = (doc_id, page_number, force_mode)
         if cache_key in self._page_text_cache:
+            self._page_text_cache.move_to_end(cache_key)
             return self._page_text_cache[cache_key]
 
         pdf_path = self._get_pdf_path(doc_id)
@@ -326,11 +360,38 @@ class PDFService:
         processed["page_number"] = page_number
         processed["raw_text"] = raw_text
 
-        # Giới hạn kích thước cache trang (tối đa 500 trang gần nhất)
-        if len(self._page_text_cache) > 500:
-            self._page_text_cache.clear()
+        # EPUB và TXT là định dạng số nguyên bản (Digital-Native), không bao giờ cần OCR
+        ext = pdf_path.suffix.lower()
+        if ext in (".epub", ".txt"):
+            processed["needs_ocr"] = False
+
+        # Giới hạn kích thước cache trang theo LRU (tối đa 500 trang gần nhất)
         self._page_text_cache[cache_key] = processed
+        if len(self._page_text_cache) > self._max_page_cache_size:
+            self._page_text_cache.popitem(last=False)
         return processed
+
+    def _ensure_doc_indexed_fts(self, doc_id: str, page_count: int) -> None:
+        """Lập chỉ mục toàn văn FTS5 vào SQLite cho tài liệu nếu chưa được lập chỉ mục (REC-03)."""
+        if db_service.is_doc_indexed(doc_id):
+            return
+
+        pages_data = []
+        for page_no in range(1, page_count + 1):
+            try:
+                page_data = self.extract_page_text(doc_id, page_no)
+                sentences = page_data.get("sentences", [])
+                if sentences:
+                    pages_data.append({"page": page_no, "sentences": sentences})
+                else:
+                    raw_text = str(page_data.get("text", "")).strip()
+                    if raw_text:
+                        pages_data.append({"page": page_no, "sentences": [raw_text]})
+            except Exception:
+                continue
+
+        if pages_data:
+            db_service.index_document_pages(doc_id, pages_data)
 
     def search_document(
         self, doc_id: str, query: str, max_results: int = 200
@@ -338,15 +399,115 @@ class PDFService:
         """
         Tìm kiếm toàn văn trong tài liệu PDF (hỗ trợ tiếng Việt có dấu, không phân biệt hoa thường,
         và tự động sửa lỗi mã phông chữ TCVN3/VNI).
-        Trả về danh sách kết quả kèm số trang, vị trí câu, và trích đoạn văn bản (snippet).
+        Ưu tiên tra cứu siêu tốc qua SQLite FTS5 (<10ms), tự động fallback sang quét tuần tự.
         """
         safe_query = query.strip()
         if len(safe_query) < 2:
             raise ValueError("Từ khóa tìm kiếm phải có độ dài ít nhất 2 ký tự.")
 
         pdf_path = self._get_pdf_path(doc_id)
+        with fitz.open(pdf_path) as doc:
+            page_count = len(doc)
+
         q_norm = unicodedata.normalize("NFC", safe_query)
         pattern = re.compile(re.escape(q_norm), re.IGNORECASE)
+
+        # 1. Thử tìm kiếm FTS5 siêu tốc qua SQLite (<10ms) (REC-03)
+        try:
+            self._ensure_doc_indexed_fts(doc_id, page_count)
+            fts_rows = db_service.search_fts(doc_id, safe_query, limit=max_results)
+            if fts_rows:
+                results: List[Dict[str, Any]] = []
+                results_by_page: Dict[int, List[Dict[str, Any]]] = {}
+                total_matches = 0
+                is_truncated = False
+
+                fallback_pat = None
+
+                for page_no, s_idx, s_text in fts_rows:
+                    s_norm = unicodedata.normalize("NFC", s_text)
+                    matches = list(pattern.finditer(s_norm))
+                    if not matches:
+                        if fallback_pat is None:
+                            from src.db_service import strip_vn_diacritics_simple
+                            clean_q = strip_vn_diacritics_simple(q_norm)
+                            char_map = {
+                                'a': '[aàáảãạăằắẳẵặâầấẩẫậ]',
+                                'e': '[eèéẻẽẹêềếểễệ]',
+                                'i': '[iìíỉĩị]',
+                                'o': '[oòóỏõọôồốổỗộơờớởỡợ]',
+                                'u': '[uùúủũụưừứửữự]',
+                                'y': '[yỳýỷỹỵ]',
+                                'd': '[dđ]',
+                            }
+                            pat_parts = [char_map.get(c.lower(), re.escape(c)) for c in clean_q]
+                            fallback_pat = re.compile("".join(pat_parts), re.IGNORECASE)
+                        matches = list(fallback_pat.finditer(s_norm))
+
+                    if matches:
+                        for match in matches:
+                            m_start, m_end = match.span()
+                            ctx_start = max(0, m_start - 35)
+                            ctx_end = min(len(s_norm), m_end + 35)
+                            prefix = "..." if ctx_start > 0 else ""
+                            suffix = "..." if ctx_end < len(s_norm) else ""
+                            snippet = f"{prefix}{s_norm[ctx_start:ctx_end].strip()}{suffix}"
+
+                            match_item = {
+                                "page": page_no,
+                                "sentence_index": s_idx,
+                                "match_text": match.group(0),
+                                "snippet": snippet,
+                                "start_char": m_start,
+                                "end_char": m_end,
+                            }
+                            results.append(match_item)
+                            if page_no not in results_by_page:
+                                results_by_page[page_no] = []
+                            results_by_page[page_no].append(match_item)
+                            total_matches += 1
+
+                            if total_matches >= max_results:
+                                is_truncated = True
+                                break
+                    else:
+                        snippet = f"...{s_norm[:70]}..." if len(s_norm) > 70 else s_norm
+                        match_item = {
+                            "page": page_no,
+                            "sentence_index": s_idx,
+                            "match_text": safe_query,
+                            "snippet": snippet,
+                            "start_char": 0,
+                            "end_char": len(safe_query),
+                        }
+                        results.append(match_item)
+                        if page_no not in results_by_page:
+                            results_by_page[page_no] = []
+                        results_by_page[page_no].append(match_item)
+                        total_matches += 1
+
+                    if total_matches >= max_results:
+                        break
+
+                if total_matches > 0:
+                    return {
+                        "doc_id": doc_id,
+                        "query": safe_query,
+                        "total_matches": total_matches,
+                        "page_count": page_count,
+                        "is_truncated": is_truncated,
+                        "results": results,
+                        "results_by_page": [
+                            {
+                                "page": p,
+                                "count": len(items),
+                                "matches": items,
+                            }
+                            for p, items in sorted(results_by_page.items())
+                        ],
+                    }
+        except Exception as exc:
+            print(f"[PDFService] Lỗi tìm kiếm FTS5 ({exc}), chuyển sang quét thông thường.")
 
         results: List[Dict[str, Any]] = []
         results_by_page: Dict[int, List[Dict[str, Any]]] = {}

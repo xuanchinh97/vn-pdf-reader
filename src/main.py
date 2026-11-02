@@ -10,6 +10,8 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from src.cache_manager import cache_manager
+from src.db_service import db_service
 from src.pdf_service import pdf_service
 from src.tts_service import tts_service
 from src.vn_text_processor import process_vietnamese_pdf_text
@@ -17,7 +19,7 @@ from src.vn_text_processor import process_vietnamese_pdf_text
 app = FastAPI(
     title="VN PDF Reader & Natural TTS",
     description="Công cụ đọc PDF Tiếng Việt thông minh (Sửa lỗi font TCVN3/VNI, Quét OCR & Giọng đọc AI tự nhiên)",
-    version="1.6.0",
+    version="1.9.0",
 )
 
 app.add_middleware(
@@ -56,7 +58,6 @@ class TTSRequest(BaseModel):
 
 
 class ConfigUpdateRequest(BaseModel):
-    fpt_api_key: Optional[str] = None
     http_proxy: Optional[str] = None
 
 
@@ -75,8 +76,6 @@ async def get_config_endpoint():
 
 @app.post("/api/config")
 async def update_config_endpoint(req: ConfigUpdateRequest):
-    if req.fpt_api_key is not None:
-        tts_service.update_fpt_api_key(req.fpt_api_key)
     if req.http_proxy is not None:
         tts_service.config["http_proxy"] = req.http_proxy.strip()
         tts_service._proxy = req.http_proxy.strip()
@@ -90,18 +89,23 @@ async def get_voices():
 
 @app.post("/api/upload")
 async def upload_pdf(file: UploadFile = File(...)):
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Vui lòng chọn file có định dạng .pdf")
+    filename = file.filename or ""
+    ext = Path(filename).suffix.lower()
+    if ext not in (".pdf", ".epub", ".txt"):
+        raise HTTPException(
+            status_code=400,
+            detail="Vui lòng chọn file có định dạng hỗ trợ: .pdf, .epub, hoặc .txt",
+        )
     try:
         content = await file.read()
         if not content:
-            raise HTTPException(status_code=400, detail="File PDF rỗng.")
-        info = pdf_service.register_pdf(file.filename, content)
+            raise HTTPException(status_code=400, detail="Tài liệu tải lên đang rỗng.")
+        info = pdf_service.register_pdf(filename, content)
         return info
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Không thể đọc file PDF: {exc}")
+        raise HTTPException(status_code=500, detail=f"Không thể đọc tài liệu: {exc}")
 
 
 @app.get("/api/doc/{doc_id}/page/{page_number}")
@@ -234,507 +238,24 @@ async def save_annotations_endpoint(doc_id: str, payload: AnnotationsPayload):
         raise HTTPException(status_code=500, detail=f"Lỗi lưu ghi chú/dấu trang: {exc}")
 
 
-OFFLINE_DICTIONARY = {
-    "sách": {
-        "word": "sách",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ",
-                "definitions": [
-                    "Tập hợp một số lượng nhất định những tờ giấy có chữ in hay viết, được đóng gộp lại thành quyển.",
-                    "Công trình trước tác hoặc dịch thuật ghi chép tri thức, nghệ thuật."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "đọc": {
-        "word": "đọc",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Động từ",
-                "definitions": [
-                    "Phát âm thành tiếng hoặc nhận biết và hiểu nội dung của những chữ viết, câu văn.",
-                    "Theo dõi và tiếp nhận thông tin từ tài liệu, ấn phẩm."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "học": {
-        "word": "học",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Động từ",
-                "definitions": [
-                    "Tiếp thu kiến thức, rèn luyện kỹ năng do người khác truyền lại hoặc tự mình rút ra.",
-                    "Luyện tập để hiểu biết và làm được việc gì đó."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "tri thức": {
-        "word": "tri thức",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ",
-                "definitions": [
-                    "Những hiểu biết, kiến thức mà con người tích lũy được qua học tập, nghiên cứu và thực tiễn.",
-                    "Hệ thống các thông tin, kỹ năng và quy luật về thế giới tự nhiên, xã hội."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "trí tuệ": {
-        "word": "trí tuệ",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ",
-                "definitions": [
-                    "Khả năng nhận thức, tư duy trừu tượng, phán đoán và giải quyết vấn đề của con người.",
-                    "Năng lực hiểu biết sâu sắc và sáng tạo."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "thời gian": {
-        "word": "thời gian",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ",
-                "definitions": [
-                    "Hình thức tồn tại cơ bản của vật chất biểu hiện độ dài kế tiếp nhau của các sự kiện, quá trình.",
-                    "Khoảng tiếp diễn từ quá khứ, hiện tại đến tương lai."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "hạnh phúc": {
-        "word": "hạnh phúc",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ / Tính từ",
-                "definitions": [
-                    "Trạng thái sung sướng, toại nguyện sâu sắc khi đạt được những mong muốn, khát vọng.",
-                    "Cảm giác vui vẻ, ấm êm và bình yên trong tâm hồn."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "công nghệ": {
-        "word": "công nghệ",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ",
-                "definitions": [
-                    "Tập hợp các phương pháp, quy trình, kỹ năng và công cụ dùng để sản xuất hoặc giải quyết công việc.",
-                    "Khoa học ứng dụng các thành tựu kỹ thuật vào thực tiễn đời sống."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "người": {
-        "word": "người",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ",
-                "definitions": [
-                    "Sinh vật bậc cao nhất có tư duy, ngôn ngữ và khả năng chế tạo, sử dụng công cụ lao động.",
-                    "Cá nhân trong cộng đồng xã hội loài người."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "ý nghĩa": {
-        "word": "ý nghĩa",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ",
-                "definitions": [
-                    "Nội dung, tư tưởng hàm chứa trong một lời nói, cử chỉ, hiện tượng hoặc tác phẩm.",
-                    "Giá trị, tác dụng tích cực của sự vật, hành động đối với đời sống."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "cuộc sống": {
-        "word": "cuộc sống",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ",
-                "definitions": [
-                    "Toàn bộ những hoạt động, trải nghiệm trong quá trình tồn tại và phát triển của con người.",
-                    "Sinh hoạt xã hội và cá nhân thường nhật."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "tình yêu": {
-        "word": "tình yêu",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ",
-                "definitions": [
-                    "Tình cảm gắn bó tha thiết, sâu sắc giữa người với người.",
-                    "Cảm xúc yêu thương, quý trọng đặc biệt."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "bạn bè": {
-        "word": "bạn bè",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ",
-                "definitions": [
-                    "Những người có quan hệ gắn bó, thân thiết, có sự đồng cảm và tin cậy lẫn nhau.",
-                    "Mối quan hệ bạn bè thân thiết."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "việt nam": {
-        "word": "việt nam",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ riêng",
-                "definitions": [
-                    "Quốc gia độc lập, có chủ quyền nằm ở bán đảo Đông Dương thuộc khu vực Đông Nam Á, thủ đô là Hà Nội."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "ngôn ngữ": {
-        "word": "ngôn ngữ",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ",
-                "definitions": [
-                    "Hệ thống các ký hiệu âm thanh và chữ viết làm phương tiện giao tiếp và tư duy của con người."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "tự do": {
-        "word": "tự do",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ / Tính từ",
-                "definitions": [
-                    "Trạng thái không bị ràng buộc, kiềm chế, được tự quyết định hành vi theo ý chí của mình trong khuôn khổ đạo đức và pháp luật."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "hòa bình": {
-        "word": "hòa bình",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ",
-                "definitions": [
-                    "Tình trạng không có chiến tranh, xung đột vũ trang; trạng thái yên ổn, hữu nghị giữa các quốc gia, dân tộc."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "thành công": {
-        "word": "thành công",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Động từ / Danh từ",
-                "definitions": [
-                    "Đạt được kết quả tốt đẹp, như ý muốn sau quá trình nỗ lực, cố gắng."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "khoa học": {
-        "word": "khoa học",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ",
-                "definitions": [
-                    "Hệ thống tri thức về các quy luật của tự nhiên, xã hội và tư duy, được hình thành và tích lũy qua thực tiễn lịch sử."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "văn hóa": {
-        "word": "văn hóa",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ",
-                "definitions": [
-                    "Tổng thể các giá trị vật chất và tinh thần do con người sáng tạo ra trong quá trình lịch sử."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "tâm hồn": {
-        "word": "tâm hồn",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ",
-                "definitions": [
-                    "Đời sống nội tâm, tình cảm và cảm xúc sâu kín của con người.",
-                    "Thế giới tinh thần và phẩm chất đạo đức bên trong mỗi cá nhân."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "gia đình": {
-        "word": "gia đình",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ",
-                "definitions": [
-                    "Tập hợp những người gắn bó với nhau do quan hệ hôn nhân, huyết thống hoặc nuôi dưỡng.",
-                    "Tổ ấm và tế bào cơ bản của xã hội."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "xã hội": {
-        "word": "xã hội",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ",
-                "definitions": [
-                    "Cộng đồng người cùng chung sống và quan hệ với nhau trong những điều kiện lịch sử nhất định.",
-                    "Toàn bộ các mối quan hệ giữa người với người trong một tổ chức cộng đồng."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "tương lai": {
-        "word": "tương lai",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ",
-                "definitions": [
-                    "Khoảng thời gian về sau, những gì sẽ xảy ra tiếp theo trong cuộc đời hoặc lịch sử.",
-                    "Triển vọng tốt đẹp phía trước."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "quá khứ": {
-        "word": "quá khứ",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ",
-                "definitions": [
-                    "Khoảng thời gian đã qua đi, những sự việc, biến cố đã diễn ra trước hiện tại."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "hiện tại": {
-        "word": "hiện tại",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ",
-                "definitions": [
-                    "Khoảng thời gian đang diễn ra ngay lúc này, đối lập với quá khứ và tương lai."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "lý tưởng": {
-        "word": "lý tưởng",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ / Tính từ",
-                "definitions": [
-                    "Mục đích cao đẹp, hoàn mỹ mà con người hướng tới và phấn đấu đạt được.",
-                    "Đạt đến mức độ mẫu mực, hoàn hảo nhất."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "ước mơ": {
-        "word": "ước mơ",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ / Động từ",
-                "definitions": [
-                    "Khát khao, mong muốn tha thiết về những điều tốt đẹp trong tương lai."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "hy vọng": {
-        "word": "hy vọng",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Động từ / Danh từ",
-                "definitions": [
-                    "Niềm tin và sự mong đợi vào những điều may mắn, tốt lành sẽ đến."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "niềm tin": {
-        "word": "niềm tin",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ",
-                "definitions": [
-                    "Sự tin tưởng vững chắc vào một chân lý, giá trị hay vào chính bản thân mình."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "đạo đức": {
-        "word": "đạo đức",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ",
-                "definitions": [
-                    "Hệ thống các quy tắc, chuẩn mực hành vi điều chỉnh mối quan hệ giữa người với người và với xã hội."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "sáng tạo": {
-        "word": "sáng tạo",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Động từ / Tính từ",
-                "definitions": [
-                    "Khả năng tìm ra cái mới, độc đáo và có giá trị thiết thực trong nhận thức hoặc hành động."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "bình yên": {
-        "word": "bình yên",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Tính từ",
-                "definitions": [
-                    "Trạng thái thanh thản, tĩnh lặng trong tâm hồn, không gặp phải sóng gió, hoạn nạn hay lo âu."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "chân lý": {
-        "word": "chân lý",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Danh từ",
-                "definitions": [
-                    "Những nhận thức đúng đắn, phản ánh chính xác thực tại khách quan và được thực tiễn kiểm nghiệm."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "dũng cảm": {
-        "word": "dũng cảm",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Tính từ",
-                "definitions": [
-                    "Khí phách dám đối mặt với khó khăn, hiểm nguy để bảo vệ lẽ phải và làm điều đúng đắn."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "kiên trì": {
-        "word": "kiên trì",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Tính từ / Động từ",
-                "definitions": [
-                    "Bền bỉ, nhẫn nại tiếp tục hành động theo mục tiêu đã định dù gặp nhiều trở ngại."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-    "yêu thương": {
-        "word": "yêu thương",
-        "found": True,
-        "meanings": [
-            {
-                "pos": "Động từ / Danh từ",
-                "definitions": [
-                    "Tình cảm gắn bó thiết tha, luôn quan tâm, chăm sóc và mong muốn điều tốt đẹp nhất cho người khác."
-                ]
-            }
-        ],
-        "source": "Từ điển Tiếng Việt"
-    },
-}
+# Từ điển được chuyển sang quản lý tập trung bằng SQLite (REC-03)
+# Duy trì biến OFFLINE_DICTIONARY qua SQLite để tương thích 100% với mã nguồn cũ
+class _OfflineDictionaryProxy(dict):
+    """Proxy từ điển tự động đồng bộ và tra cứu qua SQLite database."""
+    def __getitem__(self, key):
+        res = db_service.lookup_word(key)
+        if res:
+            return res
+        return super().__getitem__(key)
+
+    def __contains__(self, key):
+        return db_service.lookup_word(key) is not None
+
+    def get(self, key, default=None):
+        res = db_service.lookup_word(key)
+        return res if res is not None else default
+
+OFFLINE_DICTIONARY = _OfflineDictionaryProxy(db_service.get_all_words())
 
 IGNORED_WIKTIONARY_HEADERS = {
     "từ nguyên", "dịch", "dịch nghĩa", "tham khảo", "xem thêm",
@@ -785,12 +306,13 @@ def _parse_wiktionary_extract(word: str, extract: str) -> Optional[dict]:
 @lru_cache(maxsize=1024)
 def _lookup_word_cached(word: str) -> dict:
     w_clean = word.strip().lower()
-    # 1. Kiểm tra từ điển có sẵn trong bộ nhớ
-    if w_clean in OFFLINE_DICTIONARY:
-        return OFFLINE_DICTIONARY[w_clean]
+    # 1. Kiểm tra từ điển SQLite (REC-03)
+    db_result = db_service.lookup_word(w_clean)
+    if db_result:
+        return db_result
 
     # 2. Thử gọi Wiktionary Tiếng Việt qua proxy công ty hoặc trực tiếp
-    proxy = tts_service._proxy or "http://10.101.101.208:3128"
+    proxy = tts_service._proxy
     encoded_word = urllib.parse.quote(w_clean)
     url = f"https://vi.wiktionary.org/w/api.php?action=query&prop=extracts&explaintext=true&format=json&titles={encoded_word}"
 
@@ -805,6 +327,7 @@ def _lookup_word_cached(word: str) -> dict:
                         if page_id != "-1" and "extract" in page_info:
                             parsed = _parse_wiktionary_extract(word, page_info["extract"])
                             if parsed:
+                                db_service.save_word(word, parsed["meanings"], parsed.get("source", "Wiktionary Tiếng Việt"))
                                 return parsed
         except Exception:
             continue
@@ -833,6 +356,37 @@ async def dictionary_lookup_endpoint(word: str = Query(..., description="Từ ti
     if not cleaned:
         raise HTTPException(status_code=400, detail="Vui lòng cung cấp từ cần tra cứu.")
     return _lookup_word_cached(cleaned)
+
+
+
+@app.get("/api/cache/stats")
+async def cache_stats_endpoint():
+    """Lấy thống kê dung lượng bộ nhớ đệm TTS và RAM (REC-02)."""
+    return {
+        "status": "ok",
+        "disk_cache": cache_manager.get_stats(),
+        "page_cache": {
+            "cached_pages": len(pdf_service._page_text_cache),
+            "max_cached_pages": pdf_service._max_page_cache_size,
+        },
+    }
+
+
+@app.post("/api/cache/clean")
+async def cache_clean_endpoint(all: bool = False):
+    """
+    Dọn dẹp bộ nhớ đệm audio TTS (REC-02).
+    Nếu all=True: xóa sạch toàn bộ cache MP3.
+    Nếu all=False: dọn dẹp theo giải thuật LRU xuống mức an toàn.
+    """
+    try:
+        if all:
+            res = cache_manager.clean_all()
+        else:
+            res = cache_manager.prune_lru(target_ratio=0.8)
+        return {"status": "ok", "result": res}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Lỗi dọn dẹp cache: {exc}")
 
 
 STATIC_DIR = Path(__file__).parent / "static"

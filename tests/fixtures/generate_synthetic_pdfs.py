@@ -193,8 +193,83 @@ def create_broken_font_pdf() -> Path:
     return filepath
 
 
+def create_standard_epub() -> Path:
+    """Tạo sách điện tử EPUB tiếng Việt chuẩn với nhiều chương để kiểm thử."""
+    import zipfile
+    filepath = FIXTURES_DIR / "sample_book.epub"
+    with zipfile.ZipFile(filepath, "w") as zf:
+        zf.writestr("mimetype", "application/epub+zip")
+        zf.writestr(
+            "META-INF/container.xml",
+            '<?xml version="1.0"?>\n'
+            '<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">\n'
+            '  <rootfiles>\n'
+            '    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>\n'
+            '  </rootfiles>\n'
+            '</container>',
+        )
+        zf.writestr(
+            "OEBPS/content.opf",
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            '<package xmlns="http://www.idpf.org/2007/opf" version="2.0" unique-identifier="BookId">\n'
+            '  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">\n'
+            '    <dc:title>Sách Thử Nghiệm EPUB Tiếng Việt</dc:title>\n'
+            '    <dc:language>vi</dc:language>\n'
+            '    <dc:identifier id="BookId">urn:uuid:vn-pdf-reader-epub-test</dc:identifier>\n'
+            '  </metadata>\n'
+            '  <manifest>\n'
+            '    <item id="ch1" href="ch1.xhtml" media-type="application/xhtml+xml"/>\n'
+            '    <item id="ch2" href="ch2.xhtml" media-type="application/xhtml+xml"/>\n'
+            '  </manifest>\n'
+            '  <spine>\n'
+            '    <itemref idref="ch1"/>\n'
+            '    <itemref idref="ch2"/>\n'
+            '  </spine>\n'
+            '</package>',
+        )
+        zf.writestr(
+            "OEBPS/ch1.xhtml",
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">\n'
+            '<html xmlns="http://www.w3.org/1999/xhtml">\n'
+            '<head><title>Chương 1</title></head>\n'
+            '<body>\n'
+            '  <h1>Chương 1: Bình Minh Mới</h1>\n'
+            '  <p>Đây là cuốn sách điện tử định dạng EPUB được mở trực tiếp bằng PyMuPDF.</p>\n'
+            '  <p>Văn bản tiếng Việt dàn trang mượt mà không bị ngắt dòng khó chịu như file PDF in ấn.</p>\n'
+            '</body>\n'
+            '</html>',
+        )
+        zf.writestr(
+            "OEBPS/ch2.xhtml",
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">\n'
+            '<html xmlns="http://www.w3.org/1999/xhtml">\n'
+            '<head><title>Chương 2</title></head>\n'
+            '<body>\n'
+            '  <h1>Chương 2: Khám Phá Tri Thức</h1>\n'
+            '  <p>Hệ thống hỗ trợ đọc giọng AI Kokoro và Edge Neural trên cả file EPUB này.</p>\n'
+            '</body>\n'
+            '</html>',
+        )
+    return filepath
+
+
+def create_standard_txt() -> Path:
+    """Tạo tệp văn bản TXT tiếng Việt chuẩn để kiểm thử phân trang và trích xuất."""
+    filepath = FIXTURES_DIR / "sample_document.txt"
+    content = (
+        "Chương 1: Mở Đầu Cuốn Sách TXT\n\n"
+        "Đây là tệp văn bản thô tiếng Việt định dạng TXT.\n"
+        "Văn bản được phân trang tự động và hỗ trợ giọng đọc AI trơn tru.\n\n"
+        "Chương 2: Kết Nối Tương Lai\n\n"
+        "Hệ thống tự động phát hiện mã hóa và xử lý tiếng Việt hoàn hảo.\n"
+    )
+    filepath.write_text(content, encoding="utf-8")
+    return filepath
+
 def generate_all_fixtures() -> dict[str, Path]:
-    """Sinh toàn bộ các file PDF thử nghiệm."""
+    """Sinh toàn bộ các file thử nghiệm (PDF, EPUB, TXT)."""
     return {
         "standard_unicode": create_standard_unicode_pdf(),
         "tcvn3": create_tcvn3_pdf(),
@@ -202,6 +277,8 @@ def generate_all_fixtures() -> dict[str, Path]:
         "detached_accents": create_detached_accents_pdf(),
         "scanned_image": create_scanned_image_pdf(),
         "broken_font": create_broken_font_pdf(),
+        "sample_epub": create_standard_epub(),
+        "sample_txt": create_standard_txt(),
     }
 
 
