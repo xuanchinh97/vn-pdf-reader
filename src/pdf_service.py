@@ -72,6 +72,18 @@ class PDFService:
         self._docs[doc_hash] = doc_path
 
         with fitz.open(doc_path) as doc:
+            if doc.needs_pass:
+                # Tài liệu được bảo vệ bằng mật khẩu - trả về trạng thái yêu cầu nhập mã khóa
+                return {
+                    "doc_id": doc_hash,
+                    "filename": filename,
+                    "file_type": file_type,
+                    "title": filename,
+                    "page_count": len(doc),
+                    "is_encrypted": True,
+                    "needs_password": True,
+                    "toc": [],
+                }
             page_count = len(doc)
             metadata = doc.metadata or {}
             title = metadata.get("title") or filename
@@ -84,8 +96,72 @@ class PDFService:
             "file_type": file_type,
             "title": title,
             "page_count": page_count,
+            "is_encrypted": False,
+            "needs_password": False,
             "toc": toc,
         }
+
+    def unlock_document(self, doc_id: str, password: str) -> Dict[str, Any]:
+        """
+        Xác thực mật khẩu và giải mã tài liệu PDF bảo mật.
+        Khi mở khóa thành công, lưu lại tệp PDF không còn mã hóa (PDF_ENCRYPT_NONE)
+        để người dùng không cần nhập lại mật khẩu cho các lần đọc tiếp theo.
+        """
+        pdf_path = self._get_pdf_path(doc_id)
+        doc = fitz.open(pdf_path)
+        try:
+            if not doc.needs_pass:
+                # Tài liệu không bị khóa mật khẩu hoặc đã được giải mã trước đó
+                doc.close()
+                with fitz.open(pdf_path) as unlocked_doc:
+                    page_count = len(unlocked_doc)
+                    metadata = unlocked_doc.metadata or {}
+                    title = metadata.get("title") or pdf_path.name
+                toc = self.extract_toc(doc_id)
+                return {
+                    "status": "ok",
+                    "doc_id": doc_id,
+                    "filename": pdf_path.name,
+                    "file_type": pdf_path.suffix.lstrip(".").lower(),
+                    "title": title,
+                    "page_count": page_count,
+                    "is_encrypted": False,
+                    "needs_password": False,
+                    "toc": toc,
+                }
+
+            auth_res = doc.authenticate(password)
+            if auth_res <= 0:
+                raise ValueError("Mật khẩu không chính xác. Vui lòng kiểm tra lại.")
+
+            # Mở khóa thành công: Lưu bản PDF đã gỡ mã hóa
+            temp_path = pdf_path.with_name(f"{pdf_path.stem}_decrypted{pdf_path.suffix}")
+            doc.save(temp_path, encryption=fitz.PDF_ENCRYPT_NONE)
+            doc.close()
+            temp_path.replace(pdf_path)
+
+            # Cập nhật thông tin tài liệu đã mở khóa
+            with fitz.open(pdf_path) as unlocked_doc:
+                page_count = len(unlocked_doc)
+                metadata = unlocked_doc.metadata or {}
+                title = metadata.get("title") or pdf_path.name
+
+            toc = self.extract_toc(doc_id)
+
+            return {
+                "status": "ok",
+                "doc_id": doc_id,
+                "filename": pdf_path.name,
+                "file_type": pdf_path.suffix.lstrip(".").lower(),
+                "title": title,
+                "page_count": page_count,
+                "is_encrypted": False,
+                "needs_password": False,
+                "toc": toc,
+            }
+        finally:
+            if not doc.is_closed:
+                doc.close()
 
     # Bí danh tiện ích cho các phiên bản tương thích
     register_document = register_pdf
@@ -110,6 +186,8 @@ class PDFService:
         """
         pdf_path = self._get_pdf_path(doc_id)
         with fitz.open(pdf_path) as doc:
+            if doc.needs_pass:
+                raise PermissionError("Tài liệu đang được bảo vệ bằng mật khẩu. Vui lòng mở khóa trước.")
             # Tầng 1: doc.get_toc(simple=True)
             raw_toc = doc.get_toc(simple=True)
             if raw_toc:
@@ -308,6 +386,8 @@ class PDFService:
 
         pdf_path = self._get_pdf_path(doc_id)
         with fitz.open(pdf_path) as doc:
+            if doc.needs_pass:
+                raise PermissionError("Tài liệu đang được bảo vệ bằng mật khẩu. Vui lòng mở khóa trước.")
             if page_number < 1 or page_number > len(doc):
                 raise ValueError(f"Số trang không hợp lệ: {page_number}")
 
@@ -407,6 +487,8 @@ class PDFService:
 
         pdf_path = self._get_pdf_path(doc_id)
         with fitz.open(pdf_path) as doc:
+            if doc.needs_pass:
+                raise PermissionError("Tài liệu đang được bảo vệ bằng mật khẩu. Vui lòng mở khóa trước.")
             page_count = len(doc)
 
         q_norm = unicodedata.normalize("NFC", safe_query)
@@ -612,6 +694,8 @@ class PDFService:
         """Render 1 trang PDF thành ảnh PNG sắc nét (phục vụ hiển thị hoặc quét OCR)."""
         pdf_path = self._get_pdf_path(doc_id)
         with fitz.open(pdf_path) as doc:
+            if doc.needs_pass:
+                raise PermissionError("Tài liệu đang được bảo vệ bằng mật khẩu. Vui lòng mở khóa trước.")
             if page_number < 1 or page_number > len(doc):
                 raise ValueError(f"Số trang không hợp lệ: {page_number}")
 

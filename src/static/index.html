@@ -470,6 +470,43 @@
   <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
 
   <!-- ==================== MODALS ==================== -->
+  <div class="modal-backdrop" id="passwordModal" hidden>
+    <div class="modal-card password-modal-card">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div class="lock-icon-badge">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
+          <h3 style="margin:0; font-size:17px; font-weight:600;">Tài liệu được bảo vệ</h3>
+        </div>
+        <button class="apple-btn-icon" id="closePasswordModalBtn" title="Đóng">✕</button>
+      </div>
+      <div class="modal-body" style="margin-top:14px;">
+        <p style="margin:0 0 14px 0; color:var(--text-secondary); font-size:14px; line-height:1.5;">
+          Tài liệu <strong id="passwordDocName" style="color:var(--text-primary);">tệp PDF</strong> được cài mật khẩu mở tài liệu. Vui lòng nhập mật khẩu để mở khóa và tiếp tục đọc.
+        </p>
+        <div class="password-input-wrapper" style="position:relative; display:flex; align-items:center;">
+          <input type="password" id="pdfPasswordInput" class="apple-input" placeholder="Nhập mật khẩu mở tài liệu..." style="width:100%; padding-right:40px;" autocomplete="current-password" />
+          <button type="button" id="togglePasswordVisibilityBtn" class="apple-btn-icon" style="position:absolute; right:8px; background:none; border:none; cursor:pointer;" title="Hiện/Ẩn mật khẩu">
+            <svg id="eyeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </button>
+        </div>
+        <div id="passwordErrorMsg" class="password-error-msg" style="color:#e02424; font-size:13px; margin-top:8px;" hidden>
+          Mật khẩu không chính xác. Vui lòng thử lại.
+        </div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+        <button class="apple-secondary-btn" id="cancelPasswordBtn">Hủy</button>
+        <button class="apple-capsule-btn" id="unlockPdfBtn">
+          <span id="unlockBtnText">Mở khóa</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-backdrop" id="settingsModal" hidden>
     <div class="modal-card">
       <div class="modal-header">

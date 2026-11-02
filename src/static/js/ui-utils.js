@@ -144,3 +144,91 @@ export function renderDictResults(data) {
     }
   });
 }
+
+// ============================================================================
+// 4. Password Protection Modal
+// ============================================================================
+
+let currentPasswordDoc = null;
+
+export function openPasswordModal(docInfo, onUnlocked, onCancelled) {
+  currentPasswordDoc = { docInfo, onUnlocked, onCancelled };
+  if (els.passwordDocName) {
+    els.passwordDocName.textContent = docInfo.filename || "tài liệu PDF";
+  }
+  if (els.pdfPasswordInput) {
+    els.pdfPasswordInput.value = "";
+    els.pdfPasswordInput.type = "password";
+  }
+  if (els.passwordErrorMsg) {
+    els.passwordErrorMsg.hidden = true;
+  }
+  if (els.passwordModal) {
+    els.passwordModal.hidden = false;
+  }
+  setTimeout(() => els.pdfPasswordInput?.focus(), 80);
+}
+
+export function closePasswordModal() {
+  if (els.passwordModal) {
+    els.passwordModal.hidden = true;
+  }
+  if (currentPasswordDoc && currentPasswordDoc.onCancelled) {
+    currentPasswordDoc.onCancelled();
+  }
+  currentPasswordDoc = null;
+}
+
+export async function submitPasswordUnlock() {
+  if (!currentPasswordDoc) return;
+  const password = els.pdfPasswordInput?.value || "";
+  if (!password) {
+    if (els.passwordErrorMsg) {
+      els.passwordErrorMsg.textContent = "Vui lòng nhập mật khẩu mở tài liệu.";
+      els.passwordErrorMsg.hidden = false;
+    }
+    els.pdfPasswordInput?.focus();
+    return;
+  }
+
+  if (els.unlockPdfBtn) els.unlockPdfBtn.disabled = true;
+  if (els.unlockBtnText) els.unlockBtnText.textContent = "Đang mở khóa...";
+  if (els.passwordErrorMsg) els.passwordErrorMsg.hidden = true;
+
+  try {
+    const res = await fetch(`/api/doc/${encodeURIComponent(currentPasswordDoc.docInfo.doc_id)}/unlock`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Mật khẩu không chính xác. Vui lòng thử lại.");
+    }
+
+    const unlockedInfo = await res.json();
+    const callback = currentPasswordDoc.onUnlocked;
+    currentPasswordDoc = null;
+    if (els.passwordModal) els.passwordModal.hidden = true;
+    if (callback) await callback(unlockedInfo);
+  } catch (err) {
+    if (els.passwordErrorMsg) {
+      els.passwordErrorMsg.textContent = err.message;
+      els.passwordErrorMsg.hidden = false;
+    }
+    if (els.pdfPasswordInput) {
+      els.pdfPasswordInput.select();
+      els.pdfPasswordInput.focus();
+    }
+  } finally {
+    if (els.unlockPdfBtn) els.unlockPdfBtn.disabled = false;
+    if (els.unlockBtnText) els.unlockBtnText.textContent = "Mở khóa";
+  }
+}
+
+export function togglePasswordVisibility() {
+  if (!els.pdfPasswordInput) return;
+  const isPass = els.pdfPasswordInput.type === "password";
+  els.pdfPasswordInput.type = isPass ? "text" : "password";
+}

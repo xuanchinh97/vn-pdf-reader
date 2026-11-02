@@ -4,6 +4,17 @@ Toàn bộ các thay đổi, tính năng mới và cải tiến của dự án *
 
 ---
 
+## [1.9.1] - 2026-11-02
+
+### Fixed & Added
+- **Khắc phục lỗi Crash (HTTP 500) khi tải lên PDF có mật khẩu (Password-Protected PDF):**
+  - **Nhận diện bảo vệ thông minh (`PDFService.register_pdf`):** Kiểm tra cờ `doc.needs_pass` ngay khi nạp tệp; không tự động gọi `extract_toc()` gây văng `ValueError: cannot initialize - document still encrypted`, trả về trạng thái nghiệp vụ `is_encrypted: true` và `needs_password: true`.
+  - **API Mở Khóa Tài Liệu (`POST /api/doc/{doc_id}/unlock`):** Xác thực mật khẩu qua `doc.authenticate()`. Mở khóa thành công sẽ tự động giải mã và lưu lại bản sạch (`PDF_ENCRYPT_NONE`) để người dùng chỉ cần nhập mật khẩu **1 lần duy nhất**; sai mật khẩu trả về HTTP 400 kèm thông báo tiếng Việt.
+  - **Chốt chặn phân quyền tại các Endpoint đọc sách:** Tự động chặn và trả mã `HTTP 403 Forbidden` khi cố tình đọc trang (`extract_page_text`, `render_page_image`, `extract_toc`, `search_document`) của tài liệu đang bị khóa.
+  - **Hộp thoại nhập mật khẩu Apple Style (Password Modal):** Bổ sung modal mở khóa hiện đại trong giao diện web với icon khóa bảo vệ, input mật khẩu có nút mắt ẩn/hiện (`eye toggle`), phím tắt `Enter` để mở khóa và `Escape` để hủy.
+
+---
+
 ## [1.9.0] - 2026-11-02
 
 ### Added & Optimized

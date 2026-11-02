@@ -10,6 +10,7 @@ Kiểm tra:
 import io
 from pathlib import Path
 import unittest
+import pymupdf as fitz
 from PIL import Image
 
 from src.pdf_service import pdf_service, PDFService
@@ -26,6 +27,7 @@ class TestPDFService(unittest.TestCase):
         cls.tcvn3_pdf_bytes = (FIXTURES_DIR / "tcvn3_document.pdf").read_bytes()
         cls.epub_bytes = (FIXTURES_DIR / "sample_book.epub").read_bytes()
         cls.txt_bytes = (FIXTURES_DIR / "sample_document.txt").read_bytes()
+        cls.encrypted_pdf_bytes = (FIXTURES_DIR / "encrypted_document.pdf").read_bytes()
 
     def test_register_pdf(self):
         info = pdf_service.register_pdf("test_standard.pdf", self.standard_pdf_bytes)
@@ -292,6 +294,70 @@ class TestPDFService(unittest.TestCase):
         # Tìm kiếm trong tài liệu TXT
         search_res = pdf_service.search_document(info["doc_id"], "Tương Lai")
         self.assertGreater(search_res["total_matches"], 0)
+
+    def _create_encrypted_pdf_bytes(self, text: str = "TÀI LIỆU BẢO MẬT") -> bytes:
+        doc = fitz.open()
+        page = doc.new_page()
+        fontfile = "C:/Windows/Fonts/arial.ttf" if Path("C:/Windows/Fonts/arial.ttf").exists() else None
+        fontname = "arial" if fontfile else None
+        page.insert_text((50, 50), text, fontfile=fontfile, fontname=fontname)
+        data = doc.tobytes(
+            encryption=fitz.PDF_ENCRYPT_AES_256,
+            user_pw="MatKhau123@",
+            owner_pw="admin_owner_pwd",
+        )
+        doc.close()
+        return data
+
+    def test_register_encrypted_pdf_flags_needs_password(self):
+        pdf_bytes = self._create_encrypted_pdf_bytes("Encrypted content 1")
+        info = pdf_service.register_pdf("test_encrypted_1.pdf", pdf_bytes)
+        self.assertIn("doc_id", info)
+        self.assertTrue(info["is_encrypted"])
+        self.assertTrue(info["needs_password"])
+        self.assertEqual(info["toc"], [])
+        self.assertGreaterEqual(info["page_count"], 1)
+
+    def test_extract_encrypted_pdf_without_password_raises_permission_error(self):
+        pdf_bytes = self._create_encrypted_pdf_bytes("Encrypted content 2")
+        info = pdf_service.register_pdf("test_encrypted_2.pdf", pdf_bytes)
+        doc_id = info["doc_id"]
+        with self.assertRaises(PermissionError):
+            pdf_service.extract_page_text(doc_id, 1)
+        with self.assertRaises(PermissionError):
+            pdf_service.extract_toc(doc_id)
+        with self.assertRaises(PermissionError):
+            pdf_service.render_page_image(doc_id, 1)
+        with self.assertRaises(PermissionError):
+            pdf_service.search_document(doc_id, "bảo mật")
+
+    def test_unlock_encrypted_pdf_wrong_password_raises_value_error(self):
+        pdf_bytes = self._create_encrypted_pdf_bytes("Encrypted content 3")
+        info = pdf_service.register_pdf("test_encrypted_3.pdf", pdf_bytes)
+        doc_id = info["doc_id"]
+        with self.assertRaises(ValueError):
+            pdf_service.unlock_document(doc_id, "sai_mat_khau_123")
+
+    def test_unlock_encrypted_pdf_success_and_read(self):
+        pdf_bytes = self._create_encrypted_pdf_bytes("TÀI LIỆU NỘI BỘ BẢO MẬT")
+        info = pdf_service.register_pdf("test_encrypted_4.pdf", pdf_bytes)
+        doc_id = info["doc_id"]
+        self.assertTrue(info["needs_password"])
+
+        # Mở khóa bằng mật khẩu chính xác
+        unlocked = pdf_service.unlock_document(doc_id, "MatKhau123@")
+        self.assertEqual(unlocked["status"], "ok")
+        self.assertFalse(unlocked["needs_password"])
+        self.assertEqual(unlocked["doc_id"], doc_id)
+
+        # Sau khi mở khóa, đọc văn bản và ảnh trang bình thường
+        page1 = pdf_service.extract_page_text(doc_id, 1)
+        self.assertIn("BẢO MẬT", page1["text"])
+        self.assertFalse(page1["needs_ocr"])
+
+        img = pdf_service.render_page_image(doc_id, 1, dpi=72)
+        self.assertGreater(len(img), 100)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -19,7 +19,7 @@ from src.vn_text_processor import process_vietnamese_pdf_text
 app = FastAPI(
     title="VN PDF Reader & Natural TTS",
     description="Công cụ đọc PDF Tiếng Việt thông minh (Sửa lỗi font TCVN3/VNI, Quét OCR & Giọng đọc AI tự nhiên)",
-    version="1.9.0",
+    version="1.9.1",
 )
 
 app.add_middleware(
@@ -66,6 +66,10 @@ class AnnotationsPayload(BaseModel):
     highlights: Optional[List[Any]] = []
 
 
+class UnlockPayload(BaseModel):
+    password: str
+
+
 @app.get("/api/config")
 async def get_config_endpoint():
     return {
@@ -108,6 +112,21 @@ async def upload_pdf(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Không thể đọc tài liệu: {exc}")
 
 
+@app.post("/api/doc/{doc_id}/unlock")
+async def unlock_document_endpoint(doc_id: str, payload: UnlockPayload):
+    """Mở khóa tài liệu PDF được bảo vệ bằng mật khẩu."""
+    if not payload.password:
+        raise HTTPException(status_code=400, detail="Vui lòng cung cấp mật khẩu mở tài liệu.")
+    try:
+        return pdf_service.unlock_document(doc_id, payload.password)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Lỗi mở khóa tài liệu: {exc}")
+
+
 @app.get("/api/doc/{doc_id}/page/{page_number}")
 async def get_page_text(
     doc_id: str,
@@ -118,6 +137,8 @@ async def get_page_text(
         return pdf_service.extract_page_text(doc_id, page_number, force_mode=mode)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
@@ -138,6 +159,8 @@ async def get_page_image(
         return Response(content=png_bytes, media_type="image/png")
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Lỗi tạo ảnh trang PDF: {exc}")
 
@@ -186,6 +209,8 @@ async def get_doc_toc(doc_id: str):
         return {"doc_id": doc_id, "toc": toc}
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Lỗi trích xuất mục lục: {exc}")
 
@@ -197,6 +222,8 @@ async def get_doc_pages_overview(doc_id: str):
         return {"doc_id": doc_id, "pages": pages, "total": len(pages)}
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Lỗi đọc danh sách trang: {exc}")
 
@@ -214,6 +241,8 @@ async def search_document_endpoint(
         return pdf_service.search_document(doc_id, clean_q, max_results=max_results)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:

@@ -13,6 +13,9 @@ import {
   openDictModal,
   closeDictModal,
   lookupWord,
+  closePasswordModal,
+  submitPasswordUnlock,
+  togglePasswordVisibility,
 } from "./js/ui-utils.js";
 import {
   loadAnnotations,
@@ -102,6 +105,21 @@ export function bindEvents() {
 
   // Nút cài đặt trên Home
   els.homeSettingsBtn?.addEventListener("click", openSettingsModal);
+
+  // Modal mở khóa mật khẩu tài liệu PDF
+  els.closePasswordModalBtn?.addEventListener("click", closePasswordModal);
+  els.cancelPasswordBtn?.addEventListener("click", closePasswordModal);
+  els.unlockPdfBtn?.addEventListener("click", submitPasswordUnlock);
+  els.togglePasswordVisibilityBtn?.addEventListener("click", togglePasswordVisibility);
+  els.pdfPasswordInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      submitPasswordUnlock();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      closePasswordModal();
+    }
+  });
 
   // 1. Chọn file PDF / EPUB / TXT
   els.pdfFileInput?.addEventListener("change", (e) => {
@@ -832,6 +850,7 @@ export function bindEvents() {
       closeDictModal();
       closeShortcutsModal();
       closeSettingsModal();
+      closePasswordModal();
     }
   });
 }

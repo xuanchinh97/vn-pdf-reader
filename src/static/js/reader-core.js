@@ -25,6 +25,7 @@ import {
   updateHighlightActiveTocItem,
 } from "./toc-viewer.js";
 import { highlightSearchMatchOnPage } from "./search-drawer.js";
+import { openPasswordModal } from "./ui-utils.js";
 
 // ============================================================================
 // 1. Screen Switching & Format UI
@@ -404,53 +405,74 @@ export async function handlePdfUpload(file) {
       throw new Error(err.detail || "Lỗi tải file");
     }
     const info = await res.json();
-    state.docId = info.doc_id;
-    state.filename = info.filename;
-    state.fileType = info.file_type || getFileTypeLabel(info.filename).toLowerCase();
-    state.totalPages = info.page_count;
-    state.currentPage = 1;
-    state.toc = info.toc || [];
-    updateFormatUI();
 
-    // Tải danh sách overview tất cả các trang
-    try {
-      const pagesRes = await fetch(`/api/doc/${info.doc_id}/pages`);
-      if (pagesRes.ok) {
-        const pagesData = await pagesRes.json();
-        state.pagesOverview = pagesData.pages || [];
-      }
-    } catch (_) {}
-
-    renderTocList();
-    await loadAnnotations();
-
-    saveRecentBook(info.doc_id, info.filename, info.page_count);
-    showScreen("reader");
-
-    // Cập nhật UI: Đọc sách Single-pane tối giản kiểu Apple Books (chỉ hiện chữ, ẩn file PDF gốc)
-    if (els.emptyState) els.emptyState.hidden = true;
-    if (els.splitContainer) {
-      els.splitContainer.hidden = false;
-      els.splitContainer.classList.add("single-pane");
+    if (info.needs_password) {
+      if (els.docTitleLabel) els.docTitleLabel.textContent = `Tài liệu bị khóa: ${info.filename}`;
+      openPasswordModal(
+        info,
+        async (unlockedInfo) => {
+          await setupDocumentAfterUpload(unlockedInfo);
+          showAppleToast("Đã mở khóa tài liệu thành công!", "success");
+        },
+        () => {
+          if (els.docTitleLabel) els.docTitleLabel.textContent = "Đã hủy mở khóa tài liệu";
+          showScreen("home");
+        }
+      );
+      return;
     }
-    if (els.pdfPane) els.pdfPane.hidden = true;
-    if (els.showPdfPaneBtn) els.showPdfPaneBtn.hidden = true;
 
-    if (els.docTitleLabel) els.docTitleLabel.textContent = info.filename;
-    if (els.totalPagesLabel) els.totalPagesLabel.textContent = info.page_count;
-    if (els.pageInput) {
-      els.pageInput.max = info.page_count;
-      els.pageInput.disabled = false;
-    }
-    if (els.encodingModeSelect) els.encodingModeSelect.disabled = false;
-    if (els.ocrPageBtn) els.ocrPageBtn.disabled = false;
-    if (els.editModeBtn) els.editModeBtn.disabled = false;
-
-    await goToPage(1, false);
+    await setupDocumentAfterUpload(info);
   } catch (err) {
     alert(`Không thể mở tài liệu: ${err.message}`);
     if (els.docTitleLabel) els.docTitleLabel.textContent = "Lỗi mở tài liệu";
   }
+}
+
+export async function setupDocumentAfterUpload(info) {
+  state.docId = info.doc_id;
+  state.filename = info.filename;
+  state.fileType = info.file_type || getFileTypeLabel(info.filename).toLowerCase();
+  state.totalPages = info.page_count;
+  state.currentPage = 1;
+  state.toc = info.toc || [];
+  updateFormatUI();
+
+  // Tải danh sách overview tất cả các trang
+  try {
+    const pagesRes = await fetch(`/api/doc/${info.doc_id}/pages`);
+    if (pagesRes.ok) {
+      const pagesData = await pagesRes.json();
+      state.pagesOverview = pagesData.pages || [];
+    }
+  } catch (_) {}
+
+  renderTocList();
+  await loadAnnotations();
+
+  saveRecentBook(info.doc_id, info.filename, info.page_count);
+  showScreen("reader");
+
+  // Cập nhật UI: Đọc sách Single-pane tối giản kiểu Apple Books (chỉ hiện chữ, ẩn file PDF gốc)
+  if (els.emptyState) els.emptyState.hidden = true;
+  if (els.splitContainer) {
+    els.splitContainer.hidden = false;
+    els.splitContainer.classList.add("single-pane");
+  }
+  if (els.pdfPane) els.pdfPane.hidden = true;
+  if (els.showPdfPaneBtn) els.showPdfPaneBtn.hidden = true;
+
+  if (els.docTitleLabel) els.docTitleLabel.textContent = info.filename;
+  if (els.totalPagesLabel) els.totalPagesLabel.textContent = info.page_count;
+  if (els.pageInput) {
+    els.pageInput.max = info.page_count;
+    els.pageInput.disabled = false;
+  }
+  if (els.encodingModeSelect) els.encodingModeSelect.disabled = false;
+  if (els.ocrPageBtn) els.ocrPageBtn.disabled = false;
+  if (els.editModeBtn) els.editModeBtn.disabled = false;
+
+  await goToPage(1, false);
 }
 
 export async function goToPrevChapter() {

@@ -1,11 +1,11 @@
 # BÁO CÁO KẾT QUẢ KIỂM THỬ — VN PDF READER
 
-- **Thời gian thực hiện:** `2026-11-02T10:16:03.506019`
+- **Thời gian thực hiện:** `2026-11-02T15:08:59.064333`
 - **Trạng thái:** **✅ HOÀN HẢO**
-- **Tổng số ca kiểm thử (Test Cases):** `86`
-- **Passed:** `86` | **Failed:** `0` | **Errors:** `0`
+- **Tổng số ca kiểm thử (Test Cases):** `91`
+- **Passed:** `91` | **Failed:** `0` | **Errors:** `0`
 - **Tỷ lệ thành công:** `100.0%`
-- **Thời gian thực thi:** `8.259 giây`
+- **Thời gian thực thi:** `9.315 giây`
 
 ---
 
@@ -84,6 +84,7 @@ test_speed_to_edge_rate (tests.unit.test_tts_service_unit.TestTTSService.test_sp
 test_voice_list (tests.unit.test_tts_service_unit.TestTTSService.test_voice_list) ... ok
 test_annotations_crud (tests.unit.test_pdf_service_unit.TestPDFService.test_annotations_crud) ... ok
 test_annotations_null_safety (tests.unit.test_pdf_service_unit.TestPDFService.test_annotations_null_safety) ... ok
+test_extract_encrypted_pdf_without_password_raises_permission_error (tests.unit.test_pdf_service_unit.TestPDFService.test_extract_encrypted_pdf_without_password_raises_permission_error) ... ok
 test_extract_page_tcvn3_auto_repaired (tests.unit.test_pdf_service_unit.TestPDFService.test_extract_page_tcvn3_auto_repaired) ... ok
 test_extract_page_text_filters_margins_and_preserves_content (tests.unit.test_pdf_service_unit.TestPDFService.test_extract_page_text_filters_margins_and_preserves_content) ... ok
 test_extract_scanned_pdf_flags_needs_ocr (tests.unit.test_pdf_service_unit.TestPDFService.test_extract_scanned_pdf_flags_needs_ocr) ... ok
@@ -95,6 +96,7 @@ test_nonexistent_doc_id_raises_file_not_found (tests.unit.test_pdf_service_unit.
 test_path_traversal_sanitization (tests.unit.test_pdf_service_unit.TestPDFService.test_path_traversal_sanitization) ... ok
 test_register_and_extract_epub (tests.unit.test_pdf_service_unit.TestPDFService.test_register_and_extract_epub) ... ok
 test_register_and_extract_txt (tests.unit.test_pdf_service_unit.TestPDFService.test_register_and_extract_txt) ... ok
+test_register_encrypted_pdf_flags_needs_password (tests.unit.test_pdf_service_unit.TestPDFService.test_register_encrypted_pdf_flags_needs_password) ... ok
 test_register_pdf (tests.unit.test_pdf_service_unit.TestPDFService.test_register_pdf) ... ok
 test_render_page_image_enhanced_for_ocr (tests.unit.test_pdf_service_unit.TestPDFService.test_render_page_image_enhanced_for_ocr) ... ok
 test_render_page_image_standard (tests.unit.test_pdf_service_unit.TestPDFService.test_render_page_image_standard) ... ok
@@ -102,6 +104,8 @@ test_search_document_nonexistent_raises_file_not_found (tests.unit.test_pdf_serv
 test_search_document_query_too_short_raises_value_error (tests.unit.test_pdf_service_unit.TestPDFService.test_search_document_query_too_short_raises_value_error) ... ok
 test_search_document_standard_unicode (tests.unit.test_pdf_service_unit.TestPDFService.test_search_document_standard_unicode) ... ok
 test_search_document_tcvn3_auto_repaired (tests.unit.test_pdf_service_unit.TestPDFService.test_search_document_tcvn3_auto_repaired) ... ok
+test_unlock_encrypted_pdf_success_and_read (tests.unit.test_pdf_service_unit.TestPDFService.test_unlock_encrypted_pdf_success_and_read) ... ok
+test_unlock_encrypted_pdf_wrong_password_raises_value_error (tests.unit.test_pdf_service_unit.TestPDFService.test_unlock_encrypted_pdf_wrong_password_raises_value_error) ... ok
 test_annotations_endpoints (tests.integration.test_api_endpoints.TestAPIEndpoints.test_annotations_endpoints) ... ok
 test_cache_clean_endpoint (tests.integration.test_api_endpoints.TestAPIEndpoints.test_cache_clean_endpoint) ... ok
 test_cache_stats_endpoint (tests.integration.test_api_endpoints.TestAPIEndpoints.test_cache_stats_endpoint) ... ok
@@ -122,6 +126,7 @@ test_search_document_endpoint_success (tests.integration.test_api_endpoints.Test
 test_tts_endpoint (tests.integration.test_api_endpoints.TestAPIEndpoints.test_tts_endpoint) ... ok
 test_tts_endpoint_empty_text (tests.integration.test_api_endpoints.TestAPIEndpoints.test_tts_endpoint_empty_text) ... ok
 test_upload_empty_pdf (tests.integration.test_api_endpoints.TestAPIEndpoints.test_upload_empty_pdf) ... ok
+test_upload_encrypted_pdf_and_unlock_pipeline (tests.integration.test_api_endpoints.TestAPIEndpoints.test_upload_encrypted_pdf_and_unlock_pipeline) ... ok
 test_upload_invalid_file_extension (tests.integration.test_api_endpoints.TestAPIEndpoints.test_upload_invalid_file_extension) ... ok
 test_upload_valid_epub (tests.integration.test_api_endpoints.TestAPIEndpoints.test_upload_valid_epub) ... ok
 test_upload_valid_pdf (tests.integration.test_api_endpoints.TestAPIEndpoints.test_upload_valid_pdf) ... ok
@@ -134,7 +139,7 @@ test_e2e_tcvn3_document_repaired_and_read (tests.e2e.test_e2e_pipeline.TestE2EPi
 test_e2e_txt_document_pipeline (tests.e2e.test_e2e_pipeline.TestE2EPipeline.test_e2e_txt_document_pipeline) ... ok
 
 ----------------------------------------------------------------------
-Ran 86 tests in 8.259s
+Ran 91 tests in 9.315s
 
 OK
 ```

@@ -268,6 +268,32 @@ def create_standard_txt() -> Path:
     filepath.write_text(content, encoding="utf-8")
     return filepath
 
+
+def create_encrypted_pdf() -> Path:
+    """Tạo file PDF có đặt mật khẩu bảo vệ (User Password) để kiểm thử mở khóa."""
+    filepath = FIXTURES_DIR / "encrypted_document.pdf"
+    doc = fitz.open()
+    fontfile = "C:/Windows/Fonts/arial.ttf" if Path("C:/Windows/Fonts/arial.ttf").exists() else None
+    fontname = "arial" if fontfile else None
+
+    page = doc.new_page(width=595, height=842)
+    page.insert_textbox(
+        fitz.Rect(50, 50, 545, 120),
+        "TÀI LIỆU NỘI BỘ BẢO MẬT NGÂN HÀNG\n\nNội dung này được bảo vệ bằng mật khẩu người dùng.",
+        fontsize=14,
+        fontfile=fontfile,
+        fontname=fontname,
+    )
+    doc.save(
+        filepath,
+        encryption=fitz.PDF_ENCRYPT_AES_256,
+        user_pw="MatKhau123@",
+        owner_pw="admin_owner_pwd",
+    )
+    doc.close()
+    return filepath
+
+
 def generate_all_fixtures() -> dict[str, Path]:
     """Sinh toàn bộ các file thử nghiệm (PDF, EPUB, TXT)."""
     return {
@@ -279,6 +305,7 @@ def generate_all_fixtures() -> dict[str, Path]:
         "broken_font": create_broken_font_pdf(),
         "sample_epub": create_standard_epub(),
         "sample_txt": create_standard_txt(),
+        "encrypted": create_encrypted_pdf(),
     }
 
 

@@ -22,6 +22,7 @@ class TestAPIEndpoints(unittest.TestCase):
         cls.scanned_pdf_path = FIXTURES_DIR / "scanned_image.pdf"
         cls.epub_path = FIXTURES_DIR / "sample_book.epub"
         cls.txt_path = FIXTURES_DIR / "sample_document.txt"
+        cls.encrypted_pdf_path = FIXTURES_DIR / "encrypted_document.pdf"
 
     def test_get_voices(self):
         resp = self.client.get("/api/voices")
@@ -298,6 +299,39 @@ class TestAPIEndpoints(unittest.TestCase):
         data = resp.json()
         self.assertEqual(data["status"], "ok")
         self.assertIn("result", data)
+
+    def test_upload_encrypted_pdf_and_unlock_pipeline(self):
+        # 1. Tải lên file PDF có mật khẩu
+        with open(self.encrypted_pdf_path, "rb") as f:
+            upload_resp = self.client.post(
+                "/api/upload",
+                files={"file": ("encrypted_document.pdf", f, "application/pdf")},
+            )
+        self.assertEqual(upload_resp.status_code, 200)
+        data = upload_resp.json()
+        self.assertTrue(data.get("needs_password"))
+        self.assertTrue(data.get("is_encrypted"))
+        doc_id = data["doc_id"]
+
+        # 2. Cố gắng truy cập trang khi chưa mở khóa -> trả về 403 Forbidden
+        page_resp = self.client.get(f"/api/doc/{doc_id}/page/1")
+        self.assertEqual(page_resp.status_code, 403)
+
+        # 3. Mở khóa với mật khẩu sai -> trả về 400 Bad Request
+        wrong_unlock = self.client.post(f"/api/doc/{doc_id}/unlock", json={"password": "mat_khau_sai"})
+        self.assertEqual(wrong_unlock.status_code, 400)
+
+        # 4. Mở khóa với mật khẩu đúng -> trả về 200 OK
+        correct_unlock = self.client.post(f"/api/doc/{doc_id}/unlock", json={"password": "MatKhau123@"})
+        self.assertEqual(correct_unlock.status_code, 200)
+        unlocked_data = correct_unlock.json()
+        self.assertEqual(unlocked_data["status"], "ok")
+        self.assertFalse(unlocked_data["needs_password"])
+
+        # 5. Đọc trang sau khi mở khóa -> trả về 200 OK
+        page_after_unlock = self.client.get(f"/api/doc/{doc_id}/page/1")
+        self.assertEqual(page_after_unlock.status_code, 200)
+        self.assertIn("BẢO MẬT", page_after_unlock.json()["text"])
 
 
 if __name__ == "__main__":

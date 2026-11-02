@@ -1473,6 +1473,39 @@ body {
   transform: scale(1.05);
 }
 
+.apple-secondary-btn {
+  padding: 8px 18px;
+  border-radius: 980px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.apple-secondary-btn:hover {
+  background: var(--border-subtle);
+}
+
+.lock-icon-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(220, 38, 38, 0.12);
+  color: #dc2626;
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .lock-icon-badge {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
 .btn-aa {
   font-family: var(--font-book);
   font-size: var(--text-headline);
