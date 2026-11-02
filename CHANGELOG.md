@@ -4,6 +4,18 @@ Toàn bộ các thay đổi, tính năng mới và cải tiến của dự án *
 
 ---
 
+## [1.9.2] - 2026-11-02
+
+### Removed & Refactored
+- **Tinh gọn giao diện đọc sách (Reader Clean-up):**
+  - **Loại bỏ 3 tính năng dư thừa khỏi menu tùy chọn đọc sách (`moreOptionsPopover`):**
+    1. `⚙️ Cài đặt Mạng & HTTP Proxy` (`#settingsBtn`): Chuyển quyền cấu hình mạng và proxy về duy nhất nút bánh răng trên thanh Header trang chủ (Home Settings), loại bỏ sự phân tâm kỹ thuật trong không gian đọc sách.
+    2. `🔍 Quét lại OCR trang này` (`#ocrPageBtn`): Loại bỏ nút kích hoạt quét Tesseract.js thủ công trên thanh menu; ứng dụng tập trung vào luồng trích xuất text bản ngữ tự động và tối ưu từ backend.
+    3. `✏️ Sửa trực tiếp chữ trong trang` (`#editModeBtn`): Loại bỏ tính năng sửa text thủ công trong trang đọc (vốn không phù hợp với định vị ứng dụng e-reader/audio-reader).
+  - **Dọn dẹp mã nguồn Frontend:** Xóa các event listener và reference liên quan trong `src/static/app.js`, `src/static/js/reader-core.js`, `src/static/js/state.js`, đảm bảo menu tinh gọn chuẩn phong cách Apple Books và 100% test suite đạt chuẩn.
+
+---
+
 ## [1.9.1] - 2026-11-02
 
 ### Fixed & Added

@@ -76,9 +76,6 @@ export function updateFormatUI() {
   if (els.originalPageToggleBtn) {
     els.originalPageToggleBtn.style.display = isPdf ? "" : "none";
   }
-  if (els.ocrPageBtn) {
-    els.ocrPageBtn.style.display = isPdf ? "" : "none";
-  }
 }
 
 // ============================================================================
@@ -469,8 +466,6 @@ export async function setupDocumentAfterUpload(info) {
     els.pageInput.disabled = false;
   }
   if (els.encodingModeSelect) els.encodingModeSelect.disabled = false;
-  if (els.ocrPageBtn) els.ocrPageBtn.disabled = false;
-  if (els.editModeBtn) els.editModeBtn.disabled = false;
 
   await goToPage(1, false);
 }
@@ -521,7 +516,6 @@ export async function goToPage(pageNumber, autoPlay = false) {
   state.ocrSessionId = (state.ocrSessionId || 0) + 1;
   state.isOcrRunning = false;
   if (els.ocrProgressBox) els.ocrProgressBox.hidden = true;
-  if (els.ocrPageBtn) els.ocrPageBtn.disabled = false;
   window.scrollTo({ top: 0, behavior: "smooth" });
   saveRecentBook(state.docId, state.filename, state.totalPages, pageNumber);
   if (els.pageInput) els.pageInput.value = pageNumber;
@@ -791,7 +785,6 @@ export async function runBrowserVietnameseOcr(autoPlayAfter = false) {
   const targetPage = state.currentPage;
   const myOcrSession = ++state.ocrSessionId;
   state.isOcrRunning = true;
-  if (els.ocrPageBtn) els.ocrPageBtn.disabled = true;
   if (els.ocrProgressBox) els.ocrProgressBox.hidden = false;
   if (els.ocrProgressText) els.ocrProgressText.textContent = "Đang khởi tạo bộ nhận diện chữ Tiếng Việt (OCR)...";
   if (els.ocrProgressPercent) els.ocrProgressPercent.textContent = "0%";
@@ -847,7 +840,6 @@ export async function runBrowserVietnameseOcr(autoPlayAfter = false) {
   } finally {
     if (myOcrSession === state.ocrSessionId) {
       state.isOcrRunning = false;
-      if (els.ocrPageBtn) els.ocrPageBtn.disabled = false;
       if (els.ocrProgressBox) els.ocrProgressBox.hidden = true;
     }
   }

@@ -487,8 +487,7 @@ export function bindEvents() {
     updateThemeButton();
   });
 
-  // 7. Cài đặt Mạng / Proxy modal
-  els.settingsBtn?.addEventListener("click", openSettingsModal);
+  // 7. Cài đặt Mạng / Proxy modal (từ Home header)
   els.closeSettingsBtn?.addEventListener("click", closeSettingsModal);
   els.cancelSettingsBtn?.addEventListener("click", closeSettingsModal);
   els.saveSettingsBtn?.addEventListener("click", saveSettings);
@@ -496,23 +495,11 @@ export function bindEvents() {
     if (e.target === els.settingsModal) closeSettingsModal();
   });
 
-  // 8. Chế độ bảng mã & OCR
+  // 8. Chế độ bảng mã
   els.encodingModeSelect?.addEventListener("change", () => {
     if (state.docId) {
       goToPage(state.currentPage, false);
     }
-  });
-
-  els.ocrPageBtn?.addEventListener("click", () => {
-    if (state.docId && !state.isOcrRunning) {
-      runBrowserVietnameseOcr(false);
-    }
-  });
-
-  // 9. Chỉnh sửa văn bản thủ công
-  els.editModeBtn?.addEventListener("click", () => {
-    if (els.manualTextArea) els.manualTextArea.value = state.cleanText;
-    if (els.editorBox) els.editorBox.hidden = !els.editorBox.hidden;
   });
 
   els.pasteTextDemoBtn?.addEventListener("click", () => {
@@ -524,7 +511,6 @@ export function bindEvents() {
     if (els.pdfPane) els.pdfPane.hidden = true;
     if (els.showPdfPaneBtn) els.showPdfPaneBtn.hidden = true;
     if (els.docTitleLabel) els.docTitleLabel.textContent = "Chế độ đọc văn bản tự do";
-    if (els.editModeBtn) els.editModeBtn.disabled = false;
     if (els.editorBox) els.editorBox.hidden = false;
     els.manualTextArea?.focus();
   });
