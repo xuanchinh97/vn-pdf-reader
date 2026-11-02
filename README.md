@@ -1,14 +1,14 @@
 <div align="center">
 
-# 📖 VN PDF Reader & Natural AI TTS 🎧
+# 📖 VN Multi-Format E-Reader & Natural AI TTS 🎧 (PDF • EPUB • TXT)
 
-**Trình đọc sách điện tử PDF Tiếng Việt thông minh tích hợp sửa lỗi bảng mã cổ (TCVN3/VNI), OCR tự động và đa giọng đọc AI tự nhiên (Kokoro-Vietnamese Local AI, Microsoft Edge Neural, FPT.AI).**
+**Trình đọc sách điện tử Đa định dạng (PDF, EPUB, TXT) Tiếng Việt thông minh tích hợp sửa lỗi bảng mã cổ (TCVN3/VNI), OCR tự động và đa giọng đọc AI tự nhiên (Kokoro-Vietnamese Local AI, Microsoft Edge Neural).**
 
-[![Version](https://img.shields.io/badge/version-1.5.0-blue.svg)](#)
+[![Version](https://img.shields.io/badge/version-1.7.0-blue.svg)](#)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![PyMuPDF](https://img.shields.io/badge/PyMuPDF-1.24%2B-orange)](#)
-[![Tests](https://img.shields.io/badge/tests-68%20passed-brightgreen)](#kiểm-thử-chất-lượng-testing)
+[![Tests](https://img.shields.io/badge/tests-87%20passed-brightgreen)](#kiểm-thử-chất-lượng-testing)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](#giấy-phép-license)
 
 [Tính năng nổi bật](#-tính-năng-nổi-bật) •
@@ -52,7 +52,7 @@ Thanh ngăn kéo bên trái tích hợp cột chuyển đổi **Icon Rail** gi�
 ![Mục lục và Hình thu nhỏ trang](docs/screenshots/03-toc-thumbnails.png)
 
 ### 4. Đa giọng đọc AI Tiếng Việt & Tùy chỉnh tốc độ đọc linh hoạt
-Hỗ trợ 4 giọng **Kokoro-Vietnamese AI chạy cục bộ (Offline)** với giọng mặc định **Thành Đạt**, kết hợp **Microsoft Edge Neural TTS**, **FPT.AI v5** và thanh trượt tốc độ đọc tùy chỉnh (`0.5x – 2.5x`):
+Hỗ trợ 4 giọng **Kokoro-Vietnamese AI chạy cục bộ (Offline)** với giọng mặc định **Thành Đạt**, kết hợp **Microsoft Edge Neural TTS** và thanh trượt tốc độ đọc tùy chỉnh (`0.5x – 2.5x`):
 
 ![Chọn giọng đọc AI](docs/screenshots/04-voice-and-speed.png)
 
@@ -85,7 +85,6 @@ Tối ưu hoàn chỉnh cho màn hình điện thoại di động với thanh He
 - **Kokoro-Vietnamese Local AI (Chạy Offline trên máy):**
   - 4 giọng đọc tự nhiên: **Thành Đạt** *(Nam trầm ấm - Mặc định)*, **Tuấn Ngọc** *(Nam truyền cảm)*, **Diễm Trinh** *(Nữ miền Nam)*, **Mai Linh** *(Nữ miền Bắc)*.
 - **Microsoft Edge Neural TTS:** Giọng **Hoài My (Nữ)** và **Nam Minh (Nam)** tốc độ cao, hỗ trợ cấu hình HTTP Proxy doanh nghiệp.
-- **FPT.AI TTS v5:** Tích hợp 7 giọng đọc (*Ban Mai, Thu Minh, Minh Quang, Lê Minh, Lan Nhi, Mỹ An, Gia Huy*), tự động chuyển dự phòng sang Edge Neural ngay khi hết hạn mức (HTTP 429).
 - **Google Translate TTS:** Tầng dự phòng cuối cùng đảm bảo không bao giờ gián đoạn việc đọc.
 - **Tải trước tuần tự (Sequential Prefetching) & Bộ nhớ đệm (Disk Cache):** Lưu cache âm thanh tại `~/.vn_pdf_reader/tts_cache` và tách biệt tốc độ phát (`audio.playbackRate`) giúp đổi tốc độ tức thì không cần tải lại audio.
 
@@ -119,7 +118,7 @@ flowchart LR
     subgraph Engines ["TTS Engines & Storage"]
         KOKORO["Kokoro-VN ONNX\n(Local Offline AI)"]
         EDGE["MS Edge Neural TTS"]
-        FPT["FPT.AI TTS v5"]
+        GOOGLE["Google Translate TTS (Fallback)"]
         CACHE[("~/.vn_pdf_reader/\ndocs | tts_cache | annotations")]
     end
 
@@ -129,7 +128,7 @@ flowchart LR
     API --> PDF --> VN
     API --> TTS
     API --> DICT
-    TTS --> KOKORO & EDGE & FPT
+    TTS --> KOKORO & EDGE & GOOGLE
     PDF & TTS <--> CACHE
 ```
 
@@ -143,7 +142,7 @@ vn-pdf-reader/
 │   ├── main.py                  # FastAPI application & REST API endpoints
 │   ├── pdf_service.py           # Trích xuất PDF (PyMuPDF), lọc header/footer, TOC 2 tầng, render ảnh
 │   ├── vn_text_processor.py     # Chuyển mã TCVN3/VNI -> NFC, sửa dấu rời, nối dòng & tách câu
-│   ├── tts_service.py           # Điều phối đa nguồn TTS (Kokoro Local, Edge-TTS, FPT.AI, gTTS) & Cache
+│   ├── tts_service.py           # Điều phối đa nguồn TTS (Kokoro Local, Edge-TTS, gTTS) & Cache
 │   └── static/
 │       ├── index.html           # Giao diện HTML5 (Home Screen, Reader View, Drawers & Modals)
 │       ├── styles.css           # Hệ thống Design Token, 4 chủ đề E-Reader & Responsive Mobile
@@ -205,16 +204,16 @@ Khi máy chủ đang chạy, bạn có thể xem tài liệu Swagger UI trực t
 
 | Phương thức | Endpoint | Mô tả chức năng |
 | :--- | :--- | :--- |
-| `POST` | `/api/upload` | Tải lên file PDF, lưu cache cục bộ, trả về `doc_id`, tổng số trang và cây mục lục `toc`. |
+| `POST` | `/api/upload` | Tải lên file (PDF, EPUB, TXT), lưu cache cục bộ, trả về `doc_id`, `file_type`, tổng số trang và cây mục lục `toc`. |
 | `GET` | `/api/doc/{doc_id}/page/{page_num}` | Trích xuất văn bản trang PDF, tự động sửa lỗi TCVN3/VNI, trả về danh sách câu & cảnh báo OCR. |
 | `GET` | `/api/doc/{doc_id}/page/{page_num}/image` | Xuất ảnh PNG của trang PDF (`dpi=60` cho thumbnail, `dpi=150-240` cho xem chi tiết/OCR). |
 | `GET` | `/api/doc/{doc_id}/toc` | Lấy danh sách mục lục 2 tầng (Metadata Outline hoặc Heuristic Regex). |
 | `GET/POST` | `/api/doc/{doc_id}/annotations` | Đọc và lưu trữ Dấu trang (`bookmarks`) cùng ghi chú tô màu (`highlights`). |
 | `POST` | `/api/clean-text` | Làm sạch và tách câu cho văn bản thô thu được từ trình quét OCR `Tesseract.js`. |
-| `GET` | `/api/voices` | Danh sách toàn bộ giọng đọc khả dụng (Kokoro-VN, Edge-TTS, FPT.AI, Google TTS). |
+| `GET` | `/api/voices` | Danh sách toàn bộ giọng đọc khả dụng (Kokoro-VN, Edge-TTS, Google TTS). |
 | `POST` | `/api/tts` | Tổng hợp âm thanh giọng đọc từ văn bản (trả về `audio/mpeg` hoặc `audio/wav` từ cache/engine). |
 | `GET` | `/api/dictionary/lookup` | Tra cứu nghĩa từ Tiếng Việt (`?word=...`) từ Wiktionary & từ điển nội bộ. |
-| `GET/POST` | `/api/settings` | Xem và cập nhật cấu hình FPT.AI API Key cùng HTTP Proxy. |
+| `GET/POST` | `/api/config` | Xem và cập nhật cấu hình HTTP Proxy và hồ sơ phần cứng. |
 
 ---
 

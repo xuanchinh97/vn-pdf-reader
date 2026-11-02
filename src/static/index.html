@@ -41,7 +41,7 @@
       <section class="hero-section">
         <div class="hero-eyebrow">Thư viện của bạn</div>
         <h1 class="hero-title">Đắm chìm vào từng trang sách & giọng kể</h1>
-        <p class="hero-subtitle">Mở cuốn sách PDF bất kỳ. Tự động sửa lỗi font tiếng Việt và lắng nghe bằng giọng đọc AI tự nhiên.</p>
+        <p class="hero-subtitle">Mở cuốn sách PDF, EPUB hoặc TXT bất kỳ. Tự động sửa lỗi font tiếng Việt và lắng nghe bằng giọng đọc AI tự nhiên.</p>
       </section>
 
       <!-- UPLOAD HERO HUB -->
@@ -50,15 +50,17 @@
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
         </div>
         <h2 class="upload-title">Kéo thả cuốn sách của bạn vào đây</h2>
-        <p class="upload-desc">Hoặc chọn tệp PDF từ máy tính của bạn để bắt đầu thưởng thức ngay lập tức.</p>
+        <p class="upload-desc">Hỗ trợ tệp PDF, sách điện tử EPUB hoặc tài liệu TXT từ máy tính của bạn.</p>
         
         <label class="apple-capsule-btn" for="pdfFileInput">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"></path></svg>
           <span>Mở cuốn sách mới</span>
         </label>
-        <input type="file" id="pdfFileInput" accept=".pdf,application/pdf" hidden />
+        <input type="file" id="pdfFileInput" accept=".pdf,.epub,.txt,application/pdf,application/epub+zip,text/plain" hidden />
 
         <div class="upload-pills">
+          <div class="pill-item">📚 Hỗ trợ PDF, EPUB, TXT</div>
+          <div class="pill-item">•</div>
           <div class="pill-item">✨ Tự động nhận diện TCVN3 / VNI</div>
           <div class="pill-item">•</div>
           <div class="pill-item">🎙️ Giọng đọc Kokoro AI & Edge</div>
@@ -338,7 +340,7 @@
       </button>
       <button class="more-menu-item" id="settingsBtn">
         <span class="menu-icon">⚙️</span>
-        <span class="menu-text">Cài đặt API FPT.AI & Proxy</span>
+        <span class="menu-text">Cài đặt Mạng & HTTP Proxy</span>
       </button>
     </div>
 
@@ -471,13 +473,10 @@
   <div class="modal-backdrop" id="settingsModal" hidden>
     <div class="modal-card">
       <div class="modal-header">
-        <h3>Cài đặt Giọng đọc & Kết nối</h3>
+        <h3>Cài đặt Mạng & HTTP Proxy</h3>
         <button class="apple-btn-icon" id="closeSettingsBtn">✕</button>
       </div>
       <div class="modal-body">
-        <label for="fptApiKeyInput"><strong>FPT.AI API Key:</strong></label>
-        <input type="text" id="fptApiKeyInput" class="apple-input" placeholder="Nhập API Key FPT.AI..." />
-        
         <label for="proxyInput" style="margin-top: 14px; display:block;"><strong>HTTP Proxy:</strong></label>
         <input type="text" id="proxyInput" class="apple-input" placeholder="http://10.10.101.208:3128" />
       </div>
@@ -569,6 +568,6 @@
   <button id="pasteTextDemoBtn" hidden></button>
 
   <audio id="ttsAudio" preload="auto"></audio>
-  <script src="/app.js?v=apple3.7"></script>
+  <script type="module" src="/app.js?v=esm1.0"></script>
 </body>
 </html>
